@@ -1,0 +1,8 @@
+function rfel
+{
+    echo "$@"
+    sudo fel "$@"
+}
+
+rfel write 0x4A000000 ./u-boot.bin
+rfel exe 0x4A000000
