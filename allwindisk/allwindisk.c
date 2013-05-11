@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <unistd.h>
+#include <ctype.h>
 
 
 #define     MBR_SIZE			1024
@@ -17,23 +19,23 @@ typedef struct tag_PARTITION
 	uint32_t            addrlo;
 	uint32_t            lenhi;
 	uint32_t            lenlo;
-	unsigned  char      classname[12];
-	unsigned  char      name[12];
+	char                classname[12];
+	char                name[12];
 	uint32_t            user_type;
 	uint32_t            ro;
-	unsigned  char      res[16];
+	char                res[16];
 } __attribute__ ((packed)) PARTITION;
 
 typedef struct tag_MBR
 {
 	uint32_t            crc32;
 	uint32_t            version;
-	unsigned  char 	    magic[8];
+	char 	            magic[8];
 	unsigned  char 	    copy;
 	unsigned  char 	    index;
 	uint16_t            PartCount;
 	PARTITION           array[MBR_MAX_PART_COUNT];
-	unsigned  char      res[MBR_RESERVED];
+	char                res[MBR_RESERVED];
 } __attribute__ ((packed)) MBR;
 
 
@@ -46,7 +48,7 @@ static void usb_out(const char *data, unsigned datalen)
     int transferred;
 
     if( libusb_bulk_transfer(usb, 2 | LIBUSB_ENDPOINT_OUT,
-                (char*)data, datalen, &transferred, 0) != 0 )
+                (unsigned char*)data, datalen, &transferred, 0) != 0 )
     {
         printf("write error\n");
         exit(1);
@@ -220,9 +222,9 @@ static void cmd_diskread(int argc, char *argv[])
     transferTime = (tvpost.tv_sec - tvpre.tv_sec) +
         (tvpost.tv_usec - tvpre.tv_usec) * 1e-9;
     if( transferTime < 1.0 )
-        printf("%d kB transferred\n", count / 2);
+        printf("%lld kB transferred\n", count / 2);
     else
-        printf("%d kB transferred in %.0f seconds, %.0f kB/s\n",
+        printf("%lld kB transferred in %.0f seconds, %.0f kB/s\n",
                 count / 2, transferTime, count / transferTime / 2);
 
 }
@@ -307,9 +309,9 @@ static void cmd_diskwrite(int argc, char *argv[])
     transferTime = (tvpost.tv_sec - tvpre.tv_sec) +
         (tvpost.tv_usec - tvpre.tv_usec) * 1e-9;
     if( transferTime < 1.0 )
-        printf("%d kB transferred\n", count / 2);
+        printf("%lld kB transferred\n", count / 2);
     else
-        printf("%d kB transferred in %.0f seconds, %.0f kB/s\n",
+        printf("%lld kB transferred in %.0f seconds, %.0f kB/s\n",
                 count / 2, transferTime, count / transferTime / 2);
 
 }
@@ -410,8 +412,7 @@ static void cmd_ping(void)
 
 int main(int argc, char *argv[])
 {
-    int transferred;
-    char buf[1000];
+    int i;
 
     if( argc == 1 ) {
         printf("usage:\n");
@@ -435,12 +436,20 @@ int main(int argc, char *argv[])
     }
     if( (usb = libusb_open_device_with_vid_pid(NULL, 0xbb4, 0xfff)) == NULL )
     {
-        printf("open device failed, trying to fel...\n");
-        if( fel_ainol() != 0 )
+        printf("open device failed, trying to fel...");
+        fflush(stdout);
+        if( fel_ainol() != 0 ) {
+            fprintf(stderr, "\nfailed to open A10 USB FEL device\n");
             return 1;
-        if( (usb = libusb_open_device_with_vid_pid(NULL, 0xbb4, 0xfff))
-                == NULL )
-        {
+        }
+        for(i = 0; usb == NULL && i < 10; ++i) {
+            printf(".");
+            fflush(stdout);
+            usleep(500000);
+            usb = libusb_open_device_with_vid_pid(NULL, 0xbb4, 0xfff);
+        }
+        printf("\n");
+        if( usb == NULL ) {
             printf("open device failed\n");
             return 1;
         }

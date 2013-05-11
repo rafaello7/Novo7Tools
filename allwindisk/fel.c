@@ -20,6 +20,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
+#include <errno.h>
+#include <unistd.h>
+#include <libgen.h>
 
 struct  aw_usb_request {
     char signature[8];
@@ -226,20 +229,38 @@ static void aw_fel_read(uint32_t offset,
 
 static int send_bootfile(void)
 {
-    static const char FEL_BOOTFILE[] = "arm/diskboot.bin";
-    int fd, rd;
-    char buf[1<<19];
-    unsigned addr = 0x4A000000;
+    static const char FEL_BOOTFILE[] = "diskboot.bin";
+    int fd = -1, rd;
+    char buf[0x80000];
+    unsigned load_addr = 0x4A000000;
+    char bootfilepath[1000];
 
-    if( (fd = open(FEL_BOOTFILE, O_RDONLY)) == -1 ) {
-        fprintf(stderr, "unable to open FEL bootfile %s\n", FEL_BOOTFILE);
-        return -1;
+    /* check for freshly compiled version first */
+    if( (rd = readlink("/proc/self/exe", buf, sizeof(buf))) > 0 )
+    {
+        buf[rd] = '\0';
+        char *dname = dirname(buf);
+        sprintf(bootfilepath, "%s/arm/%s", dname, FEL_BOOTFILE);
+        fd = open(bootfilepath, O_RDONLY);
+        if( fd == -1 && errno != ENOENT ) {
+            fprintf(stderr, "unable to open FEL bootfile %s: %s\n",
+                    bootfilepath, strerror(errno));
+            return -1;
+        }
+    }
+    if( fd == -1 ) {
+        sprintf(bootfilepath, "/usr/share/allwindisk/%s", FEL_BOOTFILE);
+        if( (fd = open(bootfilepath, O_RDONLY)) == -1 ) {
+            fprintf(stderr, "unable to open FEL bootfile %s\n", bootfilepath);
+            return -1;
+        }
     }
     while( (rd = read(fd, buf, sizeof(buf))) > 0 ) {
-        send_write_request(AW_FEL_1_WRITE, addr, rd, buf, rd);
-        addr += rd;
+        send_write_request(AW_FEL_1_WRITE, load_addr, rd, buf, rd);
+        load_addr += rd;
     }
     close(fd);
+    return 0;
 }
 
 int fel_ainol(void)
@@ -247,21 +268,14 @@ int fel_ainol(void)
     int res;
 
     usb = libusb_open_device_with_vid_pid(NULL, 0x1f3a, 0xefe8);
-    if (!usb) {
-        fprintf(stderr, "failed to open A10 USB FEL device\n");
+    if (!usb)
         return -1;
-    }
     libusb_claim_interface(usb, 0);
-
     if( (res = send_bootfile()) == 0 ) {
         send_exec_request(AW_FEL_1_EXEC, 0x4A000000);
-        printf("loaded disk interface to a10 device\n");
     }
-
     libusb_release_interface(usb, 0);
     libusb_close(usb);
-    if( res == 0 )
-        sleep(2);
     return res;
 }
 
