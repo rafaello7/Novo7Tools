@@ -14,9 +14,7 @@
 #define DMSG_DEBUG(...)
 #define DMSG_INFO(...)
 #define DMSG_PANIC(...)
-
-#define FASTBOOT_TRANSFER_BUFFER		0x41000000
-#define FASTBOOT_TRANSFER_BUFFER_SIZE	256 << 20 /* 256M */
+#define printf(...)
 
 /* usb & ccmu */
 #define FASTBOOT_USB_BASE               0x01c13000
@@ -45,6 +43,10 @@
 #define DEVICE_STRING_LANGUAGE_ID         	0x0409 		/* English (United States) */
 
 #define CONFIGURATION_NORMAL        1
+
+#define FASTBOOT_INTERFACE_CLASS     0xff
+#define FASTBOOT_INTERFACE_SUB_CLASS 0x42
+#define FASTBOOT_INTERFACE_PROTOCOL  0x03
 
 /* ep packet size */
 #define EP0_MAX_PACKET_SIZE					64
@@ -104,28 +106,6 @@
   printf ("\twLength       0x%4.4x\n", r.wLength);
 
 
-static void doprnt(const char *fmt, ...)
-{
-    static char *doprnt_addr = (char*)0x49000000;
-    if( doprnt_addr <= (char*)0x49800000 ) {
-        strcpy(doprnt_addr, fmt);
-        doprnt_addr += strlen(fmt) + 1;
-    }
-}
-
-void print_hex(const char *message, unsigned u)
-{
-    char buf[10];
-    int i;
-
-    doprnt(message);
-    for(i = 0; i < 8; ++i) {
-        buf[i] = "0123456789abcdef"[u >> 4 * (7-i) & 0xf];
-    }
-    buf[8] = '\0';
-    doprnt(buf);
-}
-
 //-----------------------------------------------------------------------------
 //   数据结构
 //-----------------------------------------------------------------------------
@@ -160,8 +140,8 @@ static char *device_strings[DEVICE_STRING_MANUFACTURER_INDEX + 1];
 static struct cmd_fastboot_interface *fastboot_interface = NULL;
 static struct sw_udc udc;
 
-static u8 fastboot_fifo_ep0[EP0_FIFOSIZE];
-static u8 fastboot_fifo_bulk_ep[BULK_FIFOSIZE];
+static char fastboot_fifo_ep0[EP0_FIFOSIZE];
+static char fastboot_fifo_bulk_ep[BULK_FIFOSIZE];
 
 static unsigned int set_address = 0;
 static unsigned int deferred_rx = 0;    /* rx 传输延时 */
@@ -184,9 +164,9 @@ static void print_sw_udc(struct sw_udc *sw_udc)
 
 void sdelay(unsigned long loops)
 {
-    loops <<= 6;
-	__asm__ volatile ("1:\n" "subs %0, %1, #1\n"
-			  "bne 1b":"=r" (loops):"0"(loops));
+    loops <<= 3;
+	__asm__ volatile ("1:   subs %0, %1, #1; bne 1b"
+            : "=r" (loops) : "0"(loops));
 }
 
 static void WriteDataStatusComplete(__hdle hUSB, u32 ep_type, u32 complete)
@@ -1044,16 +1024,14 @@ int fastboot_fifo_size(void)
 	return ((udc.speed == USB_SPEED_HIGH) ? HIGH_SPEED_EP_MAX_PACKET_SIZE : FULL_SPEED_EP_MAX_PACKET_SIZE);
 }
 
-int fastboot_tx_status(const char *buffer, unsigned int buffer_size)
+void fastboot_tx(const void *buffer, unsigned int buffer_size)
 {
 	u32 transfer_size = 0;
     u32 old_ep_idx = 0;
     u32 fifo = 0;
 
-    u32 left = 0;
-    u32 offset = 0;
     u32 this_len = 0;
-    u32 zero = 0;
+    int fifo_size = fastboot_fifo_size();
 
     /* Save index */
 	old_ep_idx = USBC_GetActiveEp(udc.bsp);
@@ -1064,44 +1042,25 @@ int fastboot_tx_status(const char *buffer, unsigned int buffer_size)
         sdelay(1);
     }
 
-    left = buffer_size;
-    offset = 0;
-
-    while(left){
-    	/* fastboot client only reads back at most 64 */
-    	transfer_size = min(64, left);
+    while( buffer_size > 0 ){
+    	transfer_size = min(fifo_size, buffer_size);
 
         fifo = USBC_SelectFIFO(udc.bsp, BULK_IN_EP_INDEX);
 
-        memcpy(fastboot_fifo_bulk_ep, (buffer + offset), transfer_size);
+        memcpy(fastboot_fifo_bulk_ep, buffer, transfer_size);
         this_len = USBC_WritePacket(udc.bsp, fifo, transfer_size, (void *)fastboot_fifo_bulk_ep);
 
-        left -= this_len;
-        offset += this_len;
-
-        WriteDataStatusComplete(udc.bsp, USBC_EP_TYPE_TX, 1);
-
-        if((transfer_size == udc.bulk_ep_size) && left){
-            zero= 1;
-        }
-    }
-
-    if(zero){
-        DMSG_INFO("sent zero packet\n");
+        buffer += this_len;
+        buffer_size -= this_len;
 
         WriteDataStatusComplete(udc.bsp, USBC_EP_TYPE_TX, 1);
     }
-
     USBC_SelectActiveEp(udc.bsp, old_ep_idx);
-
-    return 0;
 }
 
-int fastboot_tx(unsigned char *buffer, unsigned int buffer_size)
+void fastboot_txstr(char *str)
 {
-    DMSG_DEBUG("fastboot_tx, ep(%d)\n", USBC_GetActiveEp(udc.bsp));
-
-    return fastboot_tx_status((const char *)buffer, buffer_size);
+    fastboot_tx(str, strlen(str));
 }
 
 static u32 open_usb_clock(u32 ccmu_base)
@@ -1138,22 +1097,18 @@ u32 close_usb_clock(u32 ccmu_base)
 
     DMSG_INFO("close_usb_clock\n");
 
-    //开usb ahb时钟
 	reg_value = readl(ccmu_base + 0x60);
 	x_clear_bit(reg_value, 0);	/* AHB clock gate usb0 */
 	writel(reg_value, (ccmu_base + 0x60));
 
-    //等sie的时钟变稳
 	reg_value = 10000;
 	while(reg_value--);
 
-	//开USB phy时钟
 	reg_value = readl((ccmu_base + 0xcc));
 	x_clear_bit(reg_value, 0);
 	x_clear_bit(reg_value, 8);
 	writel(reg_value, (ccmu_base + 0xcc));
 
-	//延时
 	reg_value = 10000;
 	while(reg_value--);
 
@@ -1174,11 +1129,6 @@ int fastboot_init(struct cmd_fastboot_interface *interface)
 
 	/* The interface structure */
 	fastboot_interface                          = interface;
-	fastboot_interface->product_name            = device_strings[DEVICE_STRING_PRODUCT_INDEX];
-	fastboot_interface->serial_no               = device_strings[DEVICE_STRING_SERIAL_NUMBER_INDEX];
-	fastboot_interface->transfer_buffer         = (unsigned char *) FASTBOOT_TRANSFER_BUFFER;
-	fastboot_interface->transfer_buffer_size    = FASTBOOT_TRANSFER_BUFFER_SIZE;
-
     udc.usb_base    = FASTBOOT_USB_BASE;
     udc.sram_base   = FASTBOOT_SRAM_BASE;
     udc.ccmu_base   = FASTBOOT_CCMU;

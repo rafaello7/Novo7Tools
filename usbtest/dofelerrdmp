@@ -1,7 +1,0 @@
-function rfel
-{
-    echo "$@"
-    sudo fel "$@"
-}
-
-rfel hex 0x49000000 0x100
