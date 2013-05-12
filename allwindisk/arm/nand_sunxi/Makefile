@@ -16,6 +16,8 @@
 
 LIB	= libsunxi-nand.a
 
+CROSS_COMPILE = arm-none-linux-gnueabi-
+
 OBJS	:= nand_drv/nand_for_uboot.o  		\
 		   nand_drv/nand_osal_uboot.o 		\
 		   src/format/nand_format.o			\
@@ -48,5 +50,5 @@ sc:
 	make $(LIB)
 
 .c.o:
-	/home/rafal/Android/lichee/buildroot/output/external-toolchain/bin/arm-none-linux-gnueabi-gcc  -g  -Os   -fno-common -ffixed-r8 -msoft-float   -D__KERNEL__ -DCONFIG_SYS_TEXT_BASE=0x4A000000 -I../include -fno-builtin -ffreestanding -nostdinc -isystem /home/rafal/Android/lichee/buildroot/output/external-toolchain/bin/../lib/gcc/arm-none-linux-gnueabi/4.5.1/include -pipe  -DCONFIG_ARM -D__ARM__ -marm  -mabi=aapcs-linux -mno-thumb-interwork -march=armv5 -Wall -Wstrict-prototypes -fno-stack-protector -Wno-format-nonliteral -Wno-format-security -c -o $@ $<
+	$(CROSS_COMPILE)gcc -Os -fno-common -I../include -ffreestanding -nostdinc -marm -mabi=aapcs-linux -march=armv6 -Wall -c -o $@ $<
 
