@@ -50,5 +50,5 @@ sc:
 	make $(LIB)
 
 .c.o:
-	$(CROSS_COMPILE)gcc -Os -fno-common -I../include -ffreestanding -nostdinc -marm -mabi=aapcs-linux -march=armv6 -Wall -c -o $@ $<
+	$(CROSS_COMPILE)gcc -Os -fno-common -I../include -ffreestanding -nostdinc -marm -mabi=aapcs-linux -march=armv6 -Wall -Wstrict-prototypes -fno-stack-protector -c -o $@ $<
 

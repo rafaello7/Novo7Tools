@@ -18,7 +18,7 @@ nand_sunxi/libsunxi-nand.a::
 	cd nand_sunxi; make
 
 .c.o:
-	$(CROSS_COMPILE)gcc  $(CFLAGS) -Wall -Wstrict-prototypes -fno-stack-protector -Wno-format-nonliteral -Wno-format-security -c $<
+	$(CROSS_COMPILE)gcc  $(CFLAGS) -Wall -Wstrict-prototypes -fno-stack-protector -c $<
 
 .S.o:
 	$(CROSS_COMPILE)gcc $(CFLAGS) -c $<
