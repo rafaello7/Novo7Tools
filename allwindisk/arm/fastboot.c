@@ -1059,11 +1059,6 @@ void fastboot_tx(const void *buffer, unsigned int buffer_size)
     USBC_SelectActiveEp(udc.bsp, old_ep_idx);
 }
 
-void fastboot_txstr(char *str)
-{
-    fastboot_tx(str, strlen(str));
-}
-
 static u32 open_usb_clock(u32 ccmu_base)
 {
     u32 reg_value = 0;

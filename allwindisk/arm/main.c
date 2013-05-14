@@ -20,6 +20,7 @@
 #include <nand_bsp.h>
 #include <malloc.h>
 #include <vsprintf.h>
+#include <bootdisk_interface.h>
 
 void clock_init(void);
 
@@ -38,10 +39,10 @@ static char *malloc_base        = (char*)0x42000000;
 static char *log_addr           = (char*)0x49000000;
 // code is at 0x4a000000
 
+static struct bootdisk_cmd_header cur_cmd;
+static unsigned cur_cmd_bytes_written;
+
 static int go_fel;
-static char *to_write_first = NULL;
-static unsigned to_write_bytes = 0;
-static uint64_t firstSector, count;
 
 static void dolog(const char *fmt, ...)
 {
@@ -57,98 +58,130 @@ static void dolog(const char *fmt, ...)
 static void reset_handler (void)
 {
     dolog("in reset handler\n");
-    to_write_first = NULL;
-    to_write_bytes = 0;
+    cur_cmd.cmd = BCMD_NONE;
+}
+
+static void send_resp_fail(void)
+{
+    struct bootdisk_resp_header resp;
+    resp.magic = 0x1234;
+    resp.status = 0;
+    resp.datasize = 0;
+    fastboot_tx(&resp, sizeof(resp));
+}
+
+static void send_resp_OK(const void *data, int datasize)
+{
+    struct bootdisk_resp_header resp;
+
+    if( datasize < 0 )
+        datasize = strlen(data);
+    resp.magic = 0x1234;
+    resp.status = 1;
+    resp.datasize = datasize;
+    fastboot_tx(&resp, sizeof(resp));
+    if( datasize > 0 )
+        fastboot_tx(data, datasize);
+}
+
+static void dispatch_cmd(uint16_t cmd, uint64_t param1, uint64_t param2,
+        const char *data, unsigned datasize)
+{
+    uint64_t diskSize;
+    int res;
+
+    dolog("dispatch_cmd: command=%c, param1=%lld (0x%llx),"
+           " param2=%lld (0x%llx), datasize=%d\n",
+           cmd, param1, param1, param2, param2, datasize);
+    switch(cmd) {
+    case BCMD_DISKSIZE:
+        diskSize = NAND_GetDiskSize();
+        send_resp_OK(&diskSize, 8);
+        break;
+    case BCMD_GO_FEL:
+        send_resp_OK("going to FEL", -1);
+        go_fel = 1;
+        break;
+    case BCMD_PING:
+        send_resp_OK(NULL, 0);
+        break;
+    case BCMD_GETLOG:
+        send_resp_OK((void*)0x49000000, log_addr - (char*)0x49000000);
+        break;
+    case BCMD_SLEEPTEST:
+        dolog("sleep time test: delay=%lld\n", param1);
+        sdelay(param1);
+        send_resp_OK(NULL, 0);
+        break;
+    case BCMD_USBSPDTEST:
+        dolog("rx_handler: usb speed test first=0x%llx, count=0x%llx\n",
+                param1, param2);
+        send_resp_OK(transfer_buffer, param2 << 9);
+        break;
+    case BCMD_READ:
+        dolog("rx_handler: read first=0x%llx, count=0x%llx\n",
+                param1, param2);
+        if( (res = NAND_LogicRead(param1, param2, transfer_buffer)) == 0 )
+        {
+            send_resp_OK(transfer_buffer, param2 << 9);
+            dolog("rx_handler read OK\n");
+        }else{
+            dolog("rx_handler read error: %d\n", res);
+            send_resp_fail();
+        }
+        break;
+    case BCMD_WRITE:
+        dolog("rx_handler: write first=0x%llx, count=0x%lx\n",
+                param1, datasize);
+        if( (res = NAND_LogicWrite(param1, datasize / 512,
+                        transfer_buffer)) == 0 )
+        {
+            send_resp_OK(NULL, 0);
+            dolog("rx_handler write OK\n");
+        }else{
+            dolog("rx_handler write error: %d\n", res);
+            send_resp_fail();
+        }
+        break;
+    default:
+        send_resp_fail();
+        break;
+    }
 }
 
 static int rx_handler(const char *buffer, unsigned int buffer_size)
 {
-    int res;
-    uint64_t diskSize;
-    char buf[40];
-
-    if( to_write_bytes != 0 ) {
-        /* a data for "disk write" */
-        if( buffer_size > to_write_bytes ) {
-            dolog("rx_handler: ignore data after bytes to write\n");
-            buffer_size = to_write_bytes;
+    if( cur_cmd.cmd == BCMD_NONE ) {
+        if( buffer_size != sizeof(cur_cmd) ) {
+            dolog("rx_handler FATAL: wrong data size on input=%d\n",
+                    buffer_size);
+            return 0;
         }
-        memcpy(to_write_first, buffer, buffer_size);
-        to_write_first += buffer_size;
-        to_write_bytes -= buffer_size;
-        if( to_write_bytes == 0 ) {
-            dolog("rx_handler: store data to write, first=0x%llx, count=0x%llx\n",
-                firstSector, count);
-            if( (res = NAND_LogicWrite(firstSector, count, transfer_buffer)) == 0 )
-            {
-                fastboot_txstr("OKAY");
-                dolog("rx_handler write OK\n");
-            }else{
-                dolog("rx_handler write error: %d\n", res);
-                fastboot_txstr("FAIL");
-            }
+        memcpy(&cur_cmd, buffer, sizeof(cur_cmd));
+        if( cur_cmd.magic != 0x1234 ) {
+            dolog("rx_handler FATAL: wrong magic on cmd=%x\n", cur_cmd.magic);
+            return 0;
         }
-        return 0;
+        if( cur_cmd.datasize > 0x1000000 ) {    /* max 16 MB */
+            dolog("rx_handler FATAL: too big data size on cmd=0x%x\n",
+                    cur_cmd.datasize);
+            return 0;
+        }
+        cur_cmd_bytes_written = 0;
+    }else{
+        int to_write = cur_cmd.datasize - cur_cmd_bytes_written;
+        if( buffer_size <= to_write )
+            to_write = buffer_size;
+        else
+            dolog("rx_handler: ignore extra %d bytes on input\n",
+                    buffer_size - to_write);
+        memcpy(transfer_buffer + cur_cmd_bytes_written, buffer, to_write);
+        cur_cmd_bytes_written += to_write;
     }
-    dolog("rx_handler: request=%c\n", buffer[0]);
-    switch(buffer[0]) {
-    case 'D':   /* disk size */
-        diskSize = NAND_GetDiskSize();
-        fastboot_tx(&diskSize, 8);
-        break;
-    case 'F':   /* go to FEL */
-        fastboot_txstr("going to FEL");
-        go_fel = 1;
-        break;
-    case 'I':   /* ping */
-        fastboot_txstr("OKAY");
-        break;
-    case 'L':   /* write log */
-        sprintf(buf, "OKAY%X", log_addr - (char*)0x49000000);
-        fastboot_txstr(buf);
-        fastboot_tx((char*)0x49000000, log_addr - (char*)0x49000000);
-        break;
-    case 'S':   /* sleep time test */
-        res = simple_strtoul(buffer + 1, NULL, 16);
-        dolog("sleep time test: delay=%d\n", res);
-        sdelay(res);
-        fastboot_txstr("OKAY");
-        break;
-    case 'U':   /* usb speed test */
-        firstSector = simple_strtoul(buffer + 1, NULL, 16);
-        count = simple_strtoul(buffer + 18, NULL, 16);
-        dolog("rx_handler: usb speed test first=0x%llx, count=0x%llx\n",
-                firstSector, count);
-        fastboot_txstr("OKAY");
-        fastboot_tx(transfer_buffer, count << 9);
-        dolog("rx_handler read OK\n");
-        break;
-    case 'R':   /* read disk */
-        firstSector = simple_strtoul(buffer + 1, NULL, 16);
-        count = simple_strtoul(buffer + 18, NULL, 16);
-        dolog("rx_handler: read first=0x%llx, count=0x%llx\n",
-                firstSector, count);
-        if( (res = NAND_LogicRead(firstSector, count, transfer_buffer)) == 0 )
-        {
-            fastboot_txstr("OKAY");
-            fastboot_tx(transfer_buffer, count << 9);
-            dolog("rx_handler read OK\n");
-        }else{
-            dolog("rx_handler read error: %d\n", res);
-            fastboot_txstr("FAIL");
-        }
-        break;
-    case 'W':   /* write to disk */
-        firstSector = simple_strtoul(buffer + 1, NULL, 16);
-        count = simple_strtoul(buffer + 18, NULL, 16);
-        dolog("rx_handler: write first=0x%llx, count=0x%llx\n",
-                firstSector, count);
-        to_write_first = transfer_buffer;
-        to_write_bytes = count << 9;
-        break;
-    default:
-        fastboot_txstr("FAIL");
-        break;
+    if( cur_cmd_bytes_written == cur_cmd.datasize ) {
+        dispatch_cmd(cur_cmd.cmd, cur_cmd.cmd_param1, cur_cmd.cmd_param2,
+                transfer_buffer, cur_cmd.datasize);
+        cur_cmd.cmd = BCMD_NONE;
     }
     return 0;
 }

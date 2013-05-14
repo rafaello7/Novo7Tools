@@ -71,9 +71,6 @@ extern int fastboot_fifo_size(void);
 /* Send data to the client app */
 extern void fastboot_tx(const void *buffer, unsigned buffer_size);
 
-/* Send string to the client app (without terminating null byte) */
-void fastboot_txstr(char *str);
-
 void sdelay(unsigned long loops);
 
 #endif /* FASTBOOT_H */

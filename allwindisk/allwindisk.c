@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <ctype.h>
+#include "arm/include/bootdisk_interface.h"
 
 
 #define     MBR_SIZE			1024
@@ -41,68 +42,115 @@ typedef struct tag_MBR
 
 static libusb_device_handle *usb;
 
+/* datasize equal 0 means that whole response is read */
+static struct bootdisk_resp_header cur_resp_header;
+
 int fel_ainol(void);
 
-static void usb_out(const char *data, unsigned datalen)
+
+/* Sends command to device and reads response header
+ */
+static void send_command(unsigned cmd, unsigned long long param1,
+        unsigned long long param2, const void *data, unsigned datasize)
 {
-    int transferred;
+    struct bootdisk_cmd_header cmd_header;
+    int status, transferred;
+
+    if( cur_resp_header.datasize > 0 ) {
+        printf("internal error: unread data of previous command\n");
+        exit(1);
+    }
+    cmd_header.magic = htole16(0x1234);
+    cmd_header.cmd = htole16(cmd);
+    cmd_header.cmd_param1 = htole64(param1);
+    cmd_header.cmd_param2 = htole64(param2);
+    cmd_header.datasize = datasize;
 
     if( libusb_bulk_transfer(usb, 2 | LIBUSB_ENDPOINT_OUT,
-                (unsigned char*)data, datalen, &transferred, 0) != 0 )
+                (unsigned char*)&cmd_header, sizeof(cmd_header),
+                &transferred, 0) != 0 )
     {
         printf("write error\n");
         exit(1);
     }
-}
 
-static int usb_in(void *buf, unsigned buflen)
-{
-    int status, transferred;
+    if( datasize > 0 && libusb_bulk_transfer(usb, 2 | LIBUSB_ENDPOINT_OUT,
+                (unsigned char*)data, datasize, &transferred, 0) != 0 )
+    {
+        printf("write error\n");
+        exit(1);
+    }
 
-    if( (status = libusb_bulk_transfer(usb, 1 | LIBUSB_ENDPOINT_IN, buf,
-                buflen, &transferred, 0)) != 0)
+    if( (status = libusb_bulk_transfer(usb, 1 | LIBUSB_ENDPOINT_IN,
+            (void*)&cur_resp_header, sizeof(cur_resp_header),
+            &transferred, 0)) != 0)
     {
         printf("read error: status=%d\n", status);
         exit(1);
     }
-    return transferred;
+    if( transferred != sizeof(cur_resp_header) ) {
+        printf("read error: bad header size=%d\n", transferred);
+        exit(1);
+    }
+    cur_resp_header.magic = le16toh(cur_resp_header.magic);
+    cur_resp_header.status = le16toh(cur_resp_header.status);
+    cur_resp_header.datasize = le32toh(cur_resp_header.datasize);
+    if( cur_resp_header.magic != 0x1234 ) {
+        printf("read error: bad magic=%x\n", cur_resp_header.magic);
+    }
+    if( cur_resp_header.status == 0 ) {
+        printf("command execution failed on device\n");
+        exit(1);
+    }
+}
+
+/* read data of command response to buffer
+ */
+static void get_response_data(void *buf, unsigned bufsize)
+{
+    int status, transferred;
+
+    if( bufsize != cur_resp_header.datasize ) {
+        printf("error: data size to receive doesn't match expected\n");
+        exit(1);
+    }
+    while( cur_resp_header.datasize > 0 ) {
+        if( (status = libusb_bulk_transfer(usb, 1 | LIBUSB_ENDPOINT_IN,
+                buf, cur_resp_header.datasize, &transferred, 0)) != 0)
+        {
+            printf("read error: status=%d\n", status);
+            exit(1);
+        }
+        buf += transferred;
+        cur_resp_header.datasize -= transferred;
+    }
+}
+
+static void print_response_data(void)
+{
+    int status, transferred, toRead;
+    char buf[0x40000];
+
+    while( cur_resp_header.datasize > 0 ) {
+        toRead = sizeof(buf) < cur_resp_header.datasize ?
+            sizeof(buf) : cur_resp_header.datasize;
+        if( (status = libusb_bulk_transfer(usb, 1 | LIBUSB_ENDPOINT_IN,
+                (unsigned char*)buf, toRead, &transferred, 0)) != 0)
+        {
+            printf("read error: status=%d\n", status);
+            exit(1);
+        }
+        fwrite(buf, transferred, 1, stdout);
+        cur_resp_header.datasize -= transferred;
+    }
+    printf("\n");
 }
 
 static void read_disk(unsigned long long firstSector,
         unsigned long long count, void *rdbuf)
 {
-    char cmdbuf[40];
-    unsigned rd;
-
-    sprintf(cmdbuf, "R%-16llX %llX ", firstSector, count);
-    usb_out(cmdbuf, strlen(cmdbuf));
-    rd = usb_in(cmdbuf, sizeof(cmdbuf));
-    if( rd != 4 || memcmp(cmdbuf, "OKAY", 4) ) {
-        printf("disk read error: cmd len=%d, %.*s\n", rd, rd, cmdbuf);
-        exit(1);
-    }
-    count *= 512;
-    while( count > 0 ) {
-        rd = usb_in(rdbuf, count);
-        rdbuf += rd;
-        count -= rd;
-    }
-}
-
-static void write_disk(unsigned long long firstSector,
-        unsigned long long count, const void *wrbuf)
-{
-    char cmdbuf[40];
-    unsigned rd;
-
-    sprintf(cmdbuf, "W%-16llX %llX ", firstSector, count);
-    usb_out(cmdbuf, strlen(cmdbuf));
-    usb_out(wrbuf, count << 9);
-    rd = usb_in(cmdbuf, sizeof(cmdbuf));
-    if( rd != 4 || memcmp(cmdbuf, "OKAY", 4) ) {
-        printf("disk write error: cmd len=%d, %.*s\n", rd, rd, cmdbuf);
-        exit(1);
-    }
+    send_command(BCMD_READ, firstSector, count, NULL, 0);
+    get_response_data(rdbuf, count * 512);
 }
 
 static void read_mbr(MBR *mbr)
@@ -135,15 +183,11 @@ static void read_mbr(MBR *mbr)
  */
 static unsigned long long read_disksize(void)
 {
-    uint64_t diskSize;
-    int rd;
+    uint64_t disksize;
 
-    usb_out("D", 1);
-    if( (rd = usb_in(&diskSize, 8)) != 8 ) {
-        printf("disk size read error\n");
-        exit(1);
-    }
-    return le64toh(diskSize);
+    send_command(BCMD_DISKSIZE, 0, 0, NULL, 0);
+    get_response_data(&disksize, sizeof(disksize));
+    return le64toh(disksize);
 }
 
 static void cmd_diskread(int argc, char *argv[])
@@ -293,12 +337,13 @@ static void cmd_diskwrite(int argc, char *argv[])
         if( toWr + count > toWrMax ) {
             printf("warning: file size exceed disk space, cut\n");
             if( toWrMax > count ) {
-                write_disk(firstSector, toWrMax - count, buf);
+                send_command(BCMD_WRITE, firstSector, toWrMax - count, buf,
+                        (toWrMax-count)*512);
                 count = toWrMax;
             }
             break;
         }
-        write_disk(firstSector, toWr, buf);
+        send_command(BCMD_WRITE, firstSector, toWr, buf, toWr*512);
         firstSector += toWr;
         count += toWr;
         putchar('.');
@@ -349,65 +394,28 @@ static void cmd_partitions(void)
 
 static void cmd_fel(void)
 {
-    char cmdbuf[64];
-    int rd;
-
-    usb_out("F", 1);
-    rd = usb_in(cmdbuf, sizeof(cmdbuf));
-    printf("%.*s\n", rd, cmdbuf);
-}
-
-static void cmd_doread(void)
-{
-    char cmdbuf[1024];
-    int rd;
-
-    rd = usb_in(cmdbuf, sizeof(cmdbuf));
-    printf("%.*s\n", rd, cmdbuf);
+    send_command(BCMD_GO_FEL, 0, 0, NULL, 0);
+    print_response_data();
 }
 
 static void cmd_log(void)
 {
-    char buf[16384];
-    int rd;
-    unsigned logsize;
-
-    usb_out("L", 1);
-    rd = usb_in(buf, sizeof(buf));
-    if( rd <= 4 || memcmp(buf, "OKAY", 4) ) {
-        printf("read log failed\n");
-        return;
-    }
-    logsize = strtoul(buf+4, NULL, 16);
-    printf("log size: %d\n\n", logsize);
-    while( logsize > 0 ) {
-        rd = usb_in(buf, sizeof(buf));
-        printf("%.*s", rd, buf);
-        logsize -= rd;
-    }
-    printf("\n");
+    send_command(BCMD_GETLOG, 0, 0, NULL, 0);
+    printf("log size: %d\n\n", cur_resp_header.datasize);
+    print_response_data();
 }
 
 /* sleep time test */
 static void cmd_sdelay(const char *tm)
 {
-    char cmdbuf[64];
-    int rd;
-
-    sprintf(cmdbuf, "S%lX ", tm == NULL ? 1000000L : strtoul(tm, NULL, 0));
-    usb_out(cmdbuf, strlen(cmdbuf));
-    rd = usb_in(cmdbuf, sizeof(cmdbuf));
-    printf("%.*s\n", rd, cmdbuf);
+    send_command(BCMD_SLEEPTEST, 0, 0, NULL, 0);
+    printf("OK\n");
 }
 
 static void cmd_ping(void)
 {
-    char cmdbuf[64];
-    int rd;
-
-    usb_out("I", 1);
-    rd = usb_in(cmdbuf, sizeof(cmdbuf));
-    printf("%.*s\n", rd, cmdbuf);
+    send_command(BCMD_PING, 0, 0, NULL, 0);
+    printf("OK\n");
 }
 
 int main(int argc, char *argv[])
@@ -470,9 +478,6 @@ int main(int argc, char *argv[])
         break;
     case 'p':
         cmd_partitions();
-        break;
-    case 'R':   // hidden command
-        cmd_doread();
         break;
     case 'L':
         cmd_log();
