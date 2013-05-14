@@ -398,9 +398,10 @@ static void cmd_fel(void)
     print_response_data();
 }
 
-static void cmd_log(void)
+static void cmd_log(const char *par)
 {
-    send_command(BCMD_GETLOG, 0, 0, NULL, 0);
+    int doclear = par != NULL && par[0] == 'c';
+    send_command(BCMD_GETLOG, doclear, 0, NULL, 0);
     printf("log size: %d\n\n", cur_resp_header.datasize);
     print_response_data();
 }
@@ -408,7 +409,8 @@ static void cmd_log(void)
 /* sleep time test */
 static void cmd_sdelay(const char *tm)
 {
-    send_command(BCMD_SLEEPTEST, 0, 0, NULL, 0);
+    send_command(BCMD_SLEEPTEST,
+            tm == NULL ? 1000000 : strtoul(tm, NULL, 0), 0, NULL, 0);
     printf("OK\n");
 }
 
@@ -480,7 +482,7 @@ int main(int argc, char *argv[])
         cmd_partitions();
         break;
     case 'L':
-        cmd_log();
+        cmd_log(argv[2]);
         break;
     case 'S':
         cmd_sdelay(argv[2]);

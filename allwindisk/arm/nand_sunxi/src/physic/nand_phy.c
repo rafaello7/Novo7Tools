@@ -30,7 +30,6 @@
 #include <string.h>
 #include <malloc.h>
 
-#define printf(...)
 
 extern  __u32 RetryCount[8];
 extern void _add_cmd_list(NFC_CMD_LIST *cmd,__u32 value,__u32 addr_cycle,__u8 *addr,__u8 data_fetch_flag,

@@ -3,7 +3,6 @@
 #include <usbdevice.h>
 #include <fastboot.h>
 #include <usb_bsp.h>
-#include <vsprintf.h>
 
 
 #define min(X, Y)				\
@@ -15,7 +14,6 @@
 #define DMSG_DEBUG(...)
 #define DMSG_INFO(...)
 #define DMSG_PANIC(...)
-#define printf(...)
 
 /* usb & ccmu */
 #define FASTBOOT_USB_BASE               0x01c13000

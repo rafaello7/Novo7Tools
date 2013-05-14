@@ -1,7 +1,6 @@
 #include <nand_bsp.h>
 #include <string.h>
 
-#define printf(...)
 
 #define  OOB_BUF_SIZE                   32
 

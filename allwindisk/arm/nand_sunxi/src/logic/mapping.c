@@ -33,7 +33,6 @@ extern struct __NandDriverGlobal_t     NandDriverInfo;
 struct __BlkMapTblCachePool_t BlkMapTblCachePool;
 struct __PageMapTblCachePool_t PageMapTblCachePool;
 
-#define printf(...)
 
 void dump(void *buf, __u32 len , __u8 nbyte,__u8 linelen)
 {

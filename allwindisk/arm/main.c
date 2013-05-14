@@ -46,8 +46,13 @@ static int go_fel;
 
 static void dolog(const char *fmt, ...)
 {
+    static unsigned logno;
+
     if( log_addr <= (char*)0x49800000 ) {
         va_list args;
+
+        sprintf(log_addr, "%-5u ", ++logno);
+        log_addr += strlen(log_addr);
         va_start(args, fmt);
         vsprintf(log_addr, fmt, args);
         va_end(args);
@@ -107,6 +112,8 @@ static void dispatch_cmd(uint16_t cmd, uint64_t param1, uint64_t param2,
         break;
     case BCMD_GETLOG:
         send_resp_OK((void*)0x49000000, log_addr - (char*)0x49000000);
+        if( param1 != 0 )
+            log_addr = (char*)0x49000000;
         break;
     case BCMD_SLEEPTEST:
         dolog("sleep time test: delay=%lld\n", param1);
