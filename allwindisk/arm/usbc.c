@@ -13,7 +13,7 @@
 *
 * Date 			: 2009.09.01
 *
-* Description 	: 适用于sunii平台，USB公共操作部分
+* Description 	: 脢脢脫脙脫脷sunii脝陆脤篓拢卢USB鹿芦鹿虏虏脵脳梅虏驴路脰
 *
 * History 		:
 *
@@ -25,7 +25,7 @@
 
 
 static __u32 usbc_base_address[USBC_MAX_CTL_NUM];       /* usb base address */
-static __usbc_otg_t usbc_otg_array[USBC_MAX_OPEN_NUM];  /* usbc 内部使用, 用来管理USB端口 */
+static __usbc_otg_t usbc_otg_array[USBC_MAX_OPEN_NUM];  /* usbc 脛脷虏驴脢鹿脫脙, 脫脙脌麓鹿脺脌铆USB露脣驴脷 */
 static __fifo_info_t usbc_info_g;
 
 /*
@@ -33,16 +33,16 @@ static __fifo_info_t usbc_info_g;
 *                     USBC_GetVbusStatus
 *
 * Description:
-*    获得当前vbus的状态
+*    禄帽碌脙碌卤脟掳vbus碌脛脳麓脤卢
 *
 * Arguments:
-*    hUSB  :  input.  USBC_open_otg获得的句柄, 记录了USBC所需要的一些关键数据
+*    hUSB  :  input.  USBC_open_otg禄帽碌脙碌脛戮盲卤煤, 录脟脗录脕脣USBC脣霉脨猫脪陋碌脛脪禄脨漏鹿脴录眉脢媒戮脻
 *
 * Returns:
-*    返回当前vbus的状态
+*    路碌禄脴碌卤脟掳vbus碌脛脳麓脤卢
 *
 * note:
-*    无
+*    脦脼
 *
 ***********************************************************************************
 */
@@ -84,16 +84,16 @@ __u32 USBC_GetVbusStatus(__hdle hUSB)
 *                     USBC_OTG_SelectMode
 *
 * Description:
-*    选择设备的类型。当前设备是作device, 还是作host
+*    脩隆脭帽脡猫卤赂碌脛脌脿脨脥隆拢碌卤脟掳脡猫卤赂脢脟脳梅device, 禄鹿脢脟脳梅host
 *
 * Arguments:
-*    hUSB  :  input.  USBC_open_otg获得的句柄, 记录了USBC所需要的一些关键数据
+*    hUSB  :  input.  USBC_open_otg禄帽碌脙碌脛戮盲卤煤, 录脟脗录脕脣USBC脣霉脨猫脪陋碌脛脪禄脨漏鹿脴录眉脢媒戮脻
 *
 * Returns:
 *
 *
 * note:
-*    无
+*    脦脼
 *
 ***********************************************************************************
 */
@@ -117,16 +117,16 @@ void USBC_OTG_SelectMode(__hdle hUSB, __u32 mode)
 *                     USBC_ReadLenFromFifo
 *
 * Description:
-*    本次fifo可以读到的数据长度
+*    卤戮麓脦fifo驴脡脪脭露脕碌陆碌脛脢媒戮脻鲁陇露脠
 *
 * Arguments:
-*    hUSB     :  input.  USBC_open_otg获得的句柄, 记录了USBC所需要的一些关键数据
-*    ep_type  :  input.  ep的类型, rx 或 tx。
+*    hUSB     :  input.  USBC_open_otg禄帽碌脙碌脛戮盲卤煤, 录脟脗录脕脣USBC脣霉脨猫脪陋碌脛脪禄脨漏鹿脴录眉脢媒戮脻
+*    ep_type  :  input.  ep碌脛脌脿脨脥, rx 禄貌 tx隆拢
 * Returns:
-*    返回本次fifo可以读到的数据长度
+*    路碌禄脴卤戮麓脦fifo驴脡脪脭露脕碌陆碌脛脢媒戮脻鲁陇露脠
 *
 * note:
-*    无
+*    脦脼
 *
 ***********************************************************************************
 */
@@ -161,19 +161,19 @@ __u32 USBC_ReadLenFromFifo(__hdle hUSB, __u32 ep_type)
 *                     USBC_WritePacket
 *
 * Description:
-*    往fifo里面写数据包
+*    脥霉fifo脌茂脙忙脨麓脢媒戮脻掳眉
 *
 * Arguments:
-*    hUSB    :  input.  USBC_open_otg获得的句柄, 记录了USBC所需要的一些关键数据
-*    fifo    :  input.  fifo地址.
-*    cnt     :  input.  写数据长度
-*    buff    :  input.  存放要写的数据
+*    hUSB    :  input.  USBC_open_otg禄帽碌脙碌脛戮盲卤煤, 录脟脗录脕脣USBC脣霉脨猫脪陋碌脛脪禄脨漏鹿脴录眉脢媒戮脻
+*    fifo    :  input.  fifo碌脴脰路.
+*    cnt     :  input.  脨麓脢媒戮脻鲁陇露脠
+*    buff    :  input.  麓忙路脜脪陋脨麓碌脛脢媒戮脻
 *
 * Returns:
-*    返回成功写入的长度
+*    路碌禄脴鲁脡鹿娄脨麓脠毛碌脛鲁陇露脠
 *
 * note:
-*    无
+*    脦脼
 *
 ***********************************************************************************
 */
@@ -190,19 +190,19 @@ __u32 USBC_WritePacket(__hdle hUSB, __u32 fifo, __u32 cnt, void *buff)
 		return 0;
 	}
 
-    //--<1>--调整数据
+    //--<1>--碌梅脮没脢媒戮脻
 	buf32 = buff;
 	len   = cnt;
 
 	i32 = len >> 2;
 	i8  = len & 0x03;
 
-    //--<2>--处理4字节的部分
+    //--<2>--麓娄脌铆4脳脰陆脷碌脛虏驴路脰
 	while (i32--){
 		USBC_Writel(*buf32++, fifo);
 	}
 
-    //--<3>--处理非4字节的部分
+    //--<3>--麓娄脌铆路脟4脳脰陆脷碌脛虏驴路脰
 	buf8 = (__u8 *)buf32;
 	while (i8--){
 		USBC_Writeb(*buf8++, fifo);
@@ -216,19 +216,19 @@ __u32 USBC_WritePacket(__hdle hUSB, __u32 fifo, __u32 cnt, void *buff)
 *                     USBC_ReadPacket
 *
 * Description:
-*    从fifo里面读数据
+*    麓脫fifo脌茂脙忙露脕脢媒戮脻
 *
 * Arguments:
-*    hUSB    :  input.  USBC_open_otg获得的句柄, 记录了USBC所需要的一些关键数据
-*    fifo    :  input.  fifo地址.
-*    cnt     :  input.  写数据长度
-*    buff    :  input.  存放要读的数据
+*    hUSB    :  input.  USBC_open_otg禄帽碌脙碌脛戮盲卤煤, 录脟脗录脕脣USBC脣霉脨猫脪陋碌脛脪禄脨漏鹿脴录眉脢媒戮脻
+*    fifo    :  input.  fifo碌脴脰路.
+*    cnt     :  input.  脨麓脢媒戮脻鲁陇露脠
+*    buff    :  input.  麓忙路脜脪陋露脕碌脛脢媒戮脻
 *
 * Returns:
-*    返回成功读的长度
+*    路碌禄脴鲁脡鹿娄露脕碌脛鲁陇露脠
 *
 * note:
-*    无
+*    脦脼
 *
 ***********************************************************************************
 */
@@ -245,19 +245,19 @@ __u32 USBC_ReadPacket(__hdle hUSB, __u32 fifo, __u32 cnt, void *buff)
 		return 0;
 	}
 
-	//--<1>--调整数据
+	//--<1>--碌梅脮没脢媒戮脻
 	buf32 = (__u32 *)buff;
 	len   = cnt;
 
     i32 = len >> 2;
 	i8  = len & 0x03;
 
-	//--<2>--处理4字节的部分
+	//--<2>--麓娄脌铆4脳脰陆脷碌脛虏驴路脰
 	while (i32--){
         *buf32++ = USBC_Readl(fifo);
     }
 
-	//--<3>--处理非4字节的部分
+	//--<3>--麓娄脌铆路脟4脳脰陆脷碌脛虏驴路脰
 	buf8 = (__u8 *)buf32;
 	while (i8--){
         *buf8++ = USBC_Readb(fifo);
@@ -266,7 +266,7 @@ __u32 USBC_ReadPacket(__hdle hUSB, __u32 fifo, __u32 cnt, void *buff)
 	return len;
 }
 
-/* 映射SRAM D给usb fifo使用 */
+/* 脫鲁脡盲SRAM D赂酶usb fifo脢鹿脫脙 */
 void USBC_ConfigFIFO_Base(__hdle hUSB, __u32 sram_base, __u32 fifo_mode)
 {
     __usbc_otg_t *usbc_otg = (__usbc_otg_t *)hUSB;
@@ -289,7 +289,7 @@ void USBC_ConfigFIFO_Base(__hdle hUSB, __u32 sram_base, __u32 fifo_mode)
 	return ;
 }
 
-/* 获得port fifo的起始地址 */
+/* 禄帽碌脙port fifo碌脛脝冒脢录碌脴脰路 */
 __u32 USBC_GetPortFifoStartAddr(__hdle hUSB)
 {
     __usbc_otg_t *usbc_otg = (__usbc_otg_t *)hUSB;
@@ -307,7 +307,7 @@ __u32 USBC_GetPortFifoStartAddr(__hdle hUSB)
 	}
 }
 
-/* 获得port fifo的大小 */
+/* 禄帽碌脙port fifo碌脛麓贸脨隆 */
 __u32 USBC_GetPortFifoSize(__hdle hUSB)
 {
     __usbc_otg_t *usbc_otg = (__usbc_otg_t *)hUSB;
@@ -329,17 +329,17 @@ __u32 USBC_GetPortFifoSize(__hdle hUSB)
 *                     USBC_SelectFIFO
 *
 * Description:
-*    选择设备的类型。当前设备是作device, 还是作host
+*    脩隆脭帽脡猫卤赂碌脛脌脿脨脥隆拢碌卤脟掳脡猫卤赂脢脟脳梅device, 禄鹿脢脟脳梅host
 *
 * Arguments:
-*    hUSB     :  input.  USBC_open_otg获得的句柄, 记录了USBC所需要的一些关键数据
-*    ep_index :  input.  ep号。用来选择相应的fifo
+*    hUSB     :  input.  USBC_open_otg禄帽碌脙碌脛戮盲卤煤, 录脟脗录脕脣USBC脣霉脨猫脪陋碌脛脪禄脨漏鹿脴录眉脢媒戮脻
+*    ep_index :  input.  ep潞脜隆拢脫脙脌麓脩隆脭帽脧脿脫娄碌脛fifo
 *
 * Returns:
-*    返回选中的fifo
+*    路碌禄脴脩隆脰脨碌脛fifo
 *
 * note:
-*    无
+*    脦脼
 *
 ***********************************************************************************
 */
@@ -408,31 +408,31 @@ static void __USBC_ConfigFifo_TxEp_Default(__u32 usbc_base_addr)
 *                     USBC_ConfigFifo_TxEp
 *
 * Description:
-*    配置tx ep 的fifo地址和大小。
+*    脜盲脰脙tx ep 碌脛fifo碌脴脰路潞脥麓贸脨隆隆拢
 *
 * Arguments:
-*    hUSB           :  input.  USBC_open_otg获得的句柄, 记录了USBC所需要的一些关键数据
-*    is_double_fifo :  input.  是否使用硬件双fifo
-*    fifo_size      :  input.  fifo大小 = 2的fifo_size次方
-*    fifo_addr      :  input.  fifo的起始地址 = fifo_addr * 8
+*    hUSB           :  input.  USBC_open_otg禄帽碌脙碌脛戮盲卤煤, 录脟脗录脕脣USBC脣霉脨猫脪陋碌脛脪禄脨漏鹿脴录眉脢媒戮脻
+*    is_double_fifo :  input.  脢脟路帽脢鹿脫脙脫虏录镁脣芦fifo
+*    fifo_size      :  input.  fifo麓贸脨隆 = 2碌脛fifo_size麓脦路陆
+*    fifo_addr      :  input.  fifo碌脛脝冒脢录碌脴脰路 = fifo_addr * 8
 *
 * Returns:
-*    返回成功读的长度
+*    路碌禄脴鲁脡鹿娄露脕碌脛鲁陇露脠
 *
 * note:
-*    无
+*    脦脼
 *
 ***********************************************************************************
 */
 void __USBC_ConfigFifo_TxEp(__u32 usbc_base_addr, __u32 is_double_fifo, __u32 fifo_size, __u32 fifo_addr)
 {
     __u32 temp = 0;
-    __u32 size = 0;   //fifo_size = (size + 3)的2次方
+    __u32 size = 0;   //fifo_size = (size + 3)碌脛2麓脦路陆
     __u32 addr = 0;   //fifo_addr = addr * 8
 
-	//--<1>--换算sz, 不满512，以512对齐
+	//--<1>--禄禄脣茫sz, 虏禄脗煤512拢卢脪脭512露脭脝毛
 	temp = fifo_size + 511;
-	temp &= ~511;  //把511后面的清零
+	temp &= ~511;  //掳脩511潞贸脙忙碌脛脟氓脕茫
 	temp >>= 3;
 	temp >>= 1;
 	while(temp){
@@ -440,7 +440,7 @@ void __USBC_ConfigFifo_TxEp(__u32 usbc_base_addr, __u32 is_double_fifo, __u32 fi
 		temp >>= 1;
 	}
 
-	//--<2>--换算addr
+	//--<2>--禄禄脣茫addr
 	addr = fifo_addr >> 3;
 
 	//--<3>--config fifo addr
@@ -464,31 +464,31 @@ void __USBC_ConfigFifo_RxEp_Default(__u32 usbc_base_addr)
 *                     USBC_ConfigFifo_RxEp
 *
 * Description:
-*    配置tx ep 的fifo地址和大小。
+*    脜盲脰脙tx ep 碌脛fifo碌脴脰路潞脥麓贸脨隆隆拢
 *
 * Arguments:
-*    hUSB           :  input.  USBC_open_otg获得的句柄, 记录了USBC所需要的一些关键数据
-*    is_double_fifo :  input.  是否使用硬件双fifo
-*    fifo_size      :  input.  fifo大小 = 2的fifo_size次方
-*    fifo_addr      :  input.  fifo的起始地址 = fifo_addr * 8
+*    hUSB           :  input.  USBC_open_otg禄帽碌脙碌脛戮盲卤煤, 录脟脗录脕脣USBC脣霉脨猫脪陋碌脛脪禄脨漏鹿脴录眉脢媒戮脻
+*    is_double_fifo :  input.  脢脟路帽脢鹿脫脙脫虏录镁脣芦fifo
+*    fifo_size      :  input.  fifo麓贸脨隆 = 2碌脛fifo_size麓脦路陆
+*    fifo_addr      :  input.  fifo碌脛脝冒脢录碌脴脰路 = fifo_addr * 8
 *
 * Returns:
-*    返回成功读的长度
+*    路碌禄脴鲁脡鹿娄露脕碌脛鲁陇露脠
 *
 * note:
-*    无
+*    脦脼
 *
 ***********************************************************************************
 */
 void __USBC_ConfigFifo_RxEp(__u32 usbc_base_addr, __u32 is_double_fifo, __u32 fifo_size, __u32 fifo_addr)
 {
     __u32 temp = 0;
-    __u32 size = 0;   //fifo_size = (size + 3)的2次方
+    __u32 size = 0;   //fifo_size = (size + 3)碌脛2麓脦路陆
     __u32 addr = 0;   //fifo_addr = addr * 8
 
-	//--<1>--计算sz, 不满512，以512对齐
+	//--<1>--录脝脣茫sz, 虏禄脗煤512拢卢脪脭512露脭脝毛
 	temp = fifo_size + 511;
-	temp &= ~511;  //把511后面的清零
+	temp &= ~511;  //掳脩511潞贸脙忙碌脛脟氓脕茫
 	temp >>= 3;
 	temp >>= 1;
 	while(temp){
@@ -496,7 +496,7 @@ void __USBC_ConfigFifo_RxEp(__u32 usbc_base_addr, __u32 is_double_fifo, __u32 fi
 		temp >>= 1;
 	}
 
-	//--<2>--换算addr
+	//--<2>--禄禄脣茫addr
 	addr = fifo_addr >> 3;
 
 	//--<3>--config fifo addr
@@ -514,17 +514,17 @@ void __USBC_ConfigFifo_RxEp(__u32 usbc_base_addr, __u32 is_double_fifo, __u32 fi
 *                     USBC_ConfigFifo_Default
 *
 * Description:
-*    配置ep 的fifo地址和大小。
+*    脜盲脰脙ep 碌脛fifo碌脴脰路潞脥麓贸脨隆隆拢
 *
 * Arguments:
-*    hUSB           :  input.  USBC_open_otg获得的句柄, 记录了USBC所需要的一些关键数据
-*	 ep_type		:  input.  ep的类型
+*    hUSB           :  input.  USBC_open_otg禄帽碌脙碌脛戮盲卤煤, 录脟脗录脕脣USBC脣霉脨猫脪陋碌脛脪禄脨漏鹿脴录眉脢媒戮脻
+*	 ep_type		:  input.  ep碌脛脌脿脨脥
 *
 * Returns:
-*    返回成功读的长度
+*    路碌禄脴鲁脡鹿娄露脕碌脛鲁陇露脠
 *
 * note:
-*    无
+*    脦脼
 *
 ***********************************************************************************
 */
@@ -559,20 +559,20 @@ void USBC_ConfigFifo_Default(__hdle hUSB, __u32 ep_type)
 *                     USBC_ConfigFifo
 *
 * Description:
-*    配置ep 的fifo地址和大小。
+*    脜盲脰脙ep 碌脛fifo碌脴脰路潞脥麓贸脨隆隆拢
 *
 * Arguments:
-*    hUSB           :  input.  USBC_open_otg获得的句柄, 记录了USBC所需要的一些关键数据
-*	 ep_type		:  input.  ep的类型
-*    is_double_fifo :  input.  是否使用硬件双fifo
-*    fifo_size      :  input.  fifo大小 = 2的fifo_size次方
-*    fifo_addr      :  input.  fifo的起始地址 = fifo_addr * 8
+*    hUSB           :  input.  USBC_open_otg禄帽碌脙碌脛戮盲卤煤, 录脟脗录脕脣USBC脣霉脨猫脪陋碌脛脪禄脨漏鹿脴录眉脢媒戮脻
+*	 ep_type		:  input.  ep碌脛脌脿脨脥
+*    is_double_fifo :  input.  脢脟路帽脢鹿脫脙脫虏录镁脣芦fifo
+*    fifo_size      :  input.  fifo麓贸脨隆 = 2碌脛fifo_size麓脦路陆
+*    fifo_addr      :  input.  fifo碌脛脝冒脢录碌脴脰路 = fifo_addr * 8
 *
 * Returns:
-*    返回成功读的长度
+*    路碌禄脴鲁脡鹿娄露脕碌脛鲁陇露脠
 *
 * note:
-*    无
+*    脦脼
 *
 ***********************************************************************************
 */
@@ -607,16 +607,16 @@ void USBC_ConfigFifo(__hdle hUSB, __u32 ep_type, __u32 is_double_fifo, __u32 fif
 *                     USBC_GetLastFrameNumber
 *
 * Description:
-*    获得最后一帧的帧号
+*    禄帽碌脙脳卯潞贸脪禄脰隆碌脛脰隆潞脜
 *
 * Arguments:
-*    hUSB  :  input.  USBC_open_otg获得的句柄, 记录了USBC所需要的一些关键数据
+*    hUSB  :  input.  USBC_open_otg禄帽碌脙碌脛戮盲卤煤, 录脟脗录脕脣USBC脣霉脨猫脪陋碌脛脪禄脨漏鹿脴录眉脢媒戮脻
 *
 * Returns:
 *
 *
 * note:
-*    无
+*    脦脼
 *
 ***********************************************************************************
 */
@@ -636,16 +636,16 @@ __u32 USBC_GetLastFrameNumber(__hdle hUSB)
 *                     USBC_GetStatus_Dp
 *
 * Description:
-*    获得dp的状态
+*    禄帽碌脙dp碌脛脳麓脤卢
 *
 * Arguments:
-*    hUSB  :  input.  USBC_open_otg获得的句柄, 记录了USBC所需要的一些关键数据
+*    hUSB  :  input.  USBC_open_otg禄帽碌脙碌脛戮盲卤煤, 录脟脗录脕脣USBC脣霉脨猫脪陋碌脛脪禄脨漏鹿脴录眉脢媒戮脻
 *
 * Returns:
 *
 *
 * note:
-*    无
+*    脦脼
 *
 ***********************************************************************************
 */
@@ -672,16 +672,16 @@ __u32 USBC_GetStatus_Dp(__hdle hUSB)
 *                     USBC_GetStatus_Dm
 *
 * Description:
-*    获得dm的状态
+*    禄帽碌脙dm碌脛脳麓脤卢
 *
 * Arguments:
-*    hUSB :  input.  USBC_open_otg获得的句柄, 记录了USBC所需要的一些关键数据
+*    hUSB :  input.  USBC_open_otg禄帽碌脙碌脛戮盲卤煤, 录脟脗录脕脣USBC脣霉脨猫脪陋碌脛脪禄脨漏鹿脴录眉脢媒戮脻
 *
 * Returns:
 *
 *
 * note:
-*    无
+*    脦脼
 *
 ***********************************************************************************
 */
@@ -706,16 +706,16 @@ __u32 USBC_GetStatus_Dm(__hdle hUSB)
 *                     USBC_GetStatus_Dp
 *
 * Description:
-*    获得dp的状态
+*    禄帽碌脙dp碌脛脳麓脤卢
 *
 * Arguments:
-*    hUSB  :  input.  USBC_open_otg获得的句柄, 记录了USBC所需要的一些关键数据
+*    hUSB  :  input.  USBC_open_otg禄帽碌脙碌脛戮盲卤煤, 录脟脗录脕脣USBC脣霉脨猫脪陋碌脛脪禄脨漏鹿脴录眉脢媒戮脻
 *
 * Returns:
 *
 *
 * note:
-*    无
+*    脦脼
 *
 ***********************************************************************************
 */
@@ -744,16 +744,16 @@ __u32 USBC_GetStatus_DpDm(__hdle hUSB)
 *                     USBC_GetOtgMode_Form_ID
 *
 * Description:
-*    从vendor0 的 id 获得当前OTG的模式
+*    麓脫vendor0 碌脛 id 禄帽碌脙碌卤脟掳OTG碌脛脛拢脢陆
 *
 * Arguments:
-*    hUSB :  input.  USBC_open_otg获得的句柄, 记录了USBC所需要的一些关键数据
+*    hUSB :  input.  USBC_open_otg禄帽碌脙碌脛戮盲卤煤, 录脟脗录脕脣USBC脣霉脨猫脪陋碌脛脪禄脨漏鹿脴录眉脢媒戮脻
 *
 * Returns:
 *    USBC_OTG_DEVICE / USBC_OTG_HOST
 *
 * note:
-*    无
+*    脦脼
 *
 ***********************************************************************************
 */
@@ -779,16 +779,16 @@ __u32 USBC_GetOtgMode_Form_ID(__hdle hUSB)
 *                     USBC_GetOtgMode_Form_BDevice
 *
 * Description:
-*    从 OTG Device 的 B-Device 获得当前OTG的模式
+*    麓脫 OTG Device 碌脛 B-Device 禄帽碌脙碌卤脟掳OTG碌脛脛拢脢陆
 *
 * Arguments:
-*    hUSB :  input.  USBC_open_otg获得的句柄, 记录了USBC所需要的一些关键数据
+*    hUSB :  input.  USBC_open_otg禄帽碌脙碌脛戮盲卤煤, 录脟脗录脕脣USBC脣霉脨猫脪陋碌脛脪禄脨漏鹿脴录眉脢媒戮脻
 *
 * Returns:
 *    USBC_OTG_DEVICE / USBC_OTG_HOST
 *
 * note:
-*    无
+*    脦脼
 *
 ***********************************************************************************
 */
@@ -814,19 +814,19 @@ __u32 USBC_GetOtgMode_Form_BDevice(__hdle hUSB)
 *                     USBC_SelectBus
 *
 * Description:
-*    选择数据传输的总线方式
+*    脩隆脭帽脢媒戮脻麓芦脢盲碌脛脳脺脧脽路陆脢陆
 *
 * Arguments:
-*    hUSB     :  input.  USBC_open_otg获得的句柄, 记录了USBC所需要的一些关键数据
-*    io_type  :  input.  总线方式, pio还是dma.
-*    ep_type  :  input.  ep的类型, rx 或 tx。
-*    ep_index :  input.  ep号
+*    hUSB     :  input.  USBC_open_otg禄帽碌脙碌脛戮盲卤煤, 录脟脗录脕脣USBC脣霉脨猫脪陋碌脛脪禄脨漏鹿脴录眉脢媒戮脻
+*    io_type  :  input.  脳脺脧脽路陆脢陆, pio禄鹿脢脟dma.
+*    ep_type  :  input.  ep碌脛脌脿脨脥, rx 禄貌 tx隆拢
+*    ep_index :  input.  ep潞脜
 *
 * Returns:
 *
 *
 * note:
-*    无
+*    脦脼
 *
 ***********************************************************************************
 */
@@ -849,86 +849,86 @@ void USBC_SelectBus(__hdle hUSB, __u32 io_type, __u32 ep_type, __u32 ep_index)
 			reg_val |= 0x1<<USBC_BP_VEND0_BUS_SEL;
 		}
 	}else{
-	    //reg_val &= ~(0x1 << USBC_BP_VEND0_DRQ_SEL);  //清除drq_sel, 选择pio
-	    reg_val &= 0x00;  //清除drq_sel, 选择pio
+	    //reg_val &= ~(0x1 << USBC_BP_VEND0_DRQ_SEL);  //脟氓鲁媒drq_sel, 脩隆脭帽pio
+	    reg_val &= 0x00;  //脟氓鲁媒drq_sel, 脩隆脭帽pio
 	}
 
 	USBC_Writeb(reg_val, USBC_REG_VEND0(usbc_otg->base_addr));
 }
 
-/* 获得tx ep中断标志位 */
+/* 禄帽碌脙tx ep脰脨露脧卤锚脰戮脦禄 */
 static __u32 __USBC_INT_TxPending(__u32 usbc_base_addr)
 {
     return (USBC_Readw(USBC_REG_INTTx(usbc_base_addr)));
 }
 
-/* 清除tx ep中断标志位 */
+/* 脟氓鲁媒tx ep脰脨露脧卤锚脰戮脦禄 */
 static void __USBC_INT_ClearTxPending(__u32 usbc_base_addr, __u8 ep_index)
 {
     USBC_Writew((1 << ep_index), USBC_REG_INTTx(usbc_base_addr));
 }
 
-/* 清除所有tx ep中断标志位 */
+/* 脟氓鲁媒脣霉脫脨tx ep脰脨露脧卤锚脰戮脦禄 */
 static void __USBC_INT_ClearTxPendingAll(__u32 usbc_base_addr)
 {
     USBC_Writew(0xffff, USBC_REG_INTTx(usbc_base_addr));
 }
 
-/* 获得rx ep中断标志位 */
+/* 禄帽碌脙rx ep脰脨露脧卤锚脰戮脦禄 */
 static __u32 __USBC_INT_RxPending(__u32 usbc_base_addr)
 {
     return (USBC_Readw(USBC_REG_INTRx(usbc_base_addr)));
 }
 
-/* 清除rx ep中断标志位 */
+/* 脟氓鲁媒rx ep脰脨露脧卤锚脰戮脦禄 */
 static void __USBC_INT_ClearRxPending(__u32 usbc_base_addr, __u8 ep_index)
 {
     USBC_Writew((1 << ep_index), USBC_REG_INTRx(usbc_base_addr));
 }
 
-/* 清除rx ep中断标志位 */
+/* 脟氓鲁媒rx ep脰脨露脧卤锚脰戮脦禄 */
 static void __USBC_INT_ClearRxPendingAll(__u32 usbc_base_addr)
 {
     USBC_Writew(0xffff, USBC_REG_INTRx(usbc_base_addr));
 }
 
-/* 开某一个tx ep的中断 */
+/* 驴陋脛鲁脪禄赂枚tx ep碌脛脰脨露脧 */
 static void __USBC_INT_EnableTxEp(__u32 usbc_base_addr, __u8 ep_index)
 {
     USBC_REG_set_bit_w(ep_index, USBC_REG_INTTxE(usbc_base_addr));
 }
 
-/* 开某一个rx ep的中断 */
+/* 驴陋脛鲁脪禄赂枚rx ep碌脛脰脨露脧 */
 static void __USBC_INT_EnableRxEp(__u32 usbc_base_addr, __u8 ep_index)
 {
     USBC_REG_set_bit_w(ep_index, USBC_REG_INTRxE(usbc_base_addr));
 }
 
-/* 关某一个tx ep的中断 */
+/* 鹿脴脛鲁脪禄赂枚tx ep碌脛脰脨露脧 */
 static void __USBC_INT_DisableTxEp(__u32 usbc_base_addr, __u8 ep_index)
 {
     USBC_REG_clear_bit_w(ep_index, USBC_REG_INTTxE(usbc_base_addr));
 }
 
-/* 关某一个rx ep的中断 */
+/* 鹿脴脛鲁脪禄赂枚rx ep碌脛脰脨露脧 */
 static void __USBC_INT_DisableRxEp(__u32 usbc_base_addr, __u8 ep_index)
 {
     USBC_REG_clear_bit_w(ep_index, USBC_REG_INTRxE(usbc_base_addr));
 }
 
-/* 关所有的tx ep中断 */
+/* 鹿脴脣霉脫脨碌脛tx ep脰脨露脧 */
 static void __USBC_INT_DisableTxAll(__u32 usbc_base_addr)
 {
     USBC_Writew(0, USBC_REG_INTTxE(usbc_base_addr));
 }
 
-/* 关所有的rx ep中断 */
+/* 鹿脴脣霉脫脨碌脛rx ep脰脨露脧 */
 static void __USBC_INT_DisableRxAll(__u32 usbc_base_addr)
 {
     USBC_Writew(0, USBC_REG_INTRxE(usbc_base_addr));
 }
 
-/* 获得ep中断标志位 */
+/* 禄帽碌脙ep脰脨露脧卤锚脰戮脦禄 */
 __u32 USBC_INT_EpPending(__hdle hUSB, __u32 ep_type)
 {
     __usbc_otg_t *usbc_otg = (__usbc_otg_t *)hUSB;
@@ -950,7 +950,7 @@ __u32 USBC_INT_EpPending(__hdle hUSB, __u32 ep_type)
 	}
 }
 
-/* 清除ep中断标志位 */
+/* 脟氓鲁媒ep脰脨露脧卤锚脰戮脦禄 */
 void USBC_INT_ClearEpPending(__hdle hUSB, __u32 ep_type, __u8 ep_index)
 {
     __usbc_otg_t *usbc_otg = (__usbc_otg_t *)hUSB;
@@ -976,7 +976,7 @@ void USBC_INT_ClearEpPending(__hdle hUSB, __u32 ep_type, __u8 ep_index)
 	return ;
 }
 
-/* 清除ep中断标志位 */
+/* 脟氓鲁媒ep脰脨露脧卤锚脰戮脦禄 */
 void USBC_INT_ClearEpPendingAll(__hdle hUSB, __u32 ep_type)
 {
     __usbc_otg_t *usbc_otg = (__usbc_otg_t *)hUSB;
@@ -1002,7 +1002,7 @@ void USBC_INT_ClearEpPendingAll(__hdle hUSB, __u32 ep_type)
 	return ;
 }
 
-/* 获得usb misc中断标志位 */
+/* 禄帽碌脙usb misc脰脨露脧卤锚脰戮脦禄 */
 __u32 USBC_INT_MiscPending(__hdle hUSB)
 {
     __usbc_otg_t *usbc_otg = (__usbc_otg_t *)hUSB;
@@ -1014,7 +1014,7 @@ __u32 USBC_INT_MiscPending(__hdle hUSB)
     return (USBC_Readb(USBC_REG_INTUSB(usbc_otg->base_addr)));
 }
 
-/* 清除usb misc中断标志位 */
+/* 脟氓鲁媒usb misc脰脨露脧卤锚脰戮脦禄 */
 void USBC_INT_ClearMiscPending(__hdle hUSB, __u32 mask)
 {
     __usbc_otg_t *usbc_otg = (__usbc_otg_t *)hUSB;
@@ -1026,7 +1026,7 @@ void USBC_INT_ClearMiscPending(__hdle hUSB, __u32 mask)
     USBC_Writeb(mask, USBC_REG_INTUSB(usbc_otg->base_addr));
 }
 
-/* 清除所有usb misc中断标志位 */
+/* 脟氓鲁媒脣霉脫脨usb misc脰脨露脧卤锚脰戮脦禄 */
 void USBC_INT_ClearMiscPendingAll(__hdle hUSB)
 {
     __usbc_otg_t *usbc_otg = (__usbc_otg_t *)hUSB;
@@ -1038,7 +1038,7 @@ void USBC_INT_ClearMiscPendingAll(__hdle hUSB)
     USBC_Writeb(0xff, USBC_REG_INTUSB(usbc_otg->base_addr));
 }
 
-/* 开某一个ep中断 */
+/* 驴陋脛鲁脪禄赂枚ep脰脨露脧 */
 void USBC_INT_EnableEp(__hdle hUSB, __u32 ep_type, __u8 ep_index)
 {
     __usbc_otg_t *usbc_otg = (__usbc_otg_t *)hUSB;
@@ -1063,7 +1063,7 @@ void USBC_INT_EnableEp(__hdle hUSB, __u32 ep_type, __u8 ep_index)
 	return ;
 }
 
-/* 开某一个usb misc中断 */
+/* 驴陋脛鲁脪禄赂枚usb misc脰脨露脧 */
 void USBC_INT_EnableUsbMiscUint(__hdle hUSB, __u32 mask)
 {
     __usbc_otg_t *usbc_otg = (__usbc_otg_t *)hUSB;
@@ -1078,7 +1078,7 @@ void USBC_INT_EnableUsbMiscUint(__hdle hUSB, __u32 mask)
 	USBC_Writeb(reg_val, USBC_REG_INTUSBE(usbc_otg->base_addr));
 }
 
-/* 关某tx ep的中断 */
+/* 鹿脴脛鲁tx ep碌脛脰脨露脧 */
 void USBC_INT_DisableEp(__hdle hUSB, __u32 ep_type, __u8 ep_index)
 {
     __usbc_otg_t *usbc_otg = (__usbc_otg_t *)hUSB;
@@ -1103,7 +1103,7 @@ void USBC_INT_DisableEp(__hdle hUSB, __u32 ep_type, __u8 ep_index)
 	return;
 }
 
-/* 关某一个usb misc中断 */
+/* 鹿脴脛鲁脪禄赂枚usb misc脰脨露脧 */
 void USBC_INT_DisableUsbMiscUint(__hdle hUSB, __u32 mask)
 {
     __usbc_otg_t *usbc_otg = (__usbc_otg_t *)hUSB;
@@ -1118,7 +1118,7 @@ void USBC_INT_DisableUsbMiscUint(__hdle hUSB, __u32 mask)
 	USBC_Writeb(reg_val, USBC_REG_INTUSBE(usbc_otg->base_addr));
 }
 
-/* 关所有的ep中断 */
+/* 鹿脴脣霉脫脨碌脛ep脰脨露脧 */
 void USBC_INT_DisableEpAll(__hdle hUSB, __u32 ep_type)
 {
     __usbc_otg_t *usbc_otg = (__usbc_otg_t *)hUSB;
@@ -1143,7 +1143,7 @@ void USBC_INT_DisableEpAll(__hdle hUSB, __u32 ep_type)
 	return;
 }
 
-/* 关所有的usb misc中断 */
+/* 鹿脴脣霉脫脨碌脛usb misc脰脨露脧 */
 void USBC_INT_DisableUsbMiscAll(__hdle hUSB)
 {
     __usbc_otg_t *usbc_otg = (__usbc_otg_t *)hUSB;
@@ -1155,7 +1155,7 @@ void USBC_INT_DisableUsbMiscAll(__hdle hUSB)
     USBC_Writeb(0, USBC_REG_INTUSBE(usbc_otg->base_addr));
 }
 
-/* 获得当前活动的ep */
+/* 禄帽碌脙碌卤脟掳禄卯露炉碌脛ep */
 __u32 USBC_GetActiveEp(__hdle hUSB)
 {
     __usbc_otg_t *usbc_otg = (__usbc_otg_t *)hUSB;
@@ -1167,7 +1167,7 @@ __u32 USBC_GetActiveEp(__hdle hUSB)
     return USBC_Readb(USBC_REG_EPIND(usbc_otg->base_addr));
 }
 
-/* 配置当前活动ep */
+/* 脜盲脰脙碌卤脟掳禄卯露炉ep */
 void USBC_SelectActiveEp(__hdle hUSB, __u8 ep_index)
 {
     __usbc_otg_t *usbc_otg = (__usbc_otg_t *)hUSB;
@@ -1179,7 +1179,7 @@ void USBC_SelectActiveEp(__hdle hUSB, __u8 ep_index)
 	USBC_Writeb(ep_index, USBC_REG_EPIND(usbc_otg->base_addr));
 }
 
-/* 加强usb传输信号 */
+/* 录脫脟驴usb麓芦脢盲脨脜潞脜 */
 void USBC_EnhanceSignal(__hdle hUSB)
 {
     __usbc_otg_t *usbc_otg = (__usbc_otg_t *)hUSB;
@@ -1191,7 +1191,7 @@ void USBC_EnhanceSignal(__hdle hUSB)
 	return;
 }
 
-/* 进入 TestPacket 模式 */
+/* 陆酶脠毛 TestPacket 脛拢脢陆 */
 void USBC_EnterMode_TestPacket(__hdle hUSB)
 {
     __usbc_otg_t *usbc_otg = (__usbc_otg_t *)hUSB;
@@ -1203,7 +1203,7 @@ void USBC_EnterMode_TestPacket(__hdle hUSB)
     USBC_REG_set_bit_b(USBC_BP_TMCTL_TEST_PACKET, USBC_REG_TMCTL(usbc_otg->base_addr));
 }
 
-/* 进入 Test_K 模式 */
+/* 陆酶脠毛 Test_K 脛拢脢陆 */
 void USBC_EnterMode_Test_K(__hdle hUSB)
 {
     __usbc_otg_t *usbc_otg = (__usbc_otg_t *)hUSB;
@@ -1215,7 +1215,7 @@ void USBC_EnterMode_Test_K(__hdle hUSB)
     USBC_REG_set_bit_b(USBC_BP_TMCTL_TEST_K, USBC_REG_TMCTL(usbc_otg->base_addr));
 }
 
-/* 进入 Test_J 模式 */
+/* 陆酶脠毛 Test_J 脛拢脢陆 */
 void USBC_EnterMode_Test_J(__hdle hUSB)
 {
     __usbc_otg_t *usbc_otg = (__usbc_otg_t *)hUSB;
@@ -1227,7 +1227,7 @@ void USBC_EnterMode_Test_J(__hdle hUSB)
     USBC_REG_set_bit_b(USBC_BP_TMCTL_TEST_J, USBC_REG_TMCTL(usbc_otg->base_addr));
 }
 
-/* 进入 Test_SE0_NAK 模式 */
+/* 陆酶脠毛 Test_SE0_NAK 脛拢脢陆 */
 void USBC_EnterMode_Test_SE0_NAK(__hdle hUSB)
 {
     __usbc_otg_t *usbc_otg = (__usbc_otg_t *)hUSB;
@@ -1239,7 +1239,7 @@ void USBC_EnterMode_Test_SE0_NAK(__hdle hUSB)
     USBC_REG_set_bit_b(USBC_BP_TMCTL_TEST_SE0_NAK, USBC_REG_TMCTL(usbc_otg->base_addr));
 }
 
-/* 清除所有测试模式 */
+/* 脟氓鲁媒脣霉脫脨虏芒脢脭脛拢脢陆 */
 void USBC_EnterMode_Idle(__hdle hUSB)
 {
     __usbc_otg_t *usbc_otg = (__usbc_otg_t *)hUSB;
@@ -1254,7 +1254,7 @@ void USBC_EnterMode_Idle(__hdle hUSB)
 	USBC_REG_clear_bit_b(USBC_BP_TMCTL_TEST_SE0_NAK, USBC_REG_TMCTL(usbc_otg->base_addr));
 }
 
-/* vbus, id, dpdm变化位是写1清零, 因此我们在操作其他bit的时候清除这些位 */
+/* vbus, id, dpdm卤盲禄炉脦禄脢脟脨麓1脟氓脕茫, 脪貌麓脣脦脪脙脟脭脷虏脵脳梅脝盲脣没bit碌脛脢卤潞貌脟氓鲁媒脮芒脨漏脦禄 */
 static __u32 __USBC_WakeUp_ClearChangeDetect(__u32 reg_val)
 {
     __u32 temp = reg_val;
@@ -1277,7 +1277,7 @@ void USBC_EnableIdPullUp(__hdle hUSB)
     __usbc_otg_t *usbc_otg = (__usbc_otg_t *)hUSB;
     __u32 reg_val = 0;
 
-    //vbus, id, dpdm变化位是写1清零, 因此我们在操作其他bit的时候清除这些位
+    //vbus, id, dpdm卤盲禄炉脦禄脢脟脨麓1脟氓脕茫, 脪貌麓脣脦脪脙脟脭脷虏脵脳梅脝盲脣没bit碌脛脢卤潞貌脟氓鲁媒脮芒脨漏脦禄
 	reg_val = USBC_Readl(USBC_REG_ISCR(usbc_otg->base_addr));
 	reg_val |= (1 << USBC_BP_ISCR_ID_PULLUP_EN);
 	reg_val = __USBC_WakeUp_ClearChangeDetect(reg_val);
@@ -1289,7 +1289,7 @@ void USBC_DisableIdPullUp(__hdle hUSB)
     __usbc_otg_t *usbc_otg = (__usbc_otg_t *)hUSB;
     __u32 reg_val = 0;
 
-	//vbus, id, dpdm变化位是写1清零, 因此我们在操作其他bit的时候清除这些位
+	//vbus, id, dpdm卤盲禄炉脦禄脢脟脨麓1脟氓脕茫, 脪貌麓脣脦脪脙脟脭脷虏脵脳梅脝盲脣没bit碌脛脢卤潞貌脟氓鲁媒脮芒脨漏脦禄
 	reg_val = USBC_Readl(USBC_REG_ISCR(usbc_otg->base_addr));
 	reg_val &= ~(1 << USBC_BP_ISCR_ID_PULLUP_EN);
 	reg_val = __USBC_WakeUp_ClearChangeDetect(reg_val);
@@ -1301,7 +1301,7 @@ void USBC_EnableDpDmPullUp(__hdle hUSB)
     __usbc_otg_t *usbc_otg = (__usbc_otg_t *)hUSB;
     __u32 reg_val = 0;
 
-    //vbus, id, dpdm变化位是写1清零, 因此我们在操作其他bit的时候清除这些位
+    //vbus, id, dpdm卤盲禄炉脦禄脢脟脨麓1脟氓脕茫, 脪貌麓脣脦脪脙脟脭脷虏脵脳梅脝盲脣没bit碌脛脢卤潞貌脟氓鲁媒脮芒脨漏脦禄
 	reg_val = USBC_Readl(USBC_REG_ISCR(usbc_otg->base_addr));
 	reg_val |= (1 << USBC_BP_ISCR_DPDM_PULLUP_EN);
 	reg_val = __USBC_WakeUp_ClearChangeDetect(reg_val);
@@ -1313,7 +1313,7 @@ void USBC_DisableDpDmPullUp(__hdle hUSB)
     __usbc_otg_t *usbc_otg = (__usbc_otg_t *)hUSB;
     __u32 reg_val = 0;
 
-	//vbus, id, dpdm变化位是写1清零, 因此我们在操作其他bit的时候清除这些位
+	//vbus, id, dpdm卤盲禄炉脦禄脢脟脨麓1脟氓脕茫, 脪貌麓脣脦脪脙脟脭脷虏脵脳梅脝盲脣没bit碌脛脢卤潞貌脟氓鲁媒脮芒脨漏脦禄
 	reg_val = USBC_Readl(USBC_REG_ISCR(usbc_otg->base_addr));
 	reg_val &= ~(1 << USBC_BP_ISCR_DPDM_PULLUP_EN);
 	reg_val = __USBC_WakeUp_ClearChangeDetect(reg_val);
@@ -1324,7 +1324,7 @@ static void __USBC_ForceIdDisable(__u32 usbc_base_addr)
 {
 	__u32 reg_val = 0;
 
-	//vbus, id, dpdm变化位是写1清零, 因此我们在操作其他bit的时候清除这些位
+	//vbus, id, dpdm卤盲禄炉脦禄脢脟脨麓1脟氓脕茫, 脪貌麓脣脦脪脙脟脭脷虏脵脳梅脝盲脣没bit碌脛脢卤潞貌脟氓鲁媒脮芒脨漏脦禄
 	reg_val = USBC_Readl(USBC_REG_ISCR(usbc_base_addr));
 	reg_val &= ~(0x03 << USBC_BP_ISCR_FORCE_ID);
 	reg_val = __USBC_WakeUp_ClearChangeDetect(reg_val);
@@ -1335,7 +1335,7 @@ static void __USBC_ForceIdToLow(__u32 usbc_base_addr)
 {
 	__u32 reg_val = 0;
 
-	//先写00，后写10
+	//脧脠脨麓00拢卢潞贸脨麓10
 	reg_val = USBC_Readl(USBC_REG_ISCR(usbc_base_addr));
 	reg_val &= ~(0x03 << USBC_BP_ISCR_FORCE_ID);
 	reg_val |= (0x02 << USBC_BP_ISCR_FORCE_ID);
@@ -1347,7 +1347,7 @@ static void __USBC_ForceIdToHigh(__u32 usbc_base_addr)
 {
 	__u32 reg_val = 0;
 
-	//先写00，后写10
+	//脧脠脨麓00拢卢潞贸脨麓10
 	reg_val = USBC_Readl(USBC_REG_ISCR(usbc_base_addr));
 	//reg_val &= ~(0x03 << USBC_BP_ISCR_FORCE_ID);
 	reg_val |= (0x03 << USBC_BP_ISCR_FORCE_ID);
@@ -1378,7 +1378,7 @@ static void __USBC_ForceVbusValidDisable(__u32 usbc_base_addr)
 {
 	__u32 reg_val = 0;
 
-	//先写00，后写10
+	//脧脠脨麓00拢卢潞贸脨麓10
 	reg_val = USBC_Readl(USBC_REG_ISCR(usbc_base_addr));
 	reg_val &= ~(0x03 << USBC_BP_ISCR_FORCE_VBUS_VALID);
 	reg_val = __USBC_WakeUp_ClearChangeDetect(reg_val);
@@ -1389,7 +1389,7 @@ static void __USBC_ForceVbusValidToLow(__u32 usbc_base_addr)
 {
 	__u32 reg_val = 0;
 
-	//先写00，后写10
+	//脧脠脨麓00拢卢潞贸脨麓10
 	reg_val = USBC_Readl(USBC_REG_ISCR(usbc_base_addr));
 	reg_val &= ~(0x03 << USBC_BP_ISCR_FORCE_VBUS_VALID);
 	reg_val |= (0x02 << USBC_BP_ISCR_FORCE_VBUS_VALID);
@@ -1401,7 +1401,7 @@ static void __USBC_ForceVbusValidToHigh(__u32 usbc_base_addr)
 {
 	__u32 reg_val = 0;
 
-	//先写00，后写11
+	//脧脠脨麓00拢卢潞贸脨麓11
 	reg_val = USBC_Readl(USBC_REG_ISCR(usbc_base_addr));
 	//reg_val &= ~(0x03 << USBC_BP_ISCR_FORCE_VBUS_VALID);
 	reg_val |= (0x03 << USBC_BP_ISCR_FORCE_VBUS_VALID);
@@ -1457,7 +1457,7 @@ void USBC_EnableHosc(__hdle hUSB)
 	USBC_Writel(reg_val, USBC_REG_ISCR(usbc_otg->base_addr));
 }
 
-/* 禁用Hosc */
+/* 陆没脫脙Hosc */
 void USBC_DisableHosc(__hdle hUSB)
 {
 	__usbc_otg_t *usbc_otg = (__usbc_otg_t *)hUSB;
@@ -1469,14 +1469,14 @@ void USBC_DisableHosc(__hdle hUSB)
 	USBC_Writel(reg_val, USBC_REG_ISCR(usbc_otg->base_addr));
 }
 
-/* 查询是否产生 vbus 中断 */
+/* 虏茅脩炉脢脟路帽虏煤脡煤 vbus 脰脨露脧 */
 __u32 USBC_IsVbusChange(__hdle hUSB)
 {
 	__usbc_otg_t *usbc_otg = (__usbc_otg_t *)hUSB;
 	__u32 reg_val = 0;
 	__u32 temp = 0;
 
-    //读取变化位的同时, 写1清除该位
+    //露脕脠隆卤盲禄炉脦禄碌脛脥卢脢卤, 脨麓1脟氓鲁媒赂脙脦禄
     reg_val = USBC_Readl(USBC_REG_ISCR(usbc_otg->base_addr));
 
 	temp = reg_val & (1 << USBC_BP_ISCR_VBUS_CHANGE_DETECT);
@@ -1488,14 +1488,14 @@ __u32 USBC_IsVbusChange(__hdle hUSB)
 	return temp;
 }
 
-/* 查询是否产生 id 中断 */
+/* 虏茅脩炉脢脟路帽虏煤脡煤 id 脰脨露脧 */
 __u32 USBC_IsIdChange(__hdle hUSB)
 {
 	__usbc_otg_t *usbc_otg = (__usbc_otg_t *)hUSB;
 	__u32 reg_val = 0;
 	__u32 temp = 0;
 
-    //读取变化位的同时, 写1清除该位
+    //露脕脠隆卤盲禄炉脦禄碌脛脥卢脢卤, 脨麓1脟氓鲁媒赂脙脦禄
     reg_val = USBC_Readl(USBC_REG_ISCR(usbc_otg->base_addr));
 
 	temp = reg_val & (1 << USBC_BP_ISCR_ID_CHANGE_DETECT);
@@ -1507,14 +1507,14 @@ __u32 USBC_IsIdChange(__hdle hUSB)
 	return temp;
 }
 
-/* 查询是否产生 dpdm 中断 */
+/* 虏茅脩炉脢脟路帽虏煤脡煤 dpdm 脰脨露脧 */
 __u32 USBC_IsDpDmChange(__hdle hUSB)
 {
 	__usbc_otg_t *usbc_otg = (__usbc_otg_t *)hUSB;
 	__u32 reg_val = 0;
 	__u32 temp = 0;
 
-    //读取变化位的同时, 写1清除该位
+    //露脕脠隆卤盲禄炉脦禄碌脛脥卢脢卤, 脨麓1脟氓鲁媒赂脙脦禄
     reg_val = USBC_Readl(USBC_REG_ISCR(usbc_otg->base_addr));
 
 	temp = reg_val & (1 << USBC_BP_ISCR_DPDM_CHANGE_DETECT);
@@ -1526,7 +1526,7 @@ __u32 USBC_IsDpDmChange(__hdle hUSB)
 	return temp;
 }
 
-/* 禁用 wake 中断 */
+/* 陆没脫脙 wake 脰脨露脧 */
 void USBC_DisableWakeIrq(__hdle hUSB)
 {
 	__usbc_otg_t *usbc_otg = (__usbc_otg_t *)hUSB;
@@ -1538,7 +1538,7 @@ void USBC_DisableWakeIrq(__hdle hUSB)
 	USBC_Writel(reg_val, USBC_REG_ISCR(usbc_otg->base_addr));
 }
 
-/* 禁用 vbus 中断 */
+/* 陆没脫脙 vbus 脰脨露脧 */
 void USBC_DisableVbusChange(__hdle hUSB)
 {
 	__usbc_otg_t *usbc_otg = (__usbc_otg_t *)hUSB;
@@ -1550,7 +1550,7 @@ void USBC_DisableVbusChange(__hdle hUSB)
 	USBC_Writel(reg_val, USBC_REG_ISCR(usbc_otg->base_addr));
 }
 
-/* 禁用 id 中断 */
+/* 陆没脫脙 id 脰脨露脧 */
 void USBC_DisableIdChange(__hdle hUSB)
 {
 	__usbc_otg_t *usbc_otg = (__usbc_otg_t *)hUSB;
@@ -1562,7 +1562,7 @@ void USBC_DisableIdChange(__hdle hUSB)
 	USBC_Writel(reg_val, USBC_REG_ISCR(usbc_otg->base_addr));
 }
 
-/* 禁用 dpdm 中断 */
+/* 陆没脫脙 dpdm 脰脨露脧 */
 void USBC_DisableDpDmChange(__hdle hUSB)
 {
 	__usbc_otg_t *usbc_otg = (__usbc_otg_t *)hUSB;
@@ -1574,7 +1574,7 @@ void USBC_DisableDpDmChange(__hdle hUSB)
 	USBC_Writel(reg_val, USBC_REG_ISCR(usbc_otg->base_addr));
 }
 
-/* 使能 wake 中断 */
+/* 脢鹿脛脺 wake 脰脨露脧 */
 void USBC_EnableWakeIrq(__hdle hUSB)
 {
 	__usbc_otg_t *usbc_otg = (__usbc_otg_t *)hUSB;
@@ -1586,7 +1586,7 @@ void USBC_EnableWakeIrq(__hdle hUSB)
 	USBC_Writel(reg_val, USBC_REG_ISCR(usbc_otg->base_addr));
 }
 
-/* 使能 vbus 变化中断 */
+/* 脢鹿脛脺 vbus 卤盲禄炉脰脨露脧 */
 void USBC_EnableVbusChange(__hdle hUSB)
 {
 	__usbc_otg_t *usbc_otg = (__usbc_otg_t *)hUSB;
@@ -1598,7 +1598,7 @@ void USBC_EnableVbusChange(__hdle hUSB)
 	USBC_Writel(reg_val, USBC_REG_ISCR(usbc_otg->base_addr));
 }
 
-/* 使能id变化中断 */
+/* 脢鹿脛脺id卤盲禄炉脰脨露脧 */
 void USBC_EnableIdChange(__hdle hUSB)
 {
 	__usbc_otg_t *usbc_otg = (__usbc_otg_t *)hUSB;
@@ -1610,7 +1610,7 @@ void USBC_EnableIdChange(__hdle hUSB)
 	USBC_Writel(reg_val, USBC_REG_ISCR(usbc_otg->base_addr));
 }
 
-/* 使能dmdp变化中断 */
+/* 脢鹿脛脺dmdp卤盲禄炉脰脨露脧 */
 void USBC_EnableDpDmChange(__hdle hUSB)
 {
 	__usbc_otg_t *usbc_otg = (__usbc_otg_t *)hUSB;
@@ -1622,7 +1622,7 @@ void USBC_EnableDpDmChange(__hdle hUSB)
 	USBC_Writel(reg_val, USBC_REG_ISCR(usbc_otg->base_addr));
 }
 
-/* 测试模式, 获得寄存器的值 */
+/* 虏芒脢脭脛拢脢陆, 禄帽碌脙录脛麓忙脝梅碌脛脰碌 */
 __u32 USBC_TestMode_ReadReg(__hdle hUSB, __u32 offset, __u32 reg_width)
 {
     __usbc_otg_t *usbc_otg = (__usbc_otg_t *)hUSB;
@@ -1776,16 +1776,16 @@ void USBC_PrintAllReg(__u32 usbc_base, __s32 ep_start, __u32 ep_end, char *str, 
 *                     USBC_open_otg
 *
 * Description:
-*    向bsp申请获得端口号为otg_no的tog使用权
+*    脧貌bsp脡锚脟毛禄帽碌脙露脣驴脷潞脜脦陋otg_no碌脛tog脢鹿脫脙脠篓
 *
 * Arguments:
-*    otg_no  :  input.  需要使用的TOG端口号, 范围为: 0 ~ USBC_MAX_CTL_NUM
+*    otg_no  :  input.  脨猫脪陋脢鹿脫脙碌脛TOG露脣驴脷潞脜, 路露脦搂脦陋: 0 ~ USBC_MAX_CTL_NUM
 *
 * Returns:
-*    成功, 返回usbc_otg句柄。失败, 返回NULL
+*    鲁脡鹿娄, 路碌禄脴usbc_otg戮盲卤煤隆拢脢搂掳脺, 路碌禄脴NULL
 *
 * note:
-*    无
+*    脦脼
 *
 ***********************************************************************************
 */
@@ -1795,12 +1795,12 @@ __hdle USBC_open_otg(__u32 otg_no)
     __usbc_otg_t *usbc_otg = usbc_otg_array;
 	__u32 i = 0;
 
-    //--<1>--otg_no不能超过所能支持的范围
+    //--<1>--otg_no虏禄脛脺鲁卢鹿媒脣霉脛脺脰搂鲁脰碌脛路露脦搂
     if(otg_no >= USBC_MAX_CTL_NUM){
 		return 0;
 	}
 
-    //--<2>--在管理数组里找一个空位, 最大支持同时打开8次
+    //--<2>--脭脷鹿脺脌铆脢媒脳茅脌茂脮脪脪禄赂枚驴脮脦禄, 脳卯麓贸脰搂鲁脰脥卢脢卤麓貌驴陋8麓脦
     for(i = 0; i < USBC_MAX_OPEN_NUM; i++){
 		if(usbc_otg[i].used == 0){
 			usbc_otg[i].used      = 1;
@@ -1819,12 +1819,12 @@ __hdle USBC_open_otg(__u32 otg_no)
 {
     __usbc_otg_t *usbc_otg = usbc_otg_array;
 
-    //--<1>--otg_no不能超过所能支持的范围
+    //--<1>--otg_no虏禄脛脺鲁卢鹿媒脣霉脛脺脰搂鲁脰碌脛路露脦搂
     if(otg_no >= USBC_MAX_CTL_NUM){
 		return 0;
 	}
 
-    //--<2>--在管理数组里找一个空位, 最大支持同时打开8次
+    //--<2>--脭脷鹿脺脌铆脢媒脳茅脌茂脮脪脪禄赂枚驴脮脦禄, 脳卯麓贸脰搂鲁脰脥卢脢卤麓貌驴陋8麓脦
 	usbc_otg[otg_no].used      = 1;
 	usbc_otg[otg_no].no        = otg_no;
 	usbc_otg[otg_no].port_num  = otg_no;
@@ -1840,17 +1840,17 @@ __hdle USBC_open_otg(__u32 otg_no)
 *                     USBC_close_otg
 *
 * Description:
-*    释放tog的使用权
+*    脢脥路脜tog碌脛脢鹿脫脙脠篓
 *
 * Arguments:
-*    hUSB  :  input.  USBC_open_otg获得的句柄, 记录了USBC所需要的一些关键数据
+*    hUSB  :  input.  USBC_open_otg禄帽碌脙碌脛戮盲卤煤, 录脟脗录脕脣USBC脣霉脨猫脪陋碌脛脪禄脨漏鹿脴录眉脢媒戮脻
 *
 * Returns:
-*    0  :  成功
-*   !0  :  失败
+*    0  :  鲁脡鹿娄
+*   !0  :  脢搂掳脺
 *
 * note:
-*    无
+*    脦脼
 *
 ***********************************************************************************
 */
@@ -1879,8 +1879,8 @@ __s32  USBC_close_otg(__hdle hUSB)
 *
 *
 * Returns:
-*    0  :  成功
-*   !0  :  失败
+*    0  :  鲁脡鹿娄
+*   !0  :  脢搂掳脺
 *
 * note:
 *
@@ -1896,7 +1896,7 @@ __s32 USBC_init(bsp_usbc_t *usbc)
 //    memset(&usbc_info_g, 0, sizeof(__fifo_info_t));
 //    memset(usbc_otg, 0, (USBC_MAX_OPEN_NUM * sizeof(__usbc_otg_t)));
 
-    /* 保存 driver 传进来的 usb 控制器的基址 */
+    /* 卤拢麓忙 driver 麓芦陆酶脌麓碌脛 usb 驴脴脰脝脝梅碌脛禄霉脰路 */
 /*
     for(i = 0; i < USBC_MAX_CTL_NUM; i++){
         __u32 port_num = 0;
@@ -1928,8 +1928,8 @@ __s32 USBC_init(bsp_usbc_t *usbc)
 *
 *
 * Returns:
-*    0  :  成功
-*   !0  :  失败
+*    0  :  鲁脡鹿娄
+*   !0  :  脢搂掳脺
 *
 * note:
 *
@@ -1947,7 +1947,7 @@ __s32 USBC_exit(bsp_usbc_t *usbc)
     return 0;
 }
 
-///* USB传输类型选择, 读写数据等 */
+///* USB麓芦脢盲脌脿脨脥脩隆脭帽, 露脕脨麓脢媒戮脻碌脠 */
 //EXPORT_SYMBOL(USBC_OTG_SelectMode);
 //
 //EXPORT_SYMBOL(USBC_ReadLenFromFifo);
@@ -1971,7 +1971,7 @@ __s32 USBC_exit(bsp_usbc_t *usbc)
 //EXPORT_SYMBOL(USBC_GetLastFrameNumber);
 //
 //
-///* usb 中断操作部分 */
+///* usb 脰脨露脧虏脵脳梅虏驴路脰 */
 //EXPORT_SYMBOL(USBC_INT_EpPending);
 //EXPORT_SYMBOL(USBC_INT_MiscPending);
 //EXPORT_SYMBOL(USBC_INT_ClearEpPending);
@@ -1989,7 +1989,7 @@ __s32 USBC_exit(bsp_usbc_t *usbc)
 //EXPORT_SYMBOL(USBC_INT_DisableUsbMiscAll);
 //
 //
-///* usb 控制操作部分 */
+///* usb 驴脴脰脝虏脵脳梅虏驴路脰 */
 //EXPORT_SYMBOL(USBC_GetVbusStatus);
 //EXPORT_SYMBOL(USBC_GetStatus_Dp);
 //EXPORT_SYMBOL(USBC_GetStatus_Dm);
@@ -2029,7 +2029,7 @@ __s32 USBC_exit(bsp_usbc_t *usbc)
 //EXPORT_SYMBOL(USBC_EnableIdChange);
 //EXPORT_SYMBOL(USBC_EnableDpDmChange);
 //
-///* usb 测试模式 */
+///* usb 虏芒脢脭脛拢脢陆 */
 //EXPORT_SYMBOL(USBC_EnterMode_TestPacket);
 //EXPORT_SYMBOL(USBC_EnterMode_Test_K);
 //EXPORT_SYMBOL(USBC_EnterMode_Test_J);

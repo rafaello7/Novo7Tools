@@ -13,7 +13,7 @@
 *
 * Date 			: 2009.09.15
 *
-* Description 	: 适用于sunii平台，USB公共操作部分
+* Description 	: 脢脢脫脙脫脷sunii脝陆脤篓拢卢USB鹿芦鹿虏虏脵脳梅虏驴路脰
 *
 * History 		:
 *
@@ -26,7 +26,7 @@
 
 #define  USBC_MAX_OPEN_NUM    8
 
-/* 记录USB的公共信息 */
+/* 录脟脗录USB碌脛鹿芦鹿虏脨脜脧垄 */
 typedef struct __fifo_info{
     __u32 port0_fifo_addr;
 	__u32 port0_fifo_size;
@@ -38,13 +38,13 @@ typedef struct __fifo_info{
 	__u32 port2_fifo_size;
 }__fifo_info_t;
 
-/* 记录当前USB port所有的硬件信息 */
+/* 录脟脗录碌卤脟掳USB port脣霉脫脨碌脛脫虏录镁脨脜脧垄 */
 typedef struct __usbc_otg{
     __u32 port_num;
 	__u32 base_addr;        /* usb base address 		*/
 
-	__u32 used;             /* 是否正在被使用   		*/
-    __u32 no;               /* 在管理数组中的位置 		*/
+	__u32 used;             /* 脢脟路帽脮媒脭脷卤禄脢鹿脫脙   		*/
+    __u32 no;               /* 脭脷鹿脺脌铆脢媒脳茅脰脨碌脛脦禄脰脙 		*/
 }__usbc_otg_t;
 
 #endif   //__USBC_I_H__

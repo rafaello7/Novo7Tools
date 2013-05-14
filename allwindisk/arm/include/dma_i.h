@@ -59,65 +59,65 @@
 
 struct sw_dma
 {
-    volatile unsigned int config;           /* DMA配置参数              */
-    volatile unsigned int src_addr;         /* DMA传输源地址            */
-    volatile unsigned int dst_addr;         /* DMA传输目的地址          */
-    volatile unsigned int bytes;            /* DMA传输字节数            */
+    volatile unsigned int config;           /* DMA脜盲脰脙虏脦脢媒              */
+    volatile unsigned int src_addr;         /* DMA麓芦脢盲脭麓碌脴脰路            */
+    volatile unsigned int dst_addr;         /* DMA麓芦脢盲脛驴碌脛碌脴脰路          */
+    volatile unsigned int bytes;            /* DMA麓芦脢盲脳脰陆脷脢媒            */
 };
 
 typedef volatile struct sw_dma *sw_dma_t;
 
 struct sw_dma_other
 {
-    volatile unsigned int page_size;        /* DMA传输PAGE SIZE         */
-    volatile unsigned int page_step;        /* DMA传输PAGE STEP         */
-    volatile unsigned int comity_counter;   /* DMA传输comity counter    */
+    volatile unsigned int page_size;        /* DMA麓芦脢盲PAGE SIZE         */
+    volatile unsigned int page_step;        /* DMA麓芦脢盲PAGE STEP         */
+    volatile unsigned int comity_counter;   /* DMA麓芦脢盲comity counter    */
 };
 
 typedef volatile struct sw_dma_other *sw_dma_other_t;
 
 typedef struct sw_dma_channal_set
 {
-    unsigned int            used;           /* DMA是否被使用            */
-      signed int            channalNo;      /* DMA通道编号              */
-    sw_dma_t                channal;        /* DMA通道                  */
-    sw_dma_other_t          other;          /* DMA其它设置              */
+    unsigned int            used;           /* DMA脢脟路帽卤禄脢鹿脫脙            */
+      signed int            channalNo;      /* DMA脥篓碌脌卤脿潞脜              */
+    sw_dma_t                channal;        /* DMA脥篓碌脌                  */
+    sw_dma_other_t          other;          /* DMA脝盲脣眉脡猫脰脙              */
 }
 sw_dma_channal_set_t;
 
 
 typedef struct __ndma_config_set
 {
-    unsigned int      src_drq_type     : 5;            //源地址存储类型，如DRAM, SPI,NAND等，参见  __ndma_drq_type_t
-    unsigned int      src_addr_type    : 1;            //原地址类型，如递增，或者不变  0:递增模式  1:保持不变
+    unsigned int      src_drq_type     : 5;            //脭麓碌脴脰路麓忙麓垄脌脿脨脥拢卢脠莽DRAM, SPI,NAND碌脠拢卢虏脦录没  __ndma_drq_type_t
+    unsigned int      src_addr_type    : 1;            //脭颅碌脴脰路脌脿脨脥拢卢脠莽碌脻脭枚拢卢禄貌脮脽虏禄卤盲  0:碌脻脭枚脛拢脢陆  1:卤拢鲁脰虏禄卤盲
     unsigned int      src_secure       : 1;            //source secure  0:secure  1:not secure
-    unsigned int      src_burst_length : 2;            //发起一次burst宽度 0:1   1:4   2:8
-    unsigned int      src_data_width   : 2;            //数据传输宽度，0:一次传输8bit，1:一次传输16bit，2:一次传输32bit，3:保留
+    unsigned int      src_burst_length : 2;            //路垄脝冒脪禄麓脦burst驴铆露脠 0:1   1:4   2:8
+    unsigned int      src_data_width   : 2;            //脢媒戮脻麓芦脢盲驴铆露脠拢卢0:脪禄麓脦麓芦脢盲8bit拢卢1:脪禄麓脦麓芦脢盲16bit拢卢2:脪禄麓脦麓芦脢盲32bit拢卢3:卤拢脕么
     unsigned int      reserved0        : 5;
-    unsigned int      dst_drq_type     : 5;            //目的地址存储类型，如DRAM, SPI,NAND等
-    unsigned int      dst_addr_type    : 1;            //目的地址类型，如递增，或者不变  0:递增模式  1:保持不变
+    unsigned int      dst_drq_type     : 5;            //脛驴碌脛碌脴脰路麓忙麓垄脌脿脨脥拢卢脠莽DRAM, SPI,NAND碌脠
+    unsigned int      dst_addr_type    : 1;            //脛驴碌脛碌脴脰路脌脿脨脥拢卢脠莽碌脻脭枚拢卢禄貌脮脽虏禄卤盲  0:碌脻脭枚脛拢脢陆  1:卤拢鲁脰虏禄卤盲
     unsigned int      dst_secure       : 1;            //dest secure  0:secure  1:not secure
-    unsigned int      dst_burst_length : 2;            //发起一次burst宽度 填0对应于1，填1对应于4,
-    unsigned int      dst_data_width   : 2;            //数据传输宽度，0:一次传输8bit，1:一次传输16bit，2:一次传输32bit，3:保留
-    unsigned int      wait_state       : 3;            //等待时钟个数 选择范围从0-7
-    unsigned int      continuous_mode  : 1;            //选择连续工作模式 0:传输一次即结束 1:反复传输，当一次DMA传输结束后，重新开始传输
+    unsigned int      dst_burst_length : 2;            //路垄脝冒脪禄麓脦burst驴铆露脠 脤卯0露脭脫娄脫脷1拢卢脤卯1露脭脫娄脫脷4,
+    unsigned int      dst_data_width   : 2;            //脢媒戮脻麓芦脢盲驴铆露脠拢卢0:脪禄麓脦麓芦脢盲8bit拢卢1:脪禄麓脦麓芦脢盲16bit拢卢2:脪禄麓脦麓芦脢盲32bit拢卢3:卤拢脕么
+    unsigned int      wait_state       : 3;            //碌脠麓媒脢卤脰脫赂枚脢媒 脩隆脭帽路露脦搂麓脫0-7
+    unsigned int      continuous_mode  : 1;            //脩隆脭帽脕卢脨酶鹿陇脳梅脛拢脢陆 0:麓芦脢盲脪禄麓脦录麓陆谩脢酶 1:路麓赂麓麓芦脢盲拢卢碌卤脪禄麓脦DMA麓芦脢盲陆谩脢酶潞贸拢卢脰脴脨脗驴陋脢录麓芦脢盲
     unsigned int      reserved1        : 1;
 }
 __ndma_config_t;
 
 typedef struct __ddma_config_set
 {
-    unsigned int      src_drq_type     : 5;            //源地址存储类型，如DRAM, SPI,NAND等，参见  __ddma_src_type_t
-    unsigned int      src_addr_type    : 2;            //原地址类型，如递增，或者不变  0:递增模式  1:保持不变  2:H模式  3:V模式
-    unsigned int      src_burst_length : 2;            //发起一次burst宽度 填0对应于1，填1对应于4,
-    unsigned int      src_data_width   : 2;            //数据传输宽度，0:一次传输8bit，1:一次传输16bit，2:一次传输32bit，3:保留
+    unsigned int      src_drq_type     : 5;            //脭麓碌脴脰路麓忙麓垄脌脿脨脥拢卢脠莽DRAM, SPI,NAND碌脠拢卢虏脦录没  __ddma_src_type_t
+    unsigned int      src_addr_type    : 2;            //脭颅碌脴脰路脌脿脨脥拢卢脠莽碌脻脭枚拢卢禄貌脮脽虏禄卤盲  0:碌脻脭枚脛拢脢陆  1:卤拢鲁脰虏禄卤盲  2:H脛拢脢陆  3:V脛拢脢陆
+    unsigned int      src_burst_length : 2;            //路垄脝冒脪禄麓脦burst驴铆露脠 脤卯0露脭脫娄脫脷1拢卢脤卯1露脭脫娄脫脷4,
+    unsigned int      src_data_width   : 2;            //脢媒戮脻麓芦脢盲驴铆露脠拢卢0:脪禄麓脦麓芦脢盲8bit拢卢1:脪禄麓脦麓芦脢盲16bit拢卢2:脪禄麓脦麓芦脢盲32bit拢卢3:卤拢脕么
     unsigned int      reserved0        : 5;
-    unsigned int      dst_drq_type     : 5;            //目的地址存储类型，如DRAM, SPI,NAND等, 参见  __ddma_dst_type_t
-    unsigned int      dst_addr_type    : 2;            //目的地址类型，如递增，或者不变 0:递增模式  1:保持不变  2:H模式  3:V模式
-    unsigned int      dst_burst_length : 2;            //发起一次burst宽度 填0对应于1，填1对应于4,
-    unsigned int      dst_data_width   : 2;            //数据传输宽度，0:一次传输8bit，1:一次传输16bit，2:一次传输32bit，3:保留
+    unsigned int      dst_drq_type     : 5;            //脛驴碌脛碌脴脰路麓忙麓垄脌脿脨脥拢卢脠莽DRAM, SPI,NAND碌脠, 虏脦录没  __ddma_dst_type_t
+    unsigned int      dst_addr_type    : 2;            //脛驴碌脛碌脴脰路脌脿脨脥拢卢脠莽碌脻脭枚拢卢禄貌脮脽虏禄卤盲 0:碌脻脭枚脛拢脢陆  1:卤拢鲁脰虏禄卤盲  2:H脛拢脢陆  3:V脛拢脢陆
+    unsigned int      dst_burst_length : 2;            //路垄脝冒脪禄麓脦burst驴铆露脠 脤卯0露脭脫娄脫脷1拢卢脤卯1露脭脫娄脫脷4,
+    unsigned int      dst_data_width   : 2;            //脢媒戮脻麓芦脢盲驴铆露脠拢卢0:脪禄麓脦麓芦脢盲8bit拢卢1:脪禄麓脦麓芦脢盲16bit拢卢2:脪禄麓脦麓芦脢盲32bit拢卢3:卤拢脕么
     unsigned int      reserved1        : 3;
-    unsigned int      continuous_mode  : 1;            //选择连续工作模式 0:传输一次即结束 1:反复传输，当一次DMA传输结束后，重新开始传输
+    unsigned int      continuous_mode  : 1;            //脩隆脭帽脕卢脨酶鹿陇脳梅脛拢脢陆 0:麓芦脢盲脪禄麓脦录麓陆谩脢酶 1:路麓赂麓麓芦脢盲拢卢碌卤脪禄麓脦DMA麓芦脢盲陆谩脢酶潞贸拢卢脰脴脨脗驴陋脢录麓芦脢盲
     unsigned int      reserved2        : 1;
 }
 __ddma_config_t;

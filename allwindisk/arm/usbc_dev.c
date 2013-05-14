@@ -13,7 +13,7 @@
 *
 * Date 			: 2009.09.01
 *
-* Description 	: 适用于sunii平台，USB寄存器原子操作
+* Description 	: 脢脢脫脙脫脷sunii脝陆脤篓拢卢USB录脛麓忙脝梅脭颅脳脫虏脵脳梅
 *
 * History 		:
 *
@@ -26,56 +26,56 @@
 /*
  ***************************************************************************
  *
- * 选择 usb device 的传输类型。如控制传输、同步传输、中断传输、批量传输。
+ * 脩隆脭帽 usb device 碌脛麓芦脢盲脌脿脨脥隆拢脠莽驴脴脰脝麓芦脢盲隆垄脥卢虏陆麓芦脢盲隆垄脰脨露脧麓芦脢盲隆垄脜煤脕驴麓芦脢盲隆拢
  *
  ***************************************************************************
  */
 static void __USBC_Dev_TsType_default(__u32 usbc_base_addr)
 {
-    //disable所有传输类型
+    //disable脣霉脫脨麓芦脢盲脌脿脨脥
     USBC_REG_clear_bit_b(USBC_BP_POWER_D_ISO_UPDATE_EN, USBC_REG_PCTL(usbc_base_addr));
 }
 
 static void __USBC_Dev_TsType_Ctrl(__u32 usbc_base_addr)
 {
-    //--<1>--disable其他传输类型
+    //--<1>--disable脝盲脣没麓芦脢盲脌脿脨脥
     USBC_REG_clear_bit_b(USBC_BP_POWER_D_ISO_UPDATE_EN, USBC_REG_PCTL(usbc_base_addr));
 
-	//--<2>--选择 Ctrl 类型
-	/* 不需要配置 */
+	//--<2>--脩隆脭帽 Ctrl 脌脿脨脥
+	/* 虏禄脨猫脪陋脜盲脰脙 */
 }
 
 static void __USBC_Dev_TsType_Iso(__u32 usbc_base_addr)
 {
-    //--<1>--disable其他传输类型
-    /* 不需要配置 */
+    //--<1>--disable脝盲脣没麓芦脢盲脌脿脨脥
+    /* 虏禄脨猫脪陋脜盲脰脙 */
 
-    //--<2>--选择 Ctrl 类型
+    //--<2>--脩隆脭帽 Ctrl 脌脿脨脥
     USBC_REG_set_bit_b(USBC_BP_POWER_D_ISO_UPDATE_EN, USBC_REG_PCTL(usbc_base_addr));
 }
 
 static void __USBC_Dev_TsType_Int(__u32 usbc_base_addr)
 {
-    //--<1>--disable其他传输类型
+    //--<1>--disable脝盲脣没麓芦脢盲脌脿脨脥
     USBC_REG_clear_bit_b(USBC_BP_POWER_D_ISO_UPDATE_EN, USBC_REG_PCTL(usbc_base_addr));
 
-	//--<2>--选择 Ctrl 类型
-	/* 不需要配置 */
+	//--<2>--脩隆脭帽 Ctrl 脌脿脨脥
+	/* 虏禄脨猫脪陋脜盲脰脙 */
 }
 
 static void __USBC_Dev_TsType_Bulk(__u32 usbc_base_addr)
 {
-    //--<1>--disable其他传输类型
+    //--<1>--disable脝盲脣没麓芦脢盲脌脿脨脥
     USBC_REG_clear_bit_b(USBC_BP_POWER_D_ISO_UPDATE_EN, USBC_REG_PCTL(usbc_base_addr));
 
-	//--<2>--选择 Ctrl 类型
-	/* 不需要配置 */
+	//--<2>--脩隆脭帽 Ctrl 脌脿脨脥
+	/* 虏禄脨猫脪陋脜盲脰脙 */
 }
 
 /*
  ***************************************************************************
  *
- * 选择 usb device 的速度类型。如 高速、全速、低速。
+ * 脩隆脭帽 usb device 碌脛脣脵露脠脌脿脨脥隆拢脠莽 赂脽脣脵隆垄脠芦脣脵隆垄碌脥脣脵隆拢
  *
  ***************************************************************************
  */
@@ -97,7 +97,7 @@ static void __USBC_Dev_TsMode_Fs(__u32 usbc_base_addr)
 
 static void __USBC_Dev_TsMode_Ls(__u32 usbc_base_addr)
 {
-    //硬件不支持ls, 所以默认选择fs
+    //脫虏录镁虏禄脰搂鲁脰ls, 脣霉脪脭脛卢脠脧脩隆脭帽fs
     __USBC_Dev_TsMode_Fs(usbc_base_addr);
 }
 
@@ -259,7 +259,7 @@ static void __USBC_Dev_Tx_ClearEpDma(__u32 usbc_base_addr)
 	ep_csr &= ~((1 << USBC_BP_TXCSR_D_DMA_REQ_EN) >> 8);
 	USBC_Writeb(ep_csr, (USBC_REG_TXCSR(usbc_base_addr) + 1));
 
-	//DMA_REQ_EN和DMA_REQ_MODE不能在同一个cycle中清除
+	//DMA_REQ_EN潞脥DMA_REQ_MODE虏禄脛脺脭脷脥卢脪禄赂枚cycle脰脨脟氓鲁媒
 	ep_csr = USBC_Readb(USBC_REG_TXCSR(usbc_base_addr) + 1);
 	ep_csr &= ~((1 << USBC_BP_TXCSR_D_DMA_REQ_MODE) >> 8);
 	USBC_Writeb(ep_csr, (USBC_REG_TXCSR(usbc_base_addr) + 1));
@@ -316,7 +316,7 @@ static void __USBC_Dev_Tx_ClearStall(__u32 usbc_base_addr)
 	USBC_Writew(reg_val, USBC_REG_TXCSR(usbc_base_addr));
 }
 
-//这里为了去掉编译时的warning, 而把这里屏蔽掉的
+//脮芒脌茂脦陋脕脣脠楼碌么卤脿脪毛脢卤碌脛warning, 露酶掳脩脮芒脌茂脝脕卤脦碌么碌脛
 /*
 static __u32 __USBC_Dev_Tx_IsEpIncomp(__u32 usbc_base_addr)
 {
@@ -467,16 +467,16 @@ static void __USBC_Dev_Rx_ClearStall(__u32 usbc_base_addr)
 *                     USBC_Dev_SetAddress_default
 *
 * Description:
-*    清除host给device分配的地址
+*    脟氓鲁媒host赂酶device路脰脜盲碌脛碌脴脰路
 *
 * Arguments:
-*    hUSB       :  input.  USBC_open_otg获得的句柄, 记录了USBC所需要的一些关键数据
+*    hUSB       :  input.  USBC_open_otg禄帽碌脙碌脛戮盲卤煤, 录脟脗录脕脣USBC脣霉脨猫脪陋碌脛脪禄脨漏鹿脴录眉脢媒戮脻
 *
 * Returns:
 *
 *
 * note:
-*    无
+*    脦脼
 *
 ***********************************************************************************
 */
@@ -496,17 +496,17 @@ void USBC_Dev_SetAddress_default(__hdle hUSB)
 *                     USBC_Dev_SetAddress
 *
 * Description:
-*    设置地址
+*    脡猫脰脙碌脴脰路
 *
 * Arguments:
-*    hUSB       :  input.  USBC_open_otg获得的句柄, 记录了USBC所需要的一些关键数据
-*    address    :  input.  host分配的地址
+*    hUSB       :  input.  USBC_open_otg禄帽碌脙碌脛戮盲卤煤, 录脟脗录脕脣USBC脣霉脨猫脪陋碌脛脪禄脨漏鹿脴录眉脢媒戮脻
+*    address    :  input.  host路脰脜盲碌脛碌脴脰路
 *
 * Returns:
 *
 *
 * note:
-*    无
+*    脦脼
 *
 ***********************************************************************************
 */
@@ -541,18 +541,18 @@ __u32 USBC_Dev_QueryTransferMode(__hdle hUSB)
 *                     USBC_Dev_ConfigTransferMode
 *
 * Description:
-*    配置device的传输类型和速度模式
+*    脜盲脰脙device碌脛麓芦脢盲脌脿脨脥潞脥脣脵露脠脛拢脢陆
 *
 * Arguments:
-*    hUSB       :  input.  USBC_open_otg获得的句柄, 记录了USBC所需要的一些关键数据
-*    type       :  input.  传输类型
-*    speed_mode :  input.  速度模式
+*    hUSB       :  input.  USBC_open_otg禄帽碌脙碌脛戮盲卤煤, 录脟脗录脕脣USBC脣霉脨猫脪陋碌脛脪禄脨漏鹿脴录眉脢媒戮脻
+*    type       :  input.  麓芦脢盲脌脿脨脥
+*    speed_mode :  input.  脣脵露脠脛拢脢陆
 *
 * Returns:
 *
 *
 * note:
-*    无
+*    脦脼
 *
 ***********************************************************************************
 */
@@ -564,8 +564,8 @@ void USBC_Dev_ConfigTransferMode(__hdle hUSB, __u8 ts_type, __u8 speed_mode)
 		return;
 	}
 
-    //--<1>--选择传输类型
-    //默认是bulk传输
+    //--<1>--脩隆脭帽麓芦脢盲脌脿脨脥
+    //脛卢脠脧脢脟bulk麓芦脢盲
     switch(ts_type){
 		case USBC_TS_TYPE_CTRL:
 			__USBC_Dev_TsType_Ctrl(usbc_otg->base_addr);
@@ -587,7 +587,7 @@ void USBC_Dev_ConfigTransferMode(__hdle hUSB, __u8 ts_type, __u8 speed_mode)
 			__USBC_Dev_TsType_default(usbc_otg->base_addr);
 	}
 
-    //--<2>--选择传输速度
+    //--<2>--脩隆脭帽麓芦脢盲脣脵露脠
     switch(speed_mode){
 		case USBC_TS_MODE_HS:
 			__USBC_Dev_TsMode_Hs(usbc_otg->base_addr);
@@ -611,17 +611,17 @@ void USBC_Dev_ConfigTransferMode(__hdle hUSB, __u8 ts_type, __u8 speed_mode)
 *                     USBC_Dev_ConectSwitch
 *
 * Description:
-*    和PC通信的开关
+*    潞脥PC脥篓脨脜碌脛驴陋鹿脴
 *
 * Arguments:
-*    hUSB   :  input.  USBC_open_otg获得的句柄, 记录了USBC所需要的一些关键数据
-*    is_on  :  input.  1: 打开和PC通信开关. 0: 关闭和PC通信通道
+*    hUSB   :  input.  USBC_open_otg禄帽碌脙碌脛戮盲卤煤, 录脟脗录脕脣USBC脣霉脨猫脪陋碌脛脪禄脨漏鹿脴录眉脢媒戮脻
+*    is_on  :  input.  1: 麓貌驴陋潞脥PC脥篓脨脜驴陋鹿脴. 0: 鹿脴卤脮潞脥PC脥篓脨脜脥篓碌脌
 *
 * Returns:
 *
 *
 * note:
-*    无
+*    脦脼
 *
 ***********************************************************************************
 */
@@ -645,16 +645,16 @@ void USBC_Dev_ConectSwitch(__hdle hUSB, __u32 is_on)
 *                     USBC_Dev_PowerStatus
 *
 * Description:
-*    查询当前device所处的状态, 如reset、resume、suspend等状态。
+*    虏茅脩炉碌卤脟掳device脣霉麓娄碌脛脳麓脤卢, 脠莽reset隆垄resume隆垄suspend碌脠脳麓脤卢隆拢
 *
 * Arguments:
-*    hUSB   :  input.  USBC_open_otg获得的句柄, 记录了USBC所需要的一些关键数据
+*    hUSB   :  input.  USBC_open_otg禄帽碌脙碌脛戮盲卤煤, 录脟脗录脕脣USBC脣霉脨猫脪陋碌脛脪禄脨漏鹿脴录眉脢媒戮脻
 *
 * Returns:
 *
 *
 * note:
-*    无
+*    脦脼
 *
 ***********************************************************************************
 */
@@ -674,20 +674,20 @@ __u32 USBC_Dev_QueryPowerStatus(__hdle hUSB)
 *                     USBC_Dev_ConfigEp
 *
 * Description:
-*    配置ep, 包括双FIFO、最大传输包等
+*    脜盲脰脙ep, 掳眉脌篓脣芦FIFO隆垄脳卯麓贸麓芦脢盲掳眉碌脠
 *
 * Arguments:
-*    hUSB           :  input.  USBC_open_otg获得的句柄, 记录了USBC所需要的一些关键数据
-*    ep_type        :  input.  传输类型
-*    is_double_fifo :  input.  速度模式
-*    ep_MaxPkt      :  input.  最大包
+*    hUSB           :  input.  USBC_open_otg禄帽碌脙碌脛戮盲卤煤, 录脟脗录脕脣USBC脣霉脨猫脪陋碌脛脪禄脨漏鹿脴录眉脢媒戮脻
+*    ep_type        :  input.  麓芦脢盲脌脿脨脥
+*    is_double_fifo :  input.  脣脵露脠脛拢脢陆
+*    ep_MaxPkt      :  input.  脳卯麓贸掳眉
 *
 * Returns:
-*    0  :  成功
-*   !0  :  失败
+*    0  :  鲁脡鹿娄
+*   !0  :  脢搂掳脺
 *
 * note:
-*    无
+*    脦脼
 *
 ***********************************************************************************
 */
@@ -724,17 +724,17 @@ __s32 USBC_Dev_ConfigEp(__hdle hUSB, __u32 ts_type, __u32 ep_type, __u32 is_doub
 *                     USBC_Dev_ConfigEp
 *
 * Description:
-*    释放ep所有的资源, 中断除外
+*    脢脥路脜ep脣霉脫脨碌脛脳脢脭麓, 脰脨露脧鲁媒脥芒
 *
 * Arguments:
-*    hUSB           :  input.  USBC_open_otg获得的句柄, 记录了USBC所需要的一些关键数据
+*    hUSB           :  input.  USBC_open_otg禄帽碌脙碌脛戮盲卤煤, 录脟脗录脕脣USBC脣霉脨猫脪陋碌脛脪禄脨漏鹿脴录眉脢媒戮脻
 *
 * Returns:
-*    0  :  成功
-*   !0  :  失败
+*    0  :  鲁脡鹿娄
+*   !0  :  脢搂掳脺
 *
 * note:
-*    无
+*    脦脼
 *
 ***********************************************************************************
 */
@@ -771,17 +771,17 @@ __s32 USBC_Dev_ConfigEp_Default(__hdle hUSB, __u32 ep_type)
 *                     USBC_Dev_ConfigEpDma
 *
 * Description:
-*    配置ep的dma设置
+*    脜盲脰脙ep碌脛dma脡猫脰脙
 *
 * Arguments:
-*    hUSB           :  input.  USBC_open_otg获得的句柄, 记录了USBC所需要的一些关键数据
-*    ep_type        :  input.  传输类型
+*    hUSB           :  input.  USBC_open_otg禄帽碌脙碌脛戮盲卤煤, 录脟脗录脕脣USBC脣霉脨猫脪陋碌脛脪禄脨漏鹿脴录眉脢媒戮脻
+*    ep_type        :  input.  麓芦脢盲脌脿脨脥
 * Returns:
-*    0  :  成功
-*   !0  :  失败
+*    0  :  鲁脡鹿娄
+*   !0  :  脢搂掳脺
 *
 * note:
-*    无
+*    脦脼
 *
 ***********************************************************************************
 */
@@ -820,17 +820,17 @@ __s32 USBC_Dev_ConfigEpDma(__hdle hUSB, __u32 ep_type)
 *                     USBC_Dev_ClearEpDma
 *
 * Description:
-*    清除ep的dma设置
+*    脟氓鲁媒ep碌脛dma脡猫脰脙
 *
 * Arguments:
-*    hUSB           :  input.  USBC_open_otg获得的句柄, 记录了USBC所需要的一些关键数据
-*    ep_type        :  input.  传输类型
+*    hUSB           :  input.  USBC_open_otg禄帽碌脙碌脛戮盲卤煤, 录脟脗录脕脣USBC脣霉脨猫脪陋碌脛脪禄脨漏鹿脴录眉脢媒戮脻
+*    ep_type        :  input.  麓芦脢盲脌脿脨脥
 * Returns:
-*    0  :  成功
-*   !0  :  失败
+*    0  :  鲁脡鹿娄
+*   !0  :  脢搂掳脺
 *
 * note:
-*    无
+*    脦脼
 *
 ***********************************************************************************
 */
@@ -869,17 +869,17 @@ __s32 USBC_Dev_ClearEpDma(__hdle hUSB, __u32 ep_type)
 *                     USBC_Dev_IsEpStall
 *
 * Description:
-*    查询ep是否stall
+*    虏茅脩炉ep脢脟路帽stall
 *
 * Arguments:
-*    hUSB           :  input.  USBC_open_otg获得的句柄, 记录了USBC所需要的一些关键数据
-*    ep_type        :  input.  传输类型
+*    hUSB           :  input.  USBC_open_otg禄帽碌脙碌脛戮盲卤煤, 录脟脗录脕脣USBC脣霉脨猫脪陋碌脛脪禄脨漏鹿脴录眉脢媒戮脻
+*    ep_type        :  input.  麓芦脢盲脌脿脨脥
 * Returns:
-*    0  :  成功
-*   !0  :  失败
+*    0  :  鲁脡鹿娄
+*   !0  :  脢搂掳脺
 *
 * note:
-*    无
+*    脦脼
 *
 ***********************************************************************************
 */
@@ -916,17 +916,17 @@ __s32 USBC_Dev_IsEpStall(__hdle hUSB, __u32 ep_type)
 *                     USBC_Dev_EpEnterStall
 *
 * Description:
-*    使ep进入stall状态
+*    脢鹿ep陆酶脠毛stall脳麓脤卢
 *
 * Arguments:
-*    hUSB           :  input.  USBC_open_otg获得的句柄, 记录了USBC所需要的一些关键数据
-*    ep_type        :  input.  传输类型
+*    hUSB           :  input.  USBC_open_otg禄帽碌脙碌脛戮盲卤煤, 录脟脗录脕脣USBC脣霉脨猫脪陋碌脛脪禄脨漏鹿脴录眉脢媒戮脻
+*    ep_type        :  input.  麓芦脢盲脌脿脨脥
 * Returns:
-*    0  :  成功
-*   !0  :  失败
+*    0  :  鲁脡鹿娄
+*   !0  :  脢搂掳脺
 *
 * note:
-*    无
+*    脦脼
 *
 ***********************************************************************************
 */
@@ -963,17 +963,17 @@ __s32 USBC_Dev_EpSendStall(__hdle hUSB, __u32 ep_type)
 *                     USBC_Dev_EpClearStall
 *
 * Description:
-*    清除ep的stall状态
+*    脟氓鲁媒ep碌脛stall脳麓脤卢
 *
 * Arguments:
-*    hUSB           :  input.  USBC_open_otg获得的句柄, 记录了USBC所需要的一些关键数据
-*    ep_type        :  input.  传输类型
+*    hUSB           :  input.  USBC_open_otg禄帽碌脙碌脛戮盲卤煤, 录脟脗录脕脣USBC脣霉脨猫脪陋碌脛脪禄脨漏鹿脴录眉脢媒戮脻
+*    ep_type        :  input.  麓芦脢盲脌脿脨脥
 * Returns:
-*    0  :  成功
-*   !0  :  失败
+*    0  :  鲁脡鹿娄
+*   !0  :  脢搂掳脺
 *
 * note:
-*    无
+*    脦脼
 *
 ***********************************************************************************
 */
@@ -1010,15 +1010,15 @@ __s32 USBC_Dev_EpClearStall(__hdle hUSB, __u32 ep_type)
 *                     USBC_Dev_Ctrl_IsSetupEnd
 *
 * Description:
-*    查询ep0是否SetupEnd
+*    虏茅脩炉ep0脢脟路帽SetupEnd
 *
 * Arguments:
-*    hUSB  :  input.  USBC_open_otg获得的句柄, 记录了USBC所需要的一些关键数据
+*    hUSB  :  input.  USBC_open_otg禄帽碌脙碌脛戮盲卤煤, 录脟脗录脕脣USBC脣霉脨猫脪陋碌脛脪禄脨漏鹿脴录眉脢媒戮脻
 *
 * Returns:
 *
 * note:
-*    无
+*    脦脼
 *
 ***********************************************************************************
 */
@@ -1038,15 +1038,15 @@ __u32 USBC_Dev_Ctrl_IsSetupEnd(__hdle hUSB)
 *                     USBC_Dev_Ctrl_ClearSetupEnd
 *
 * Description:
-*    清除ep0的SetupEnd状态
+*    脟氓鲁媒ep0碌脛SetupEnd脳麓脤卢
 *
 * Arguments:
-*    hUSB  :  input.  USBC_open_otg获得的句柄, 记录了USBC所需要的一些关键数据
+*    hUSB  :  input.  USBC_open_otg禄帽碌脙碌脛戮盲卤煤, 录脟脗录脕脣USBC脣霉脨猫脪陋碌脛脪禄脨漏鹿脴录眉脢媒戮脻
 *
 * Returns:
 *
 * note:
-*    无
+*    脦脼
 *
 ***********************************************************************************
 */
@@ -1159,18 +1159,18 @@ static __s32 __USBC_Dev_ReadDataComplete(__u32 usbc_base_addr, __u32 ep_type)
 *                     USBC_Dev_WriteDataStatus
 *
 * Description:
-*    写数据的状况, 是写了一部分, 还是完全写完了
+*    脨麓脢媒戮脻碌脛脳麓驴枚, 脢脟脨麓脕脣脪禄虏驴路脰, 禄鹿脢脟脥锚脠芦脨麓脥锚脕脣
 *
 * Arguments:
-*    hUSB      :  input.  USBC_open_otg获得的句柄, 记录了USBC所需要的一些关键数据
-*    ep_type   :  input.  传输类型
-*    complete  :  input.  是否所有的数据都写完了
+*    hUSB      :  input.  USBC_open_otg禄帽碌脙碌脛戮盲卤煤, 录脟脗录脕脣USBC脣霉脨猫脪陋碌脛脪禄脨漏鹿脴录眉脢媒戮脻
+*    ep_type   :  input.  麓芦脢盲脌脿脨脥
+*    complete  :  input.  脢脟路帽脣霉脫脨碌脛脢媒戮脻露录脨麓脥锚脕脣
 * Returns:
-*    0  :  成功
-*   !0  :  失败
+*    0  :  鲁脡鹿娄
+*   !0  :  脢搂掳脺
 *
 * note:
-*    无
+*    脦脼
 *
 ***********************************************************************************
 */
@@ -1194,18 +1194,18 @@ __s32 USBC_Dev_WriteDataStatus(__hdle hUSB, __u32 ep_type, __u32 complete)
 *                     USBC_Dev_ReadDataStatus
 *
 * Description:
-*    写数据的状况, 是写了一部分, 还是完全写完了
+*    脨麓脢媒戮脻碌脛脳麓驴枚, 脢脟脨麓脕脣脪禄虏驴路脰, 禄鹿脢脟脥锚脠芦脨麓脥锚脕脣
 *
 * Arguments:
-*    hUSB      :  input.  USBC_open_otg获得的句柄, 记录了USBC所需要的一些关键数据
-*    ep_type   :  input.  传输类型
-*    complete  :  input.  是否所有的数据都写完了
+*    hUSB      :  input.  USBC_open_otg禄帽碌脙碌脛戮盲卤煤, 录脟脗录脕脣USBC脣霉脨猫脪陋碌脛脪禄脨漏鹿脴录眉脢媒戮脻
+*    ep_type   :  input.  麓芦脢盲脌脿脨脥
+*    complete  :  input.  脢脟路帽脣霉脫脨碌脛脢媒戮脻露录脨麓脥锚脕脣
 * Returns:
-*    0  :  成功
-*   !0  :  失败
+*    0  :  鲁脡鹿娄
+*   !0  :  脢搂掳脺
 *
 * note:
-*    无
+*    脦脼
 *
 ***********************************************************************************
 */
@@ -1229,16 +1229,16 @@ __s32 USBC_Dev_ReadDataStatus(__hdle hUSB, __u32 ep_type, __u32 complete)
 *                     USBC_Dev_IsReadDataReady
 *
 * Description:
-*    查询usb准备读取的数据是否准备好了
+*    虏茅脩炉usb脳录卤赂露脕脠隆碌脛脢媒戮脻脢脟路帽脳录卤赂潞脙脕脣
 *
 * Arguments:
-*    hUSB     :  input.  USBC_open_otg获得的句柄, 记录了USBC所需要的一些关键数据
-*    ep_type  :  input.  传输类型
+*    hUSB     :  input.  USBC_open_otg禄帽碌脙碌脛戮盲卤煤, 录脟脗录脕脣USBC脣霉脨猫脪陋碌脛脪禄脨漏鹿脴录眉脢媒戮脻
+*    ep_type  :  input.  麓芦脢盲脌脿脨脥
 *
 * Returns:
 *
 * note:
-*    无
+*    脦脼
 *
 ***********************************************************************************
 */
@@ -1273,16 +1273,16 @@ __u32 USBC_Dev_IsReadDataReady(__hdle hUSB, __u32 ep_type)
 *                     USBC_Dev_IsWriteDataReady
 *
 * Description:
-*    查询fifo是否为空
+*    虏茅脩炉fifo脢脟路帽脦陋驴脮
 *
 * Arguments:
-*    hUSB    :  input.  USBC_open_otg获得的句柄, 记录了USBC所需要的一些关键数据
-*    ep_type :  input.  传输类型
+*    hUSB    :  input.  USBC_open_otg禄帽碌脙碌脛戮盲卤煤, 录脟脗录脕脣USBC脣霉脨猫脪陋碌脛脪禄脨漏鹿脴录眉脢媒戮脻
+*    ep_type :  input.  麓芦脢盲脌脿脨脥
 *
 * Returns:
 *
 * note:
-*    无
+*    脦脼
 *
 ***********************************************************************************
 */

@@ -10,7 +10,7 @@
 *
 * Author 		: javen
 *
-* Description 	: 寄存器定义
+* Description 	: 录脛麓忙脝梅露篓脪氓
 *
 * History 		:
 *      <author>    		<time>       	<version >    		<desc>
@@ -25,7 +25,7 @@
 #include <types.h>
 
 //-----------------------------------------------------------------------
-//   读写寄存器, 8bit, 16bit, 32bit
+//   露脕脨麓录脛麓忙脝梅, 8bit, 16bit, 32bit
 //-----------------------------------------------------------------------
 
 #define  USBC_Readb(reg)	                    (*(volatile unsigned char *)(reg))
@@ -504,12 +504,12 @@
 #define  USBC_BP_ISCR_DPDM_CHANGE_DETECT_EN   	0
 
 //-----------------------------------------------------------------------
-//   自定义
+//   脳脭露篓脪氓
 //-----------------------------------------------------------------------
 
-/* usb资源描述 */
+/* usb脳脢脭麓脙猫脢枚 */
 #define  USBC_MAX_CTL_NUM		3
-#define  USBC_MAX_EP_NUM      	6   	/* 能够支持的最大ep号, ep0~5 */
+#define  USBC_MAX_EP_NUM      	6   	/* 脛脺鹿禄脰搂鲁脰碌脛脳卯麓贸ep潞脜, ep0~5 */
 #define  USBC0_MAX_FIFO_SIZE   	(8 * 1024)
 #define  USBC_EP0_FIFOSIZE	  	64	/* This is non-configurable */
 
@@ -607,7 +607,7 @@
 
 
 //-----------------------------------------------------------------------
-//   USB host 操作部分
+//   USB host 虏脵脳梅虏驴路脰
 //-----------------------------------------------------------------------
 void USBC_Host_SetFunctionAddress_Deafult(__hdle hUSB, __u32 ep_type, __u32 ep_index);
 void USBC_Host_SetFunctionAddress(__hdle hUSB,
@@ -668,7 +668,7 @@ __s32 USBC_Host_WriteDataStatus(__hdle hUSB, __u32 ep_type, __u32 complete);
 
 
 //-----------------------------------------------------------------------
-//   USB device 操作部分
+//   USB device 虏脵脳梅虏驴路脰
 //-----------------------------------------------------------------------
 void USBC_Dev_SetAddress_default(__hdle hUSB);
 void USBC_Dev_SetAddress(__hdle hUSB, __u8 address);
@@ -697,10 +697,10 @@ __s32 USBC_Dev_ReadDataStatus(__hdle hUSB, __u32 ep_type, __u32 complete);
 
 
 //-----------------------------------------------------------------------
-//   USB 公共操作部分
+//   USB 鹿芦鹿虏虏脵脳梅虏驴路脰
 //-----------------------------------------------------------------------
 
-/* USB传输类型选择, 读写数据等 */
+/* USB麓芦脢盲脌脿脨脥脩隆脭帽, 露脕脨麓脢媒戮脻碌脠 */
 void USBC_OTG_SelectMode(__hdle hUSB, __u32 mode);
 
 __u32 USBC_ReadLenFromFifo(__hdle hUSB, __u32 ep_type);
@@ -724,7 +724,7 @@ void USBC_EnhanceSignal(__hdle hUSB);
 __u32 USBC_GetLastFrameNumber(__hdle hUSB);
 
 
-/* usb 中断操作部分 */
+/* usb 脰脨露脧虏脵脳梅虏驴路脰 */
 __u32 USBC_INT_EpPending(__hdle hUSB, __u32 ep_type);
 __u32 USBC_INT_MiscPending(__hdle hUSB);
 void USBC_INT_ClearEpPending(__hdle hUSB, __u32 ep_type, __u8 ep_index);
@@ -742,7 +742,7 @@ void USBC_INT_DisableEpAll(__hdle hUSB, __u32 ep_type);
 void USBC_INT_DisableUsbMiscAll(__hdle hUSB);
 
 
-/* usb 控制操作部分 */
+/* usb 驴脴脰脝虏脵脳梅虏驴路脰 */
 __u32 USBC_GetVbusStatus(__hdle hUSB);
 __u32 USBC_GetStatus_Dp(__hdle hUSB);
 __u32 USBC_GetStatus_Dm(__hdle hUSB);
@@ -791,7 +791,7 @@ void USBC_Phy_Standby_Recover(__hdle hUSB, __u32 phy_index);
 void UsbPhyInit(__u32 usbc_no);
 void UsbPhyEndReset(__u32 usbc_no);
 
-/* usb 测试模式 */
+/* usb 虏芒脢脭脛拢脢陆 */
 void USBC_EnterMode_TestPacket(__hdle hUSB);
 void USBC_EnterMode_Test_K(__hdle hUSB);
 void USBC_EnterMode_Test_J(__hdle hUSB);
@@ -805,12 +805,12 @@ void USBC_PrintAllReg(__u32 usbc_base, __s32 ep_start, __u32 ep_end, char *str, 
 
 
 //---------------------------------------------------------------
-//  bsp入口
+//  bsp脠毛驴脷
 //---------------------------------------------------------------
-/* 控制器信息 */
+/* 驴脴脰脝脝梅脨脜脧垄 */
 typedef struct tag_usbc_info{
-    __u32 num;      /* 控制器编号 */
-    __u32 base;     /* 控制器基址 */
+    __u32 num;      /* 驴脴脰脝脝梅卤脿潞脜 */
+    __u32 base;     /* 驴脴脰脝脝梅禄霉脰路 */
 }usbc_info_t;
 
 typedef struct tag_bsp_usbc{
@@ -818,11 +818,11 @@ typedef struct tag_bsp_usbc{
     __u32 sram_base;
 }bsp_usbc_t;
 
-/* 打开设备 */
+/* 麓貌驴陋脡猫卤赂 */
 __hdle USBC_open_otg(__u32 otg_no);
 __s32  USBC_close_otg(__hdle hUSB);
 
-/* 初始化 */
+/* 鲁玫脢录禄炉 */
 __s32 USBC_init(bsp_usbc_t *usbc);
 __s32 USBC_exit(bsp_usbc_t *usbc);
 

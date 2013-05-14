@@ -151,12 +151,12 @@ int NAND_StartDMA(unsigned int hDMA, unsigned int saddr, unsigned int daddr, uns
 {
     if((saddr & 0x01c03000) == 0x01c03000)
     {
-        //这是读操作，读的时候刷新目的地址，原则就是刷新DRAM(SRAM)
+        //脮芒脢脟露脕虏脵脳梅拢卢露脕碌脛脢卤潞貌脣垄脨脗脛驴碌脛碌脴脰路拢卢脭颅脭貌戮脥脢脟脣垄脨脗DRAM(SRAM)
         flush_cache(daddr, bytes);
     }
     else
     {
-    	//这是写操作，写的时候刷新源地址，原则就是刷新DRAM(SRAM)
+    	//脮芒脢脟脨麓虏脵脳梅拢卢脨麓碌脛脢卤潞貌脣垄脨脗脭麓碌脴脰路拢卢脭颅脭貌戮脥脢脟脣垄脨脗DRAM(SRAM)
         flush_cache(saddr, bytes);
     }
     return DMA_Start(hDMA, saddr, daddr, bytes);
@@ -380,7 +380,7 @@ void *OSAL_io_remap(unsigned int base_addr, unsigned int size)
 *
 *             OSAL_printf
 *
-*  Description:  用户可以自行设定是否需要打印
+*  Description:  脫脙禄搂驴脡脪脭脳脭脨脨脡猫露篓脢脟路帽脨猫脪陋麓貌脫隆
 *
 *
 *  Parameters:

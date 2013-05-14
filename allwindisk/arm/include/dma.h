@@ -34,14 +34,14 @@
 
 
 //================================
-//======    DMA 配置     =========
+//======    DMA 脜盲脰脙     =========
 //================================
 
-/* DMA 基础配置  */
+/* DMA 禄霉麓隆脜盲脰脙  */
 #define DMAC_CFG_CONTINUOUS_ENABLE              (0x01)	//(0x01<<29)
 #define DMAC_CFG_CONTINUOUS_DISABLE             (0x00)	//(0x01<<29)
 
-//* DMA 时钟 */
+//* DMA 脢卤脰脫 */
 #define	DMAC_CFG_WAIT_1_DMA_CLOCK				(0x00)	//(0x00<<26)
 #define	DMAC_CFG_WAIT_2_DMA_CLOCK				(0x01)	//(0x01<<26)
 #define	DMAC_CFG_WAIT_3_DMA_CLOCK				(0x02)	//(0x02<<26)
@@ -51,42 +51,42 @@
 #define	DMAC_CFG_WAIT_7_DMA_CLOCK				(0x06)	//(0x06<<26)
 #define	DMAC_CFG_WAIT_8_DMA_CLOCK				(0x07)	//(0x07<<26)
 
-/* DMA 传输目的端 配置 */
-/* DMA 目的端 传输宽度 */
+/* DMA 麓芦脢盲脛驴碌脛露脣 脜盲脰脙 */
+/* DMA 脛驴碌脛露脣 麓芦脢盲驴铆露脠 */
 #define	DMAC_CFG_DEST_DATA_WIDTH_8BIT			(0x00)	//(0x00<<24)
 #define	DMAC_CFG_DEST_DATA_WIDTH_16BIT			(0x01)	//(0x01<<24)
 #define	DMAC_CFG_DEST_DATA_WIDTH_32BIT			(0x02)	//(0x02<<24)
 
-/* DMA 目的端 突发传输模式 */
+/* DMA 脛驴碌脛露脣 脥禄路垄麓芦脢盲脛拢脢陆 */
 #define	DMAC_CFG_DEST_1_BURST       			(0x00)	//(0x00<<23)
 #define	DMAC_CFG_DEST_4_BURST		    		(0x01)	//(0x01<<23)
 
-/* DMA 目的端 地址变化模式 */
+/* DMA 脛驴碌脛露脣 碌脴脰路卤盲禄炉脛拢脢陆 */
 #define	DMAC_CFG_DEST_ADDR_TYPE_LINEAR_MODE		(0x00)	//(0x00<<21)
 #define	DMAC_CFG_DEST_ADDR_TYPE_IO_MODE 		(0x01)	//(0x01<<21)
 #define	DMAC_CFG_DEST_ADDR_TYPE_HPAGE_MODE 		(0x02)	//(0x02<<21)
 #define	DMAC_CFG_DEST_ADDR_TYPE_VPAGE_MODE 		(0x03)	//(0x03<<21)
 
 
-/* DMA 传输源端 配置 */
-/* DMA 源端 传输宽度 */
+/* DMA 麓芦脢盲脭麓露脣 脜盲脰脙 */
+/* DMA 脭麓露脣 麓芦脢盲驴铆露脠 */
 #define	DMAC_CFG_SRC_DATA_WIDTH_8BIT			(0x00)	//(0x00<<8)
 #define	DMAC_CFG_SRC_DATA_WIDTH_16BIT			(0x01)	//(0x01<<8)
 #define	DMAC_CFG_SRC_DATA_WIDTH_32BIT			(0x02)	//(0x02<<8)
 
-/* DMA 源端 突发传输模式 */
+/* DMA 脭麓露脣 脥禄路垄麓芦脢盲脛拢脢陆 */
 #define	DMAC_CFG_SRC_1_BURST       				(0x00)	//(0x00<<7)
 #define	DMAC_CFG_SRC_4_BURST		    		(0x01)	//(0x01<<7)
 
-/* DMA 源端 地址变化模式 */
+/* DMA 脭麓露脣 碌脴脰路卤盲禄炉脛拢脢陆 */
 #define	DMAC_CFG_SRC_ADDR_TYPE_LINEAR_MODE		(0x00)	//(0x00<<5)
 #define	DMAC_CFG_SRC_ADDR_TYPE_IO_MODE 			(0x01)	//(0x01<<5)
 #define	DMAC_CFG_SRC_ADDR_TYPE_HPAGE_MODE 		(0x02)	//(0x02<<5)
 #define	DMAC_CFG_SRC_ADDR_TYPE_VPAGE_MODE 		(0x03)	//(0x03<<5)
 
 
-/* DMA 传输目的端 配置 */
-/* DMA 传输目的端 N型DMA 目的选择 */
+/* DMA 麓芦脢盲脛驴碌脛露脣 脜盲脰脙 */
+/* DMA 麓芦脢盲脛驴碌脛露脣 N脨脥DMA 脛驴碌脛脩隆脭帽 */
 #define	DMAC_CFG_DEST_TYPE_IR					(0x00)	//(0x00<<16)
 #define	DMAC_CFG_DEST_TYPE_SPDIF		    	(0x01)	//(0x01<<16)
 #define	DMAC_CFG_DEST_TYPE_IIS			    	(0x02)	//(0x02<<16)
@@ -108,7 +108,7 @@
 #define	DMAC_CFG_DEST_TYPE_UART6				(0x14)	//(0x14<<16)
 #define	DMAC_CFG_DEST_TYPE_UART7				(0x15)	//(0x15<<16)
 
-/* DMA 传输目的端 D型DMA 目的选择 */
+/* DMA 麓芦脢盲脛驴碌脛露脣 D脨脥DMA 脛驴碌脛脩隆脭帽 */
 #define	DMAC_CFG_DEST_TYPE_D_SRAM 				(0x00)	//(0x00<<16)
 #define	DMAC_CFG_DEST_TYPE_D_SDRAM				(0x01)	//(0x01<<16)
 #define	DMAC_CFG_DEST_TYPE_TCON0				(0x02)	//(0x02<<16)
@@ -124,8 +124,8 @@
 #define	DMAC_CFG_DEST_TYPE_USB2			    	(0x0f)	//(0x0f<<16)
 #define	DMAC_CFG_DEST_TYPE_ATA			    	(0x10)	//(0x10<<16)
 
-/* DMA 传输源端 配置 */
-/* DMA 传输源端 N型DMA 目的选择 */
+/* DMA 麓芦脢盲脭麓露脣 脜盲脰脙 */
+/* DMA 麓芦脢盲脭麓露脣 N脨脥DMA 脛驴碌脛脩隆脭帽 */
 #define	DMAC_CFG_SRC_TYPE_IR					(0x00)	//(0x00<<0)
 #define	DMAC_CFG_SRC_TYPE_SPDIF		    	   	(0x01)	//(0x01<<0)
 #define	DMAC_CFG_SRC_TYPE_IIS			    	(0x02)	//(0x02<<0)
@@ -148,7 +148,7 @@
 #define	DMAC_CFG_SRC_TYPE_UART6				    (0x14)	//(0x14<<0)
 #define	DMAC_CFG_SRC_TYPE_UART7				    (0x15)	//(0x15<<0)
 
-/* DMA 传输源端 D型DMA 目的选择 */
+/* DMA 麓芦脢盲脭麓露脣 D脨脥DMA 脛驴碌脛脩隆脭帽 */
 #define	DMAC_CFG_SRC_TYPE_D_SRAM 				(0x00)	//(0x00<<0)
 #define	DMAC_CFG_SRC_TYPE_D_SDRAM				(0x01)	//(0x01<<0)
 #define	DMAC_CFG_SRC_TYPE_TCON0				    (0x02)	//(0x02<<0)
@@ -225,25 +225,25 @@ __ddma_dst_type_t;
 
 typedef struct  __dma_config_set
 {
-    unsigned int      src_drq_type     ; //源地址存储类型，如DRAM, SPI,NAND等，根据选择NDMA或者DDMA, 选择 __ndma_drq_type_t或者 __ddma_src_type_t
-    unsigned int      src_addr_type    ; //原地址类型 NDMA下 0:递增模式  1:保持不变  DDMA下 0:递增模式  1:保持不变  2:H模式  3:V模式
-    unsigned int      src_burst_length ; //发起一次burst宽度 填0对应于1，填1对应于4,
-    unsigned int      src_data_width   ; //数据传输宽度，0:一次传输8bit，1:一次传输16bit，2:一次传输32bit，3:保留
-    unsigned int      dst_drq_type     ; //源地址存储类型，如DRAM, SPI,NAND等，根据选择NDMA或者DDMA, 选择 __ndma_drq_type_t或者 __ddma_dst_type_t
-    unsigned int      dst_addr_type    ; //原地址类型 NDMA下 0:递增模式  1:保持不变  DDMA下 0:递增模式  1:保持不变  2:H模式  3:V模式
-    unsigned int      dst_burst_length ; //发起一次burst宽度 填0对应于1，填1对应于4,
-    unsigned int      dst_data_width   ; //数据传输宽度，0:一次传输8bit，1:一次传输16bit，2:一次传输32bit，3:保留
-    unsigned int      wait_state       ; //等待时钟个数 选择范围从0-7，只对NDMA有效
-    unsigned int      continuous_mode  ; //选择连续工作模式 0:传输一次即结束 1:反复传输，当一次DMA传输结束后，重新开始传输
+    unsigned int      src_drq_type     ; //脭麓碌脴脰路麓忙麓垄脌脿脨脥拢卢脠莽DRAM, SPI,NAND碌脠拢卢赂霉戮脻脩隆脭帽NDMA禄貌脮脽DDMA, 脩隆脭帽 __ndma_drq_type_t禄貌脮脽 __ddma_src_type_t
+    unsigned int      src_addr_type    ; //脭颅碌脴脰路脌脿脨脥 NDMA脧脗 0:碌脻脭枚脛拢脢陆  1:卤拢鲁脰虏禄卤盲  DDMA脧脗 0:碌脻脭枚脛拢脢陆  1:卤拢鲁脰虏禄卤盲  2:H脛拢脢陆  3:V脛拢脢陆
+    unsigned int      src_burst_length ; //路垄脝冒脪禄麓脦burst驴铆露脠 脤卯0露脭脫娄脫脷1拢卢脤卯1露脭脫娄脫脷4,
+    unsigned int      src_data_width   ; //脢媒戮脻麓芦脢盲驴铆露脠拢卢0:脪禄麓脦麓芦脢盲8bit拢卢1:脪禄麓脦麓芦脢盲16bit拢卢2:脪禄麓脦麓芦脢盲32bit拢卢3:卤拢脕么
+    unsigned int      dst_drq_type     ; //脭麓碌脴脰路麓忙麓垄脌脿脨脥拢卢脠莽DRAM, SPI,NAND碌脠拢卢赂霉戮脻脩隆脭帽NDMA禄貌脮脽DDMA, 脩隆脭帽 __ndma_drq_type_t禄貌脮脽 __ddma_dst_type_t
+    unsigned int      dst_addr_type    ; //脭颅碌脴脰路脌脿脨脥 NDMA脧脗 0:碌脻脭枚脛拢脢陆  1:卤拢鲁脰虏禄卤盲  DDMA脧脗 0:碌脻脭枚脛拢脢陆  1:卤拢鲁脰虏禄卤盲  2:H脛拢脢陆  3:V脛拢脢陆
+    unsigned int      dst_burst_length ; //路垄脝冒脪禄麓脦burst驴铆露脠 脤卯0露脭脫娄脫脷1拢卢脤卯1露脭脫娄脫脷4,
+    unsigned int      dst_data_width   ; //脢媒戮脻麓芦脢盲驴铆露脠拢卢0:脪禄麓脦麓芦脢盲8bit拢卢1:脪禄麓脦麓芦脢盲16bit拢卢2:脪禄麓脦麓芦脢盲32bit拢卢3:卤拢脕么
+    unsigned int      wait_state       ; //碌脠麓媒脢卤脰脫赂枚脢媒 脩隆脭帽路露脦搂麓脫0-7拢卢脰禄露脭NDMA脫脨脨搂
+    unsigned int      continuous_mode  ; //脩隆脭帽脕卢脨酶鹿陇脳梅脛拢脢陆 0:麓芦脢盲脪禄麓脦录麓陆谩脢酶 1:路麓赂麓麓芦脢盲拢卢碌卤脪禄麓脦DMA麓芦脢盲陆谩脢酶潞贸拢卢脰脴脨脗驴陋脢录麓芦脢盲
 }
 __dma_config_t;
 
 typedef struct 	__dma_setting_set
 {
-    __dma_config_t         cfg;	    	    //DMA配置参数
-    unsigned int           pgsz;            //DE使用参数，块拷贝使用
-    unsigned int           pgstp;           //DE使用参数，块拷贝使用
-    unsigned int           cmt_blk_cnt;     //DE使用参数，块拷贝使用
+    __dma_config_t         cfg;	    	    //DMA脜盲脰脙虏脦脢媒
+    unsigned int           pgsz;            //DE脢鹿脫脙虏脦脢媒拢卢驴茅驴陆卤麓脢鹿脫脙
+    unsigned int           pgstp;           //DE脢鹿脫脙虏脦脢媒拢卢驴茅驴陆卤麓脢鹿脫脙
+    unsigned int           cmt_blk_cnt;     //DE脢鹿脫脙虏脦脢媒拢卢驴茅驴陆卤麓脢鹿脫脙
 }__dma_setting_t;
 
 
