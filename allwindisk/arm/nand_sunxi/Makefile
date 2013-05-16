@@ -22,7 +22,6 @@ OBJS	:= nand_drv/nand_for_uboot.o  		\
 		   nand_drv/nand_osal_uboot.o 		\
 		   src/format/nand_format.o			\
 		   src/logic/bad_manage.o			\
-		   src/logic/logic_cache.o			\
 		   src/logic/logic_ctl.o			\
 		   src/logic/mapping.o				\
 		   src/logic/mapping_base.o			\

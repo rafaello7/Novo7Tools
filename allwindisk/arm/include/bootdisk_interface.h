@@ -19,9 +19,10 @@ enum BootdiskCommand {
 struct bootdisk_cmd_header {
     uint16_t magic;         /* 0x1234 */
     uint16_t cmd;           /* BootdiskCommand */
-    uint32_t datasize;      /* size of command data after header */
-    uint64_t cmd_param1;    /* meaning dependent on command */
-    uint64_t cmd_param2;
+    uint32_t param1;        /* meaning dependent on command */
+    uint64_t start;
+    uint32_t count;
+    uint32_t datasize;      /* size of data after header */
 };
 
 /* response header sent from device to host
@@ -30,6 +31,12 @@ struct bootdisk_resp_header {
     uint16_t magic;         /* 0x1234 */
     uint16_t status;        /* 1 - OK, 0 - FAIL */
     uint32_t datasize;      /* size of response data after heder */
+};
+
+enum FlashMemoryArea {
+    FMAREA_BOOT0,
+    FMAREA_BOOT1,
+    FMAREA_DISK
 };
 
 #endif /* BOOTDISK_INTERFACE_H */

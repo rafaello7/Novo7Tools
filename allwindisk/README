@@ -32,7 +32,7 @@ Enter device into FEL mode (a mode used by LiveSuit flash tool), then run
     ./allwindisk i
 
 At first run, the tool loads to the device file "arm/diskboot.bin". After
-load, the program should print out "OKAY".
+load, the program should print out "OK".
 
 Invoke allwindisk without parameters for possible operations.
 

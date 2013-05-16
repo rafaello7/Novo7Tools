@@ -50,8 +50,9 @@ int fel_ainol(void);
 
 /* Sends command to device and reads response header
  */
-static void send_command(unsigned cmd, unsigned long long param1,
-        unsigned long long param2, const void *data, unsigned datasize)
+static void send_command(unsigned cmd, unsigned param1,
+        unsigned long long start, unsigned count,
+        const void *data, unsigned datasize)
 {
     struct bootdisk_cmd_header cmd_header;
     int status, transferred;
@@ -62,8 +63,9 @@ static void send_command(unsigned cmd, unsigned long long param1,
     }
     cmd_header.magic = htole16(0x1234);
     cmd_header.cmd = htole16(cmd);
-    cmd_header.cmd_param1 = htole64(param1);
-    cmd_header.cmd_param2 = htole64(param2);
+    cmd_header.param1 = htole32(param1);
+    cmd_header.start = htole64(start);
+    cmd_header.count = htole32(count);
     cmd_header.datasize = datasize;
 
     if( libusb_bulk_transfer(usb, 2 | LIBUSB_ENDPOINT_OUT,
@@ -146,28 +148,29 @@ static void print_response_data(void)
     printf("\n");
 }
 
-static void read_disk(unsigned long long firstSector,
+static void read_disk(enum FlashMemoryArea fmarea,
+        unsigned long long firstSector,
         unsigned long long count, void *rdbuf)
 {
-    send_command(BCMD_READ, firstSector, count, NULL, 0);
+    send_command(BCMD_READ, fmarea, firstSector, count, NULL, 0);
     get_response_data(rdbuf, count * 512);
 }
 
-static void read_mbr(MBR *mbr)
+static int read_mbr(MBR *mbr)
 {
     int i;
 
-    read_disk(0, 2, mbr);
+    read_disk(FMAREA_DISK, 0, 2, mbr);
     if( memcmp(mbr->magic, MBR_MAGIC, 8) ) {
         printf("disk seems to not have allwinner partition table\n");
-        exit(1);
+        return 0;
     }
     mbr->crc32 = le32toh(mbr->crc32);
     mbr->version = le32toh(mbr->version);
     mbr->PartCount = le16toh(mbr->PartCount);
     if( mbr->PartCount < 0 || mbr->PartCount > MBR_MAX_PART_COUNT ) {
-        printf("wrong partition count=%d\n", mbr->PartCount);
-        exit(1);
+        printf("error: wrong partition count=%d\n", mbr->PartCount);
+        return 0;
     }
     for(i = 0; i < mbr->PartCount; ++i) {
         mbr->array[i].addrhi = le32toh(mbr->array[i].addrhi);
@@ -177,67 +180,96 @@ static void read_mbr(MBR *mbr)
         mbr->array[i].user_type = le32toh(mbr->array[i].user_type);
         mbr->array[i].ro = le32toh(mbr->array[i].ro);
     }
+    return 1;
 }
 
 /* returns disk size in 512-byte sectors
  */
-static unsigned long long read_disksize(void)
+static unsigned long long get_disksize(enum FlashMemoryArea fmarea)
 {
     uint64_t disksize;
 
-    send_command(BCMD_DISKSIZE, 0, 0, NULL, 0);
+    send_command(BCMD_DISKSIZE, fmarea, 0, 0, NULL, 0);
     get_response_data(&disksize, sizeof(disksize));
     return le64toh(disksize);
 }
 
+static int getParitionParams(const char *partName,
+        enum FlashMemoryArea *pFMArea, unsigned long long *pFirstSector,
+        unsigned long long *pPartSize)
+{
+    MBR mbr;
+
+    if( ! strcmp(partName, "boot0") ) {
+        *pFMArea = FMAREA_BOOT0;
+        *pFirstSector = 0LL;
+        *pPartSize = get_disksize(FMAREA_BOOT0);
+    }else if( ! strcmp(partName, "boot1") ) {
+        *pFMArea = FMAREA_BOOT1;
+        *pFirstSector = 0LL;
+        *pPartSize = get_disksize(FMAREA_BOOT1);
+    }else if( ! strcmp(partName, "whole-disk") ) {
+        *pFMArea = FMAREA_DISK;
+        *pFirstSector = 0LL;
+        *pPartSize = get_disksize(FMAREA_DISK);
+    }else{
+        int i;
+        unsigned long long diskSize;
+
+        if( ! read_mbr(&mbr) )
+            return 0;
+        for( i = 0; i < mbr.PartCount; ++i ) {
+            if( ! strncmp(partName, mbr.array[i].name,
+                        sizeof(mbr.array[0].name)) )
+                break;
+        }
+        if( i == mbr.PartCount ) {
+            printf("partition with name %s not found\n", partName);
+            return 0;
+        }
+        *pFMArea = FMAREA_DISK;
+        *pFirstSector =
+            ((unsigned long long)mbr.array[i].addrhi << 32)
+            + mbr.array[i].addrlo;
+        *pPartSize = ((unsigned long long)mbr.array[i].lenhi << 32)
+                + mbr.array[i].lenlo;
+        diskSize = get_disksize(FMAREA_DISK);
+        if( *pFirstSector >= diskSize || *pFirstSector + *pPartSize > diskSize) {
+            printf("ERROR: corrupted MBR, partition %s is beyond disk size\n",
+                    mbr.array[i].name);
+            return 0;
+        }
+    }
+    return 1;
+}
+
 static void cmd_diskread(int argc, char *argv[])
 {
-    unsigned long long firstSector, count, toRdTot;
-    unsigned long long diskSize = read_disksize();
-    int i, fd;
+    enum FlashMemoryArea fmarea;
+    unsigned long long firstSector, count, toRdTot, partOffset, partSize;
+    int fd;
     char buf[0x80000];
     struct timeval tvpre, tvpost;
     double transferTime;
 
-    switch( argc ) {
-    case 0:
-        printf("output file not specified\n");
+    if( argc != 2 && argc != 4 ) {
+        printf("error: wrong number of parameters\n");
         return;
-    case 1:     /* read whole disk */
-        firstSector = 0;
-        count = diskSize;
-        break;
-    case 2:     /* read whole partition, provided by name */
-        {
-            MBR mbr;
-            read_mbr(&mbr);
-            for( i = 0; i < mbr.PartCount; ++i ) {
-                if( ! strncmp(argv[0], mbr.array[i].name,
-                            sizeof(mbr.array[0].name)) )
-                    break;
-            }
-            if( i == mbr.PartCount ) {
-                printf("partition with name %s not found\n", argv[0]);
-                return;
-            }
-            firstSector = ((unsigned long long)mbr.array[i].addrhi << 32)
-                + mbr.array[i].addrlo;
-            count = ((unsigned long long)mbr.array[i].lenhi << 32)
-                    + mbr.array[i].lenlo;
+    }
+    if( ! getParitionParams(argv[0], &fmarea, &firstSector, &partSize) )
+        return;
+    if( argc == 4 ) {
+        partOffset = strtoull(argv[1], NULL, 0) << 1;
+        count = strtoull(argv[2], NULL, 0) << 1;
+        if( partOffset + count > partSize ) {
+            printf("error: requested read beyond disk size\n");
+            return;
         }
-        break;
-    case 3:    /* offset and size from params */
-        firstSector = strtoull(argv[0], NULL, 0) << 1;
-        count = strtoull(argv[1], NULL, 0) << 1;
-        break;
-    default:
-        printf("too many parameters\n");
-        return;
+    }else{
+        partOffset = 0;
+        count = partSize;
     }
-    if( firstSector + count > diskSize ) {
-        printf("error: requested read beyond disk size\n");
-        return;
-    }
+    firstSector += partOffset;
     fd = open(argv[argc-1], O_RDWR | O_CREAT | O_TRUNC, 0664);
     if( fd < 0 ) {
         printf("failed to open %s: %s\n", argv[argc-1],
@@ -250,7 +282,7 @@ static void cmd_diskread(int argc, char *argv[])
         unsigned toRead = sizeof(buf) / 512;
         if( toRdTot < toRead )
             toRead = toRdTot;
-        read_disk(firstSector, toRead, buf);
+        read_disk(fmarea, firstSector, toRead, buf);
         if( write(fd, buf, toRead * 512) != toRead * 512 ) {
             printf("file write error\n");
             close(fd);
@@ -275,47 +307,29 @@ static void cmd_diskread(int argc, char *argv[])
 
 static void cmd_diskwrite(int argc, char *argv[])
 {
-    unsigned long long firstSector, toWrMax, count;
-    unsigned long long diskSize = read_disksize();
-    int i, fd, rd;
+    enum FlashMemoryArea fmarea;
+    unsigned long long firstSector, toWrMax, count, partOffset, partSize;
+    int fd, rd;
     char buf[0x80000];
     struct timeval tvpre, tvpost;
     double transferTime;
 
-    switch( argc ) {
-    case 0:
-        printf("input file not specified\n");
-        return;
-    case 1:
-        firstSector = 0;
-        toWrMax = diskSize;
-        break;
-    case 2:
-        if( isdigit(argv[0][0]) ) {
-            firstSector = strtoull(argv[0], NULL, 0) << 1;
-            toWrMax = diskSize - firstSector;
-        }else{
-            MBR mbr;
-            read_mbr(&mbr);
-            for( i = 0; i < mbr.PartCount; ++i ) {
-                if( ! strncmp(argv[0], mbr.array[i].name,
-                            sizeof(mbr.array[0].name)) )
-                    break;
-            }
-            if( i == mbr.PartCount ) {
-                printf("partition with name %s not found\n", argv[0]);
-                return;
-            }
-            firstSector = ((unsigned long long)mbr.array[i].addrhi << 32)
-                + mbr.array[i].addrlo;
-            toWrMax = ((unsigned long long)mbr.array[i].lenhi << 32)
-                    + mbr.array[i].lenlo;
-        }
-        break;
-    default:
-        printf("too many parameters\n");
+    if( argc != 2 && argc != 3 ) {
+        printf("error: wrong number of parameters\n");
         return;
     }
+    if( ! getParitionParams(argv[0], &fmarea, &firstSector, &partSize) )
+        return;
+    if( argc == 3 ) {
+        partOffset = strtoull(argv[1], NULL, 0) << 1;
+        if( partOffset > partSize ) {
+            printf("error: requested write beyond disk size\n");
+            return;
+        }
+    }else
+        partOffset = 0;
+    firstSector += partOffset;
+    toWrMax = partSize - partOffset;
     fd = open(argv[argc-1], O_RDONLY);
     if( fd < 0 ) {
         printf("failed to open %s: %s\n", argv[argc-1],
@@ -337,13 +351,13 @@ static void cmd_diskwrite(int argc, char *argv[])
         if( toWr + count > toWrMax ) {
             printf("warning: file size exceed disk space, cut\n");
             if( toWrMax > count ) {
-                send_command(BCMD_WRITE, firstSector, toWrMax - count, buf,
-                        (toWrMax-count)*512);
+                send_command(BCMD_WRITE, fmarea, firstSector,
+                        toWrMax - count, buf, (toWrMax-count)*512);
                 count = toWrMax;
             }
             break;
         }
-        send_command(BCMD_WRITE, firstSector, toWr, buf, toWr*512);
+        send_command(BCMD_WRITE, fmarea, firstSector, toWr, buf, toWr*512);
         firstSector += toWr;
         count += toWr;
         putchar('.');
@@ -364,44 +378,51 @@ static void cmd_diskwrite(int argc, char *argv[])
 static void cmd_partitions(void)
 {
     MBR mbr;
+    unsigned long long dsize;
     int i;
 
-    i = read_disksize();
-    printf("disk size: %d%s kB\n", i / 2, i & 1 ? ".5" : "");
-    read_mbr(&mbr);
-    printf("mbr version: %x\n", mbr.version);
-    if( mbr.PartCount == 0 ) {
-        printf("No partitions.\n");
-        return;
+    dsize = get_disksize(FMAREA_DISK);
+    printf("disk size: %lld%s kB\n", dsize / 2, dsize & 1 ? ".5" : "");
+    if( read_mbr(&mbr) ) {
+        printf("mbr version: %x\n", mbr.version);
+        if( mbr.PartCount == 0 ) {
+            printf("No partitions.\n");
+        }else{
+            printf(" #  NAME        kB-offset   kB-length     ro   usertype        class\n");
+            for(i = 0; i < mbr.PartCount; ++i) {
+                printf("%2d  %-12.12s %8lld%s  %8lld%s %4d   %8d %12.12s\n",
+                        i,
+                        mbr.array[i].name,
+                        (((unsigned long long)mbr.array[i].addrhi << 32)
+                            + mbr.array[i].addrlo) / 2,
+                        mbr.array[i].addrlo & 1 ? ".5" : "  ",
+                        (((unsigned long long)mbr.array[i].lenhi << 32)
+                            + mbr.array[i].lenlo) / 2,
+                        mbr.array[i].lenlo & 1 ? ".5" : "  ",
+                        mbr.array[i].ro,
+                        mbr.array[i].user_type,
+                        mbr.array[i].classname);
+            }
+        }
     }
-    printf(" #  NAME        kB-offset   kB-length     ro   usertype        class\n");
-    for(i = 0; i < mbr.PartCount; ++i) {
-        printf("%2d  %-12.12s %8lld%s  %8lld%s %4d   %8d %12.12s\n",
-                i,
-                mbr.array[i].name,
-                (((unsigned long long)mbr.array[i].addrhi << 32)
-                    + mbr.array[i].addrlo) / 2,
-                mbr.array[i].addrlo & 1 ? ".5" : "  ",
-                (((unsigned long long)mbr.array[i].lenhi << 32)
-                    + mbr.array[i].lenlo) / 2,
-                mbr.array[i].lenlo & 1 ? ".5" : "  ",
-                mbr.array[i].ro,
-                mbr.array[i].user_type,
-                mbr.array[i].classname);
-    }
+    printf("\n");
+    dsize = get_disksize(FMAREA_BOOT0);
+    printf("    boot0                    %8lld%s\n", dsize / 2, dsize & 1 ? ".5" : "");
+    dsize = get_disksize(FMAREA_BOOT1);
+    printf("    boot1                    %8lld%s\n", dsize / 2, dsize & 1 ? ".5" : "");
     printf("\n");
 }
 
 static void cmd_fel(void)
 {
-    send_command(BCMD_GO_FEL, 0, 0, NULL, 0);
+    send_command(BCMD_GO_FEL, 0, 0, 0, NULL, 0);
     print_response_data();
 }
 
 static void cmd_log(const char *par)
 {
     int doclear = par != NULL && par[0] == 'c';
-    send_command(BCMD_GETLOG, doclear, 0, NULL, 0);
+    send_command(BCMD_GETLOG, doclear, 0, 0, NULL, 0);
     printf("log size: %d\n\n", cur_resp_header.datasize);
     print_response_data();
 }
@@ -410,13 +431,13 @@ static void cmd_log(const char *par)
 static void cmd_sdelay(const char *tm)
 {
     send_command(BCMD_SLEEPTEST,
-            tm == NULL ? 1000000 : strtoul(tm, NULL, 0), 0, NULL, 0);
+            tm == NULL ? 1000000 : strtoul(tm, NULL, 0), 0, 0, NULL, 0);
     printf("OK\n");
 }
 
 static void cmd_ping(void)
 {
-    send_command(BCMD_PING, 0, 0, NULL, 0);
+    send_command(BCMD_PING, 0, 0, 0, NULL, 0);
     printf("OK\n");
 }
 
@@ -426,17 +447,13 @@ int main(int argc, char *argv[])
 
     if( argc == 1 ) {
         printf("usage:\n");
-        printf("    allwindisk r <offsetkB> <sizekB> <file> - read disk piece\n");
-        printf("    allwindisk r <partname> <file>          - read disk partition\n");
-        printf("    allwindisk r <file>                     - read whole disk\n");
-        printf("\n");;
-        printf("    allwindisk w [<offsetkB>] <file>        - write to disk at given offset\n");
-        printf("    allwindisk w <partname> <file>          - write to disk partition\n");
-        printf("\n");
+        printf("    allwindisk r <partname> [<offsetkB> <sizekB>] <file>    - read partition\n");
+        printf("    allwindisk w <partname> [<offsetkB>]          <file>    - write partition\n");
         printf("    allwindisk p                            - print existing disk partitions\n");
         printf("    allwindisk i                            - ping (check if alive)\n");
         printf("    allwindisk f                            - go back to FEL mode\n");
         printf("\n");
+        printf("The <partname> may be a pseudo-partition, one of: boot0, boot1, whole-disk\n");
         printf("\n");
         return 0;
     }

@@ -40,7 +40,7 @@
 #define FREE(x,size)                   		free(x)
 
 //define the message print interface
-//#define PRINT							    printf
+//#define PRINT							    dolog
 #define PRINT(...)
 
 #endif

@@ -2625,6 +2625,25 @@ void ClearNandStruct( void )
     MEMSET(&PageCachePool, 0x00, sizeof(struct __NandPageCachePool_t));
 }
 
+/* returns boot0 flash area size, in 512-byte sectors
+ */
+unsigned FMT_GetBoot0AreaSize(void)
+{
+    return 1024;
+}
 
-
+/* returns boot1 flash area size, in 512-byte sectors
+ */
+unsigned FMT_GetBoot1AreaSize(void)
+{
+    /*
+    dolog("FMT_GetBoot1AreaSize: DIE0_FIRST_BLK_NUM=%d\n", DIE0_FIRST_BLK_NUM);
+    dolog("FMT_GetBoot1AreaSize: SECTOR_CNT_OF_SINGLE_PAGE=%d\n",
+            SECTOR_CNT_OF_SINGLE_PAGE);
+    dolog("FMT_GetBoot1AreaSize: PAGE_CNT_OF_PHY_BLK=%d\n", PAGE_CNT_OF_PHY_BLK);
+    */
+    return (DIE0_FIRST_BLK_NUM * PAGE_CNT_OF_PHY_BLK *
+            (SUPPORT_MULTI_PROGRAM ? PLANE_CNT_OF_DIE : 1) - 0x200)
+        * SECTOR_CNT_OF_SINGLE_PAGE;
+}
 

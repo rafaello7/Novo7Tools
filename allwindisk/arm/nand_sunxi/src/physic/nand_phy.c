@@ -1513,3 +1513,88 @@ PHY_PageCopyback_exit:
 	return ret;
 }
 
+/* Note: additional sector may be read.
+ */
+int PHY_Boot0Read(unsigned first, unsigned count, void *buf)
+{
+	struct boot_physical_param readop;
+    int row, res, bufoff;
+
+    bufoff = count % 2;
+    row = first = first / 2;
+    count = (count + bufoff + 1) / 2;
+    while( count > 0 ) {
+        readop.chip = 0;
+        readop.block = row / PAGE_CNT_OF_PHY_BLK;
+        readop.page = row % PAGE_CNT_OF_PHY_BLK;
+        readop.sectorbitmap = FULL_BITMAP_OF_SINGLE_PAGE;   // in fact, is unused
+        readop.mainbuf = buf + (row-first) * 1024;
+        readop.oobbuf = NULL;
+        res = _read_single_page_1K(&readop, SUPPORT_DMA_IRQ);
+        if( res < 0 ) {
+            if( res == -ERR_ECC )
+                PRINT("ERROR: NAND_Boot0Read bad ECC\n");
+            else
+                PRINT("ERROR: NAND_Boot0Read err=%d\n", -res);
+            return res;
+        }
+        if( bufoff != 0 ) {
+            memcpy(buf, buf + 512, 512);
+            ++first;
+            buf += 512;
+            bufoff = 0;
+        }
+        ++row;
+        --count;
+    }
+    return 0;
+}
+
+/* Note: number of sectors read is rounded up, at most SECTOR_CNT_OF_SINGLE_PAGE-1
+ * additional sectors may be read.
+ */
+int PHY_Boot1Read(unsigned first, unsigned count, void *buf)
+{
+	struct boot_physical_param readop;
+    int row, res, bufoff;
+
+    bufoff = first % SECTOR_CNT_OF_SINGLE_PAGE;
+    row = first = first / SECTOR_CNT_OF_SINGLE_PAGE + 0x200;
+    count = (count + bufoff + SECTOR_CNT_OF_SINGLE_PAGE - 1) / SECTOR_CNT_OF_SINGLE_PAGE;
+    while( count > 0 ) {
+        readop.chip = 0;
+        readop.block = row / PAGE_CNT_OF_PHY_BLK;
+        readop.page = row % PAGE_CNT_OF_PHY_BLK;
+        readop.sectorbitmap = FULL_BITMAP_OF_SINGLE_PAGE;   // in fact, is unused
+        readop.mainbuf = buf + (row-first) * SECTOR_CNT_OF_SINGLE_PAGE * 512;
+        readop.oobbuf = NULL;
+        res = _read_single_page(&readop, SUPPORT_DMA_IRQ);
+        if( res < 0 ) {
+            if( res == -ERR_ECC )
+                PRINT("ERROR: NAND_Boot1Read bad ECC\n");
+            else
+                PRINT("ERROR: NAND_Boot1Read err=%d\n", -res);
+            return res;
+        }
+        if( bufoff != 0 ) {
+            memmove(buf, buf + bufoff * 512, (SECTOR_CNT_OF_SINGLE_PAGE - bufoff) * 512);
+            ++first;
+            buf += (SECTOR_CNT_OF_SINGLE_PAGE - bufoff) * 512;
+            bufoff = 0;
+        }
+        ++row;
+        --count;
+    }
+    return 0;
+}
+
+int PHY_Boot0Write(unsigned first, unsigned count, void *buf)
+{
+    return -1;
+}
+
+int PHY_Boot1Write(unsigned first, unsigned count, void *buf)
+{
+    return -1;
+}
+

@@ -110,6 +110,8 @@ extern int FMT_Init(void);
 extern int FMT_Exit(void);
 extern int FMT_FormatNand(void);
 extern void  ClearNandStruct( void );
+unsigned FMT_GetBoot0AreaSize(void);
+unsigned FMT_GetBoot1AreaSize(void);
 
 //for scan
 int  SCN_AnalyzeNandSystem(void);
@@ -128,6 +130,10 @@ extern int PHY_SimpleWrite_Seq(struct boot_physical_param * writeop);
 extern int PHY_SimpleRead_Seq(struct boot_physical_param * readop);
 extern int PHY_SimpleRead_1K(struct boot_physical_param * readop);
 extern int BOOT_AnalyzeNandSystem(void);
+int PHY_Boot0Read(unsigned first, unsigned count, void *buf);
+int PHY_Boot1Read(unsigned first, unsigned count, void *buf);
+int PHY_Boot0Write(unsigned first, unsigned count, void *buf);
+int PHY_Boot1Write(unsigned first, unsigned count, void *buf);
 
 //for param get&set
 extern unsigned int NAND_GetValidBlkRatio(void);

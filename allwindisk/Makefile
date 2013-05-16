@@ -13,3 +13,7 @@ allwindisk: $(OBJS)
 clean:
 	cd arm; make clean
 	rm -f $(OBJS) allwindisk
+
+sc:
+	make clean
+	make

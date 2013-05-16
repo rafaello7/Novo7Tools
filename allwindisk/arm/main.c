@@ -44,7 +44,7 @@ static unsigned cur_cmd_bytes_written;
 
 static int go_fel;
 
-static void dolog(const char *fmt, ...)
+void dolog(const char *fmt, ...)
 {
     static unsigned logno;
 
@@ -89,18 +89,27 @@ static void send_resp_OK(const void *data, int datasize)
         fastboot_tx(data, datasize);
 }
 
-static void dispatch_cmd(uint16_t cmd, uint64_t param1, uint64_t param2,
-        const char *data, unsigned datasize)
+static void dispatch_cmd(uint16_t cmd, uint32_t param1, uint64_t start,
+        uint32_t count, const char *data, unsigned datasize)
 {
     uint64_t diskSize;
     int res;
 
-    dolog("dispatch_cmd: command=%c, param1=%lld (0x%llx),"
-           " param2=%lld (0x%llx), datasize=%d\n",
-           cmd, param1, param1, param2, param2, datasize);
+    dolog("dispatch_cmd: command=%c, param1=%d,"
+           " start=%lld (0x%llx), count=%d, datasize=%d\n",
+           cmd, param1, start, start, count, datasize);
     switch(cmd) {
     case BCMD_DISKSIZE:
-        diskSize = NAND_GetDiskSize();
+        switch( param1 ) {
+        case FMAREA_BOOT0:
+            diskSize = FMT_GetBoot0AreaSize();
+            break;
+        case FMAREA_BOOT1:
+            diskSize = FMT_GetBoot1AreaSize();
+            break;
+        default:    // FMAREA_DISK
+            diskSize = NAND_GetDiskSize();
+        }
         send_resp_OK(&diskSize, 8);
         break;
     case BCMD_GO_FEL:
@@ -116,21 +125,29 @@ static void dispatch_cmd(uint16_t cmd, uint64_t param1, uint64_t param2,
             log_addr = (char*)0x49000000;
         break;
     case BCMD_SLEEPTEST:
-        dolog("sleep time test: delay=%lld\n", param1);
+        dolog("sleep time test: delay=%d\n", param1);
         sdelay(param1);
         send_resp_OK(NULL, 0);
         break;
     case BCMD_USBSPDTEST:
-        dolog("rx_handler: usb speed test first=0x%llx, count=0x%llx\n",
-                param1, param2);
-        send_resp_OK(transfer_buffer, param2 << 9);
+        dolog("rx_handler: usb speed test count=%d\n", count);
+        send_resp_OK(transfer_buffer, count << 9);
         break;
     case BCMD_READ:
-        dolog("rx_handler: read first=0x%llx, count=0x%llx\n",
-                param1, param2);
-        if( (res = NAND_LogicRead(param1, param2, transfer_buffer)) == 0 )
-        {
-            send_resp_OK(transfer_buffer, param2 << 9);
+        dolog("rx_handler: read param1=%d, first=0x%llx, count=0x%x\n",
+                param1, start, count);
+        switch(param1) {
+        case FMAREA_BOOT0:
+            res = PHY_Boot0Read(start, count, transfer_buffer);
+            break;
+        case FMAREA_BOOT1:
+            res = PHY_Boot1Read(start, count, transfer_buffer);
+            break;
+        default:    // FMAREA_DISK
+            res = NAND_LogicRead(start, count, transfer_buffer);
+        }
+        if( res == 0 ) {
+            send_resp_OK(transfer_buffer, count << 9);
             dolog("rx_handler read OK\n");
         }else{
             dolog("rx_handler read error: %d\n", res);
@@ -138,11 +155,19 @@ static void dispatch_cmd(uint16_t cmd, uint64_t param1, uint64_t param2,
         }
         break;
     case BCMD_WRITE:
-        dolog("rx_handler: write first=0x%llx, count=0x%lx\n",
-                param1, datasize);
-        if( (res = NAND_LogicWrite(param1, datasize / 512,
-                        transfer_buffer)) == 0 )
-        {
+        dolog("rx_handler: write param1=%d, first=0x%llx, size=0x%x\n",
+                param1, start, datasize);
+        switch(param1) {
+        case FMAREA_BOOT0:
+            res = PHY_Boot0Write(start, datasize/512, transfer_buffer);
+            break;
+        case FMAREA_BOOT1:
+            res = PHY_Boot1Write(start, datasize/512, transfer_buffer);
+            break;
+        default:    // FMAREA_DISK
+            res = NAND_LogicWrite(start, datasize/512, transfer_buffer);
+        }
+        if( res == 0 ) {
             send_resp_OK(NULL, 0);
             dolog("rx_handler write OK\n");
         }else{
@@ -186,8 +211,8 @@ static int rx_handler(const char *buffer, unsigned int buffer_size)
         cur_cmd_bytes_written += to_write;
     }
     if( cur_cmd_bytes_written == cur_cmd.datasize ) {
-        dispatch_cmd(cur_cmd.cmd, cur_cmd.cmd_param1, cur_cmd.cmd_param2,
-                transfer_buffer, cur_cmd.datasize);
+        dispatch_cmd(cur_cmd.cmd, cur_cmd.param1, cur_cmd.start,
+                cur_cmd.count, transfer_buffer, cur_cmd.datasize);
         cur_cmd.cmd = BCMD_NONE;
     }
     return 0;
