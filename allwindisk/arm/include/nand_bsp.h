@@ -171,6 +171,7 @@ int sunxi_nand_getpart_size_byname(const char *part_name);
 int sunxi_nand_getpart_info_byname(const char *part_name, loff_t *part_offset, loff_t *part_size);
 
 int NAND_Init(void);
+int NAND_Exit(void);
 
 #endif  //ifndef __BSP_NAND_H__
 

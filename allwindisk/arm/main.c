@@ -35,7 +35,7 @@ static struct cmd_fastboot_interface interface =
 };
 
 static char *transfer_buffer    = (char*)0x41000000;
-static char *malloc_base        = (char*)0x42000000;
+static char *malloc_base        = (char*)0x42000000; /* till 0x45ffffff */
 static char *log_addr           = (char*)0x49000000;
 // code is at 0x4a000000
 
@@ -165,7 +165,11 @@ static void dispatch_cmd(uint16_t cmd, uint32_t param1, uint64_t start,
             res = PHY_Boot1Write(start, datasize/512, transfer_buffer);
             break;
         default:    // FMAREA_DISK
-            res = NAND_LogicWrite(start, datasize/512, transfer_buffer);
+            res = LML_Write(start, datasize/512, transfer_buffer);
+            if( res == 0 ) {
+                dolog("rx_handler: LML_Write OK, flush cache\n");
+                res = LML_FlushPageCache();
+            }
         }
         if( res == 0 ) {
             send_resp_OK(NULL, 0);
@@ -221,7 +225,7 @@ static int rx_handler(const char *buffer, unsigned int buffer_size)
 void main_loop(void)
 {
     clock_init();
-    malloc_init(malloc_base, 1 << 22);
+    malloc_init(malloc_base, 0x4000000); // 64 MB
     NAND_Init();
     sdelay(0x100);
     if (0 == fastboot_init(&interface)) {
@@ -240,6 +244,7 @@ void main_loop(void)
             }
         }
     }
+    NAND_Exit();
     fastboot_shutdown();
     sdelay(0x200);
     // jump to FEL

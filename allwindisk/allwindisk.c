@@ -310,7 +310,7 @@ static void cmd_diskwrite(int argc, char *argv[])
     enum FlashMemoryArea fmarea;
     unsigned long long firstSector, toWrMax, count, partOffset, partSize;
     int fd, rd;
-    char buf[0x80000];
+    char buf[0x200000];
     struct timeval tvpre, tvpost;
     double transferTime;
 
@@ -503,6 +503,10 @@ int main(int argc, char *argv[])
         break;
     case 'S':
         cmd_sdelay(argv[2]);
+        break;
+    case 'U':
+        send_command(BCMD_USBSPDTEST, 0, 0, 0, NULL, 0);
+        printf("OK\n");
         break;
     default:
         printf("unknown command %s\n", argv[1]);
