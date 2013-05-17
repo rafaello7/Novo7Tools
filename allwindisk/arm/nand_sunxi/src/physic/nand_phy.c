@@ -1589,12 +1589,10 @@ static int bootarea_write(unsigned first, unsigned count, void *buf,
     int res = 0;
     unsigned bsector, block, page, sectcnt_in_page, sectcnt_in_block;
     void *pageCache = NULL;
-    int (*erase_single_block_pf)(struct boot_physical_param*);
     int (*write_single_page_pf)(struct boot_physical_param*);
 
     if( bootnum ) {
         sectcnt_in_page = SECTOR_CNT_OF_SINGLE_PAGE;
-        erase_single_block_pf = PHY_SimpleErase;
         write_single_page_pf = PHY_SimpleWrite;
     }else{
         sectcnt_in_page = 2;
@@ -1628,7 +1626,7 @@ static int bootarea_write(unsigned first, unsigned count, void *buf,
             }
             if( res == 0 ) {
                 writeop.block = block;
-                res = erase_single_block_pf(&writeop);
+                res = PHY_SimpleErase(&writeop);
                 for(page = 0; res == 0 && page < PAGE_CNT_OF_PHY_BLK; ++page) {
                     writeop.page = page;
                     writeop.mainbuf = pageCache + page * sectcnt_in_page * 512;
@@ -1644,7 +1642,7 @@ static int bootarea_write(unsigned first, unsigned count, void *buf,
     while( res == 0 && count > 0 ) {
         PHY_DBG("bootarea_write: write block=%d\n", block);
         writeop.block = block;
-        res = erase_single_block_pf(&writeop);
+        res = PHY_SimpleErase(&writeop);
         for(page = 0; res == 0 && page < PAGE_CNT_OF_PHY_BLK; ++page) {
             writeop.page = page;
             writeop.mainbuf = buf + page * sectcnt_in_page * 512;
@@ -1663,7 +1661,7 @@ static int bootarea_write(unsigned first, unsigned count, void *buf,
                 sectcnt_in_block - bsector, pageCache + bsector * 512, bootnum);
         if( res == 0 ) {
             writeop.block = block;
-            res = erase_single_block_pf(&writeop);
+            res = PHY_SimpleErase(&writeop);
             for(page = 0; res == 0 && page < PAGE_CNT_OF_PHY_BLK; ++page) {
                 writeop.page = page;
                 writeop.mainbuf = pageCache + page * sectcnt_in_page * 512;
