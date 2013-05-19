@@ -28,6 +28,7 @@
 
 #define   CCMU_REGS_BASE    0x01c20000
 
+void flush_cache(unsigned saddr, unsigned bytes);
 int OSAL_printf(const char * str, ...);
 /*
 ****************************************************************************************************

@@ -92,25 +92,27 @@ static void send_resp_OK(const void *data, int datasize)
 static void dispatch_cmd(uint16_t cmd, uint32_t param1, uint64_t start,
         uint32_t count, const char *data, unsigned datasize)
 {
-    uint64_t diskSize;
     int res;
 
     dolog("dispatch_cmd: command=%c, param1=%d,"
            " start=%lld (0x%llx), count=%d, datasize=%d\n",
            cmd, param1, start, start, count, datasize);
     switch(cmd) {
-    case BCMD_DISKSIZE:
-        switch( param1 ) {
-        case FMAREA_BOOT0:
-            diskSize = FMT_GetBoot0AreaSize();
-            break;
-        case FMAREA_BOOT1:
-            diskSize = FMT_GetBoot1AreaSize();
-            break;
-        default:    // FMAREA_DISK
-            diskSize = NAND_GetDiskSize();
+    case BCMD_FLASHMEM_PARAMS:
+        {
+            struct flashmem_properties props;
+            boot_flash_info_t flinfo;
+            FMT_GetBoot0AreaProperties(&props.areas[FMAREA_BOOT0]);
+            FMT_GetBoot1AreaProperties(&props.areas[FMAREA_BOOT1]);
+            FMT_GetLogicalDiskProperties(&props.areas[FMAREA_LOGDISK]);
+            NAND_GetFlashInfo(&flinfo);
+            props.chip_cnt = flinfo.chip_cnt;
+            props.blocks_per_chip = flinfo.blk_cnt_per_chip;
+            props.pages_per_block = flinfo.blocksize / flinfo.pagesize;
+            props.sectors_per_page = flinfo.pagesize;
+            props.pagewithbadflag = flinfo.pagewithbadflag;
+            send_resp_OK(&props, sizeof(struct flashmem_properties));
         }
-        send_resp_OK(&diskSize, 8);
         break;
     case BCMD_BOARD_EXIT:
         send_resp_OK(param1 == BE_GO_FEL ? "going to FEL..." :

@@ -28,6 +28,7 @@
 #include "../include/nand_logic.h"
 #include <string.h>
 #include <malloc.h>
+#include <bootdisk_interface.h>
 
 #define DBG_DUMP_DIE_INFO       (1)
 
@@ -2645,5 +2646,30 @@ unsigned FMT_GetBoot1AreaSize(void)
     return (DIE0_FIRST_BLK_NUM * PAGE_CNT_OF_PHY_BLK *
             (SUPPORT_MULTI_PROGRAM ? PLANE_CNT_OF_DIE : 1) - 0x200)
         * SECTOR_CNT_OF_SINGLE_PAGE;
+}
+
+void FMT_GetBoot0AreaProperties(struct flashmarea_properties *props)
+{
+    props->total_sectors = 1024;
+    props->sectors_per_page = 2;
+    props->pages_per_block = PAGE_CNT_OF_PHY_BLK;
+}
+
+void FMT_GetBoot1AreaProperties(struct flashmarea_properties *props)
+{
+    props->total_sectors = (DIE0_FIRST_BLK_NUM * PAGE_CNT_OF_PHY_BLK *
+            (SUPPORT_MULTI_PROGRAM ? PLANE_CNT_OF_DIE : 1) - 0x200)
+        * SECTOR_CNT_OF_SINGLE_PAGE;
+    props->sectors_per_page = SECTOR_CNT_OF_SINGLE_PAGE;
+    props->pages_per_block = PAGE_CNT_OF_PHY_BLK;
+}
+
+void FMT_GetLogicalDiskProperties(struct flashmarea_properties *props)
+{
+    //disksize = (SECTOR_CNT_OF_SINGLE_PAGE * PAGE_CNT_OF_PHY_BLK * BLOCK_CNT_OF_DIE *
+    //        DIE_CNT_OF_CHIP * NandStorageInfo.ChipCnt  / 1024 * DATA_BLK_CNT_OF_ZONE);
+    props->total_sectors = NAND_GetDiskSize();
+    props->sectors_per_page = SECTOR_CNT_OF_SINGLE_PAGE;
+    props->pages_per_block = PAGE_CNT_OF_PHY_BLK * (SUPPORT_MULTI_PROGRAM ? PLANE_CNT_OF_DIE : 1);
 }
 

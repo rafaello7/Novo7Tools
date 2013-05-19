@@ -40,6 +40,8 @@
 #define  NAND_VERSION_0                 0x02
 #define  NAND_VERSION_1                 0x06
 
+struct flashmarea_properties;
+
 //---------------------------------------------------------------
 //  ½á¹¹Ìå ¶¨Òå
 //---------------------------------------------------------------
@@ -110,8 +112,9 @@ extern int FMT_Init(void);
 extern int FMT_Exit(void);
 extern int FMT_FormatNand(void);
 extern void  ClearNandStruct( void );
-unsigned FMT_GetBoot0AreaSize(void);
-unsigned FMT_GetBoot1AreaSize(void);
+void FMT_GetBoot0AreaProperties(struct flashmarea_properties*);
+void FMT_GetBoot1AreaProperties(struct flashmarea_properties*);
+void FMT_GetLogicalDiskProperties(struct flashmarea_properties*);
 
 //for scan
 int  SCN_AnalyzeNandSystem(void);
@@ -159,16 +162,6 @@ extern void  NAND_SetSrcClkName(unsigned int pll_name);
 *   5. return value: 0:set succeed; -1:set failed.
 */
 extern int NAND_SetDrqCbMethod(unsigned int used);
-
-
-int sunxi_nand_scan_partition(void);
-int sunxi_nand_getpart_num(void);
-int sunxi_nand_getpart_offset(int part_index);
-int sunxi_nand_getpart_size(int part_index);
-int sunxi_nand_getpart_name(int index, char *buf);
-int sunxi_nand_getpart_offset_byname(const char *part_name);
-int sunxi_nand_getpart_size_byname(const char *part_name);
-int sunxi_nand_getpart_info_byname(const char *part_name, loff_t *part_offset, loff_t *part_size);
 
 int NAND_Init(void);
 int NAND_Exit(void);

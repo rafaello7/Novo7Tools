@@ -160,7 +160,7 @@ static int read_mbr(MBR *mbr)
 {
     int i;
 
-    read_disk(FMAREA_DISK, 0, 2, mbr);
+    read_disk(FMAREA_LOGDISK, 0, 2, mbr);
     if( memcmp(mbr->magic, MBR_MAGIC, 8) ) {
         printf("disk seems to not have allwinner partition table\n");
         return 0;
@@ -185,13 +185,31 @@ static int read_mbr(MBR *mbr)
 
 /* returns disk size in 512-byte sectors
  */
-static unsigned long long get_disksize(enum FlashMemoryArea fmarea)
+static struct flashmem_properties *get_flashmem_props(void)
 {
-    uint64_t disksize;
+    static struct flashmem_properties props;
+    static int is_initialized;
 
-    send_command(BCMD_DISKSIZE, fmarea, 0, 0, NULL, 0);
-    get_response_data(&disksize, sizeof(disksize));
-    return le64toh(disksize);
+    if( ! is_initialized ) {
+        int i;
+
+        send_command(BCMD_FLASHMEM_PARAMS, 0, 0, 0, NULL, 0);
+        get_response_data(&props, sizeof(props));
+        for(i = 0; i < FMAREA_COUNT; ++i) {
+            props.areas[i].total_sectors =
+                le64toh(props.areas[i].total_sectors);
+            props.areas[i].sectors_per_page =
+                le32toh(props.areas[i].sectors_per_page);
+            props.areas[i].pages_per_block =
+                le32toh(props.areas[i].pages_per_block);
+        }
+	    props.chip_cnt = le32toh(props.chip_cnt);
+	    props.blocks_per_chip = le32toh(props.blocks_per_chip);
+	    props.pages_per_block = le32toh(props.pages_per_block);
+	    props.sectors_per_page = le32toh(props.sectors_per_page);
+	    props.pagewithbadflag = le32toh(props.pagewithbadflag);
+    }
+    return &props;
 }
 
 static int getParitionParams(const char *partName,
@@ -203,15 +221,15 @@ static int getParitionParams(const char *partName,
     if( ! strcmp(partName, "boot0") ) {
         *pFMArea = FMAREA_BOOT0;
         *pFirstSector = 0LL;
-        *pPartSize = get_disksize(FMAREA_BOOT0);
+        *pPartSize = get_flashmem_props()->areas[FMAREA_BOOT0].total_sectors;
     }else if( ! strcmp(partName, "boot1") ) {
         *pFMArea = FMAREA_BOOT1;
         *pFirstSector = 0LL;
-        *pPartSize = get_disksize(FMAREA_BOOT1);
-    }else if( ! strcmp(partName, "whole-disk") ) {
-        *pFMArea = FMAREA_DISK;
+        *pPartSize = get_flashmem_props()->areas[FMAREA_BOOT1].total_sectors;
+    }else if( ! strcmp(partName, "disk-logic") ) {
+        *pFMArea = FMAREA_LOGDISK;
         *pFirstSector = 0LL;
-        *pPartSize = get_disksize(FMAREA_DISK);
+        *pPartSize = get_flashmem_props()->areas[FMAREA_LOGDISK].total_sectors;
     }else{
         int i;
         unsigned long long diskSize;
@@ -227,13 +245,13 @@ static int getParitionParams(const char *partName,
             printf("partition with name %s not found\n", partName);
             return 0;
         }
-        *pFMArea = FMAREA_DISK;
+        *pFMArea = FMAREA_LOGDISK;
         *pFirstSector =
             ((unsigned long long)mbr.array[i].addrhi << 32)
             + mbr.array[i].addrlo;
         *pPartSize = ((unsigned long long)mbr.array[i].lenhi << 32)
                 + mbr.array[i].lenlo;
-        diskSize = get_disksize(FMAREA_DISK);
+        diskSize = get_flashmem_props()->areas[FMAREA_LOGDISK].total_sectors;
         if( *pFirstSector >= diskSize || *pFirstSector + *pPartSize > diskSize) {
             printf("ERROR: corrupted MBR, partition %s is beyond disk size\n",
                     mbr.array[i].name);
@@ -378,11 +396,34 @@ static void cmd_diskwrite(int argc, char *argv[])
 static void cmd_partitions(void)
 {
     MBR mbr;
+    struct flashmem_properties *props = get_flashmem_props();
     unsigned long long dsize;
     int i;
 
-    dsize = get_disksize(FMAREA_DISK);
-    printf("disk size: %lld%s kB\n", dsize / 2, dsize & 1 ? ".5" : "");
+    printf("flash properties:\n");
+    printf("     sectors        pages      blocks        chip       pages\n");
+    printf("    per page    per block    per chip       count  marked bad\n");
+    printf("    %8d     %8d    %8d    %8d    %8d\n",
+            props->sectors_per_page, props->pages_per_block,
+            props->blocks_per_chip, props->chip_cnt, props->pagewithbadflag);
+    printf("\n");
+    printf("    AREA                    kB-length         block kB-length\n");
+    dsize = props->areas[FMAREA_BOOT0].total_sectors;
+    printf("    boot0                    %8lld%s              %8d\n",
+            dsize / 2, dsize & 1 ? ".5" : "  ",
+            props->areas[FMAREA_BOOT0].sectors_per_page *
+            props->areas[FMAREA_BOOT0].pages_per_block / 2);
+    dsize = props->areas[FMAREA_BOOT1].total_sectors;
+    printf("    boot1                    %8lld%s              %8d\n",
+            dsize / 2, dsize & 1 ? ".5" : "  ",
+            props->areas[FMAREA_BOOT1].sectors_per_page *
+            props->areas[FMAREA_BOOT1].pages_per_block / 2);
+    dsize = props->areas[FMAREA_LOGDISK].total_sectors;
+    printf("    disk-logic               %8lld%s              %8d\n",
+            dsize / 2, dsize & 1 ? ".5" : "  ",
+            props->areas[FMAREA_LOGDISK].sectors_per_page *
+            props->areas[FMAREA_LOGDISK].pages_per_block / 2);
+    printf("\n");
     if( read_mbr(&mbr) ) {
         printf("mbr version: %x\n", mbr.version);
         if( mbr.PartCount == 0 ) {
@@ -405,11 +446,6 @@ static void cmd_partitions(void)
             }
         }
     }
-    printf("\n");
-    dsize = get_disksize(FMAREA_BOOT0);
-    printf("    boot0                    %8lld%s\n", dsize / 2, dsize & 1 ? ".5" : "");
-    dsize = get_disksize(FMAREA_BOOT1);
-    printf("    boot1                    %8lld%s\n", dsize / 2, dsize & 1 ? ".5" : "");
     printf("\n");
 }
 
@@ -449,12 +485,15 @@ int main(int argc, char *argv[])
         printf("usage:\n");
         printf("    allwindisk r <partname> [<offsetkB> <sizekB>] <file>    - read partition\n");
         printf("    allwindisk w <partname> [<offsetkB>]          <file>    - write partition\n");
-        printf("    allwindisk p                            - print existing disk partitions\n");
-        printf("    allwindisk i                            - ping (check if alive)\n");
-        printf("    allwindisk e                            - board reset\n");
-        printf("    allwindisk f                            - go back to FEL mode\n");
+        printf("    allwindisk p                    - print existing disk partitions\n");
+        printf("    allwindisk i                    - ping (check if alive)\n");
+        printf("    allwindisk x                    - board reset\n");
+        printf("    allwindisk f                    - go back to FEL mode\n");
+        printf("    allwindisk l                    - see debug log from device\n");
+        printf("    allwindisk g  <file>            - embed eGON image (must have valid magic\n");
+        printf("                                      and place for size and checksum)\n");
         printf("\n");
-        printf("The <partname> may be a pseudo-partition, one of: boot0, boot1, whole-disk\n");
+        printf("The <partname> may be a pseudo-partition, one of: boot0, boot1, disk-logic\n");
         printf("\n");
         return 0;
     }
@@ -484,7 +523,7 @@ int main(int argc, char *argv[])
     }
     libusb_claim_interface(usb, 0);
     switch( argv[1][0] ) {
-    case 'e':
+    case 'x':
         cmd_board_exit(BE_BOARD_RESET);
         break;
     case 'f':
@@ -502,7 +541,7 @@ int main(int argc, char *argv[])
     case 'p':
         cmd_partitions();
         break;
-    case 'L':
+    case 'l':
         cmd_log(argv[2]);
         break;
     case 'S':

@@ -2,15 +2,15 @@
 #define BOOTDISK_INTERFACE_H
 
 enum BootdiskCommand {
-    BCMD_NONE       = 0,    /* no command */
-    BCMD_DISKSIZE   = 'D',
-    BCMD_BOARD_EXIT = 'E',
-    BCMD_PING       = 'I',
-    BCMD_GETLOG     = 'L',
-    BCMD_SLEEPTEST  = 'S',
-    BCMD_USBSPDTEST = 'U',
-    BCMD_READ       = 'R',
-    BCMD_WRITE      = 'W',
+    BCMD_NONE               = 0,    /* no command */
+    BCMD_FLASHMEM_PARAMS    = 'F',
+    BCMD_BOARD_EXIT         = 'E',
+    BCMD_PING               = 'I',
+    BCMD_GETLOG             = 'L',
+    BCMD_SLEEPTEST          = 'S',
+    BCMD_USBSPDTEST         = 'U',
+    BCMD_READ               = 'R',
+    BCMD_WRITE              = 'W',
 };
 
 /* command header sent from host to device
@@ -36,7 +36,24 @@ struct bootdisk_resp_header {
 enum FlashMemoryArea {
     FMAREA_BOOT0,
     FMAREA_BOOT1,
-    FMAREA_DISK
+    FMAREA_LOGDISK,
+    FMAREA_COUNT
+};
+
+struct flashmarea_properties {
+    uint64_t total_sectors;
+    uint32_t sectors_per_page;
+    uint32_t pages_per_block; 
+};
+
+struct flashmem_properties {
+    struct flashmarea_properties areas[FMAREA_COUNT];
+	uint32_t chip_cnt;
+	uint32_t blocks_per_chip;
+	uint32_t pages_per_block;
+	uint32_t sectors_per_page;
+	uint32_t pagewithbadflag; /*bad block flag was written at the first byte of spare area of this page*/
+    uint32_t unused;
 };
 
 enum BoardExitMode {
