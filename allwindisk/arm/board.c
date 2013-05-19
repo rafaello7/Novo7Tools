@@ -122,5 +122,8 @@ void clock_init(void)
 	sr32(SUNXI_CCM_NAND_SCLK_CFG, 31, 1, CLK_GATE_OPEN);
 	/* open clock for nand */
 	sr32(SUNXI_CCM_AHB_GATING0, 13, 1, CLK_GATE_OPEN);
+
+    /* open DMA clock */
+    sr32(SUNXI_CCM_AHB_GATING0, 6, 1, CLK_GATE_OPEN);
 }
 
