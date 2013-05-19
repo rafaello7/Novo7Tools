@@ -14,9 +14,9 @@
 # MA 02111-1307 USA
 #
 
-LIB	= libsunxi-nand.a
+include ../config.mk
 
-CROSS_COMPILE = arm-none-linux-gnueabi-
+LIB	= libsunxi-nand.a
 
 OBJS	:= nand_drv/nand_for_uboot.o  		\
 		   nand_drv/nand_osal_uboot.o 		\
@@ -49,5 +49,5 @@ sc:
 	make $(LIB)
 
 .c.o:
-	$(CROSS_COMPILE)gcc -Os -fno-common -I../include -ffreestanding -nostdinc -marm -mabi=aapcs-linux -march=armv6 -Wall -Wstrict-prototypes -fno-stack-protector -c -o $@ $<
+	$(CROSS_COMPILE)gcc $(CFLAGS_CMN) -I../include -c -o $@ $<
 

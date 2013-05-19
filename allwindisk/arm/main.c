@@ -23,6 +23,7 @@
 #include <bootdisk_interface.h>
 
 void clock_init(void);
+void dram_lowlevel_init(void);
 
 /* Forward decl */
 static int rx_handler (const char *buffer, unsigned int buffer_size);
@@ -225,6 +226,7 @@ static int rx_handler(const char *buffer, unsigned int buffer_size)
 void main_loop(void)
 {
     clock_init();
+    dram_lowlevel_init();
     malloc_init(malloc_base, 0x4000000); // 64 MB
     NAND_Init();
     sdelay(0x100);

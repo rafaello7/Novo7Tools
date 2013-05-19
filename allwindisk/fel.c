@@ -227,31 +227,29 @@ static void aw_fel_read(uint32_t offset,
     send_read_request(AW_FEL_1_READ, offset, len, buf, len);
 }
 
-static int send_bootfile(void)
+static int send_bootfile(const char *fname, unsigned load_addr)
 {
-    static const char FEL_BOOTFILE[] = "diskboot.bin";
     int fd = -1, rd;
     char buf[0x80000];
-    unsigned load_addr = 0x4A000000;
-    char bootfilepath[1000];
+    char filepath[1000];
 
     /* check for freshly compiled version first */
     if( (rd = readlink("/proc/self/exe", buf, sizeof(buf))) > 0 )
     {
         buf[rd] = '\0';
         char *dname = dirname(buf);
-        sprintf(bootfilepath, "%s/arm/%s", dname, FEL_BOOTFILE);
-        fd = open(bootfilepath, O_RDONLY);
+        sprintf(filepath, "%s/arm/%s", dname, fname);
+        fd = open(filepath, O_RDONLY);
         if( fd == -1 && errno != ENOENT ) {
             fprintf(stderr, "unable to open FEL bootfile %s: %s\n",
-                    bootfilepath, strerror(errno));
+                    filepath, strerror(errno));
             return -1;
         }
     }
     if( fd == -1 ) {
-        sprintf(bootfilepath, "/usr/share/allwindisk/%s", FEL_BOOTFILE);
-        if( (fd = open(bootfilepath, O_RDONLY)) == -1 ) {
-            fprintf(stderr, "unable to open FEL bootfile %s\n", bootfilepath);
+        sprintf(filepath, "/usr/share/allwindisk/%s", fname);
+        if( (fd = open(filepath, O_RDONLY)) == -1 ) {
+            fprintf(stderr, "unable to open FEL bootfile %s\n", filepath);
             return -1;
         }
     }
@@ -271,7 +269,10 @@ int fel_ainol(void)
     if (!usb)
         return -1;
     libusb_claim_interface(usb, 0);
-    if( (res = send_bootfile()) == 0 ) {
+    if( (res = send_bootfile("draminit.bin", 0x2000)) == 0 ) {
+        send_exec_request(AW_FEL_1_EXEC, 0x2000);
+    }
+    if( (res = send_bootfile("diskboot.bin", 0x4A000000)) == 0 ) {
         send_exec_request(AW_FEL_1_EXEC, 0x4A000000);
     }
     libusb_release_interface(usb, 0);
