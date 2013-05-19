@@ -42,7 +42,7 @@ static char *log_addr           = (char*)0x49000000;
 static struct bootdisk_cmd_header cur_cmd;
 static unsigned cur_cmd_bytes_written;
 
-static int go_fel;
+static int board_exit;
 
 void dolog(const char *fmt, ...)
 {
@@ -112,9 +112,10 @@ static void dispatch_cmd(uint16_t cmd, uint32_t param1, uint64_t start,
         }
         send_resp_OK(&diskSize, 8);
         break;
-    case BCMD_GO_FEL:
-        send_resp_OK("going to FEL", -1);
-        go_fel = 1;
+    case BCMD_BOARD_EXIT:
+        send_resp_OK(param1 == BE_GO_FEL ? "going to FEL..." :
+                "board reset...", -1);
+        board_exit = param1;
         break;
     case BCMD_PING:
         send_resp_OK(NULL, 0);
@@ -239,15 +240,20 @@ void main_loop(void)
                 /* beak, cleanup and re-init */
                 break;
             }
-            if( go_fel ) {
+            if( board_exit ) {
                 break;
             }
         }
     }
     NAND_Exit();
-    fastboot_shutdown();
     sdelay(0x200);
-    // jump to FEL
-    asm("ldr r0, =0xffff0020; bx r0");
+    fastboot_shutdown();
+    if( board_exit == BE_GO_FEL ) {
+        // jump to FEL
+        asm("ldr r0, =0xffff0020; bx r0");
+    }else{
+        // reset board
+        asm("ldr r1, =0x01C20C94; mov r3, #0x3; str r3, [r1]; 1: b 1b");
+    }
 }
 

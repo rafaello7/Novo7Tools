@@ -413,9 +413,9 @@ static void cmd_partitions(void)
     printf("\n");
 }
 
-static void cmd_fel(void)
+static void cmd_board_exit(enum BoardExitMode mode)
 {
-    send_command(BCMD_GO_FEL, 0, 0, 0, NULL, 0);
+    send_command(BCMD_BOARD_EXIT, mode, 0, 0, NULL, 0);
     print_response_data();
 }
 
@@ -451,6 +451,7 @@ int main(int argc, char *argv[])
         printf("    allwindisk w <partname> [<offsetkB>]          <file>    - write partition\n");
         printf("    allwindisk p                            - print existing disk partitions\n");
         printf("    allwindisk i                            - ping (check if alive)\n");
+        printf("    allwindisk e                            - board reset\n");
         printf("    allwindisk f                            - go back to FEL mode\n");
         printf("\n");
         printf("The <partname> may be a pseudo-partition, one of: boot0, boot1, whole-disk\n");
@@ -483,8 +484,11 @@ int main(int argc, char *argv[])
     }
     libusb_claim_interface(usb, 0);
     switch( argv[1][0] ) {
+    case 'e':
+        cmd_board_exit(BE_BOARD_RESET);
+        break;
     case 'f':
-        cmd_fel();
+        cmd_board_exit(BE_GO_FEL);
         break;
     case 'i':
         cmd_ping();

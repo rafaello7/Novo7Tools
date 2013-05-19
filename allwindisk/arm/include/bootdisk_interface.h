@@ -4,7 +4,7 @@
 enum BootdiskCommand {
     BCMD_NONE       = 0,    /* no command */
     BCMD_DISKSIZE   = 'D',
-    BCMD_GO_FEL     = 'F',
+    BCMD_BOARD_EXIT = 'E',
     BCMD_PING       = 'I',
     BCMD_GETLOG     = 'L',
     BCMD_SLEEPTEST  = 'S',
@@ -37,6 +37,11 @@ enum FlashMemoryArea {
     FMAREA_BOOT0,
     FMAREA_BOOT1,
     FMAREA_DISK
+};
+
+enum BoardExitMode {
+    BE_GO_FEL       = 1,
+    BE_BOARD_RESET  = 2
 };
 
 #endif /* BOOTDISK_INTERFACE_H */
