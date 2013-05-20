@@ -101,16 +101,7 @@ static void dispatch_cmd(uint16_t cmd, uint32_t param1, uint64_t start,
     case BCMD_FLASHMEM_PARAMS:
         {
             struct flashmem_properties props;
-            boot_flash_info_t flinfo;
-            FMT_GetBoot0AreaProperties(&props.areas[FMAREA_BOOT0]);
-            FMT_GetBoot1AreaProperties(&props.areas[FMAREA_BOOT1]);
-            FMT_GetLogicalDiskProperties(&props.areas[FMAREA_LOGDISK]);
-            NAND_GetFlashInfo(&flinfo);
-            props.chip_cnt = flinfo.chip_cnt;
-            props.blocks_per_chip = flinfo.blk_cnt_per_chip;
-            props.pages_per_block = flinfo.blocksize / flinfo.pagesize;
-            props.sectors_per_page = flinfo.pagesize;
-            props.pagewithbadflag = flinfo.pagewithbadflag;
+            FMT_GetFlashMemProperties(&props);
             send_resp_OK(&props, sizeof(struct flashmem_properties));
         }
         break;

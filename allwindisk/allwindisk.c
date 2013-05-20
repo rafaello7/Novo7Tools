@@ -196,18 +196,20 @@ static struct flashmem_properties *get_flashmem_props(void)
         send_command(BCMD_FLASHMEM_PARAMS, 0, 0, 0, NULL, 0);
         get_response_data(&props, sizeof(props));
         for(i = 0; i < FMAREA_COUNT; ++i) {
-            props.areas[i].total_sectors =
-                le64toh(props.areas[i].total_sectors);
             props.areas[i].sectors_per_page =
                 le32toh(props.areas[i].sectors_per_page);
-            props.areas[i].pages_per_block =
-                le32toh(props.areas[i].pages_per_block);
+            props.areas[i].first_pageno =
+                le32toh(props.areas[i].first_pageno);
+            props.areas[i].page_count =
+                le32toh(props.areas[i].page_count);
         }
-	    props.chip_cnt = le32toh(props.chip_cnt);
-	    props.blocks_per_chip = le32toh(props.blocks_per_chip);
-	    props.pages_per_block = le32toh(props.pages_per_block);
-	    props.sectors_per_page = le32toh(props.sectors_per_page);
-	    props.pagewithbadflag = le32toh(props.pagewithbadflag);
+        props.sectors_per_page = le32toh(props.sectors_per_page);
+        props.pages_per_block = le32toh(props.pages_per_block);
+        props.blocks_per_chip = le32toh(props.blocks_per_chip);
+        props.chip_cnt = le32toh(props.chip_cnt);
+        props.pagewithbadflag = le32toh(props.pagewithbadflag);
+        props.block_cnt_of_zone = le32toh(props.block_cnt_of_zone);
+        is_initialized = 1;
     }
     return &props;
 }
@@ -217,19 +219,23 @@ static int getParitionParams(const char *partName,
         unsigned long long *pPartSize)
 {
     MBR mbr;
+    struct flashmem_properties *props = get_flashmem_props();
 
     if( ! strcmp(partName, "boot0") ) {
         *pFMArea = FMAREA_BOOT0;
         *pFirstSector = 0LL;
-        *pPartSize = get_flashmem_props()->areas[FMAREA_BOOT0].total_sectors;
+        *pPartSize = props->areas[FMAREA_BOOT0].sectors_per_page *
+            props->areas[FMAREA_BOOT0].page_count;
     }else if( ! strcmp(partName, "boot1") ) {
         *pFMArea = FMAREA_BOOT1;
         *pFirstSector = 0LL;
-        *pPartSize = get_flashmem_props()->areas[FMAREA_BOOT1].total_sectors;
+        *pPartSize = props->areas[FMAREA_BOOT1].sectors_per_page *
+            props->areas[FMAREA_BOOT1].page_count;
     }else if( ! strcmp(partName, "disk-logic") ) {
         *pFMArea = FMAREA_LOGDISK;
         *pFirstSector = 0LL;
-        *pPartSize = get_flashmem_props()->areas[FMAREA_LOGDISK].total_sectors;
+        *pPartSize = props->areas[FMAREA_LOGDISK].sectors_per_page *
+            props->areas[FMAREA_LOGDISK].page_count;
     }else{
         int i;
         unsigned long long diskSize;
@@ -251,8 +257,10 @@ static int getParitionParams(const char *partName,
             + mbr.array[i].addrlo;
         *pPartSize = ((unsigned long long)mbr.array[i].lenhi << 32)
                 + mbr.array[i].lenlo;
-        diskSize = get_flashmem_props()->areas[FMAREA_LOGDISK].total_sectors;
-        if( *pFirstSector >= diskSize || *pFirstSector + *pPartSize > diskSize) {
+        diskSize = props->areas[FMAREA_LOGDISK].sectors_per_page *
+            props->areas[FMAREA_LOGDISK].page_count;
+        if( *pFirstSector >= diskSize || *pFirstSector + *pPartSize > diskSize)
+        {
             printf("ERROR: corrupted MBR, partition %s is beyond disk size\n",
                     mbr.array[i].name);
             return 0;
@@ -398,34 +406,42 @@ static void cmd_partitions(void)
     MBR mbr;
     struct flashmem_properties *props = get_flashmem_props();
     unsigned long long dsize;
-    int i;
+    int i, pgsize;
 
     printf("flash properties:\n");
-    printf("     sectors        pages      blocks        chip       pages\n");
-    printf("    per page    per block    per chip       count  marked bad\n");
-    printf("    %8d     %8d    %8d    %8d    %8d\n",
-            props->sectors_per_page, props->pages_per_block,
-            props->blocks_per_chip, props->chip_cnt, props->pagewithbadflag);
+    printf("        page        pages      blocks     chip          pages    block count\n");
+    printf("     kB-size    per block    per chip    count     marked bad        of zone\n");
+    printf("    %8u%s   %8u    %8u %8u       %8u       %8u\n",
+            props->sectors_per_page / 2,
+            props->sectors_per_page % 2 ? ".5" : "  ",
+            props->pages_per_block,
+            props->blocks_per_chip, props->chip_cnt, props->pagewithbadflag,
+            props->block_cnt_of_zone);
     printf("\n");
-    printf("    AREA                    kB-length         block kB-length\n");
-    dsize = props->areas[FMAREA_BOOT0].total_sectors;
-    printf("    boot0                    %8lld%s              %8d\n",
-            dsize / 2, dsize & 1 ? ".5" : "  ",
-            props->areas[FMAREA_BOOT0].sectors_per_page *
-            props->areas[FMAREA_BOOT0].pages_per_block / 2);
-    dsize = props->areas[FMAREA_BOOT1].total_sectors;
-    printf("    boot1                    %8lld%s              %8d\n",
-            dsize / 2, dsize & 1 ? ".5" : "  ",
-            props->areas[FMAREA_BOOT1].sectors_per_page *
-            props->areas[FMAREA_BOOT1].pages_per_block / 2);
-    dsize = props->areas[FMAREA_LOGDISK].total_sectors;
-    printf("    disk-logic               %8lld%s              %8d\n",
-            dsize / 2, dsize & 1 ? ".5" : "  ",
-            props->areas[FMAREA_LOGDISK].sectors_per_page *
-            props->areas[FMAREA_LOGDISK].pages_per_block / 2);
+    printf("flash areas:\n");
+    printf("                                 page       erase block\n");
+    printf("    AREA          kB-size     kB-size           kB-size\n");
+    for(i = 0; i < FMAREA_COUNT; ++i) {
+        const char *area_name = "unknown";
+        switch(i) {
+        case FMAREA_BOOT0:      area_name = "boot0"; break;
+        case FMAREA_BOOT1:      area_name = "boot1"; break;
+        case FMAREA_PHYDISK:    area_name = "disk-phy"; break;
+        case FMAREA_LOGDISK:    area_name = "disk-logic"; break;
+        }
+        pgsize = props->areas[i].sectors_per_page;
+        dsize = (unsigned long long)props->areas[i].page_count * pgsize;
+        printf("    %-10s   %8llu%s  %8u%s",
+                area_name, dsize / 2, dsize & 1 ? ".5" : "  ",
+                pgsize / 2, pgsize & 1 ? ".5" : "  ");
+        if( i != FMAREA_LOGDISK )
+            printf("        %8u", pgsize * props->pages_per_block / 2);
+        printf("\n");
+    }
     printf("\n");
     if( read_mbr(&mbr) ) {
-        printf("mbr version: %x\n", mbr.version);
+        printf("logic disk partitions:                                "
+                "(mbr ver: %x)\n", mbr.version);
         if( mbr.PartCount == 0 ) {
             printf("No partitions.\n");
         }else{

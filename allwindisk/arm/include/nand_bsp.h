@@ -40,7 +40,7 @@
 #define  NAND_VERSION_0                 0x02
 #define  NAND_VERSION_1                 0x06
 
-struct flashmarea_properties;
+struct flashmem_properties;
 
 //---------------------------------------------------------------
 //  ½á¹¹Ìå ¶¨Òå
@@ -112,9 +112,8 @@ extern int FMT_Init(void);
 extern int FMT_Exit(void);
 extern int FMT_FormatNand(void);
 extern void  ClearNandStruct( void );
-void FMT_GetBoot0AreaProperties(struct flashmarea_properties*);
-void FMT_GetBoot1AreaProperties(struct flashmarea_properties*);
-void FMT_GetLogicalDiskProperties(struct flashmarea_properties*);
+void FMT_GetFlashMemProperties(struct flashmem_properties*);
+
 
 //for scan
 int  SCN_AnalyzeNandSystem(void);

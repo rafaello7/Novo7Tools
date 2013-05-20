@@ -52,7 +52,7 @@ blk_for_boot1_t blks_array[ ] = {
 	{ 512, 4, 3 },
 	{ 0xffffffff,   4, 3 },
 };
-__u32 DIE0_FIRST_BLK_NUM;
+static __u32 DIE0_FIRST_BLK_NUM;
 
 /*
 ************************************************************************************************************************
@@ -2626,50 +2626,37 @@ void ClearNandStruct( void )
     MEMSET(&PageCachePool, 0x00, sizeof(struct __NandPageCachePool_t));
 }
 
-/* returns boot0 flash area size, in 512-byte sectors
- */
-unsigned FMT_GetBoot0AreaSize(void)
+void FMT_GetFlashMemProperties(struct flashmem_properties *props)
 {
-    return 1024;
-}
-
-/* returns boot1 flash area size, in 512-byte sectors
- */
-unsigned FMT_GetBoot1AreaSize(void)
-{
-    /*
-    dolog("FMT_GetBoot1AreaSize: DIE0_FIRST_BLK_NUM=%d\n", DIE0_FIRST_BLK_NUM);
-    dolog("FMT_GetBoot1AreaSize: SECTOR_CNT_OF_SINGLE_PAGE=%d\n",
-            SECTOR_CNT_OF_SINGLE_PAGE);
-    dolog("FMT_GetBoot1AreaSize: PAGE_CNT_OF_PHY_BLK=%d\n", PAGE_CNT_OF_PHY_BLK);
-    */
-    return (DIE0_FIRST_BLK_NUM * PAGE_CNT_OF_PHY_BLK *
-            (SUPPORT_MULTI_PROGRAM ? PLANE_CNT_OF_DIE : 1) - 0x200)
-        * SECTOR_CNT_OF_SINGLE_PAGE;
-}
-
-void FMT_GetBoot0AreaProperties(struct flashmarea_properties *props)
-{
-    props->total_sectors = 1024;
-    props->sectors_per_page = 2;
-    props->pages_per_block = PAGE_CNT_OF_PHY_BLK;
-}
-
-void FMT_GetBoot1AreaProperties(struct flashmarea_properties *props)
-{
-    props->total_sectors = (DIE0_FIRST_BLK_NUM * PAGE_CNT_OF_PHY_BLK *
-            (SUPPORT_MULTI_PROGRAM ? PLANE_CNT_OF_DIE : 1) - 0x200)
-        * SECTOR_CNT_OF_SINGLE_PAGE;
     props->sectors_per_page = SECTOR_CNT_OF_SINGLE_PAGE;
     props->pages_per_block = PAGE_CNT_OF_PHY_BLK;
-}
+    props->blocks_per_chip = BLOCK_CNT_OF_DIE * DIE_CNT_OF_CHIP;
+    props->chip_cnt = NandStorageInfo.ChipCnt;
+    props->pagewithbadflag = NandStorageInfo.OptPhyOpPar.BadBlockFlagPosition;
+    props->block_cnt_of_zone = DATA_BLK_CNT_OF_ZONE;
 
-void FMT_GetLogicalDiskProperties(struct flashmarea_properties *props)
-{
-    //disksize = (SECTOR_CNT_OF_SINGLE_PAGE * PAGE_CNT_OF_PHY_BLK * BLOCK_CNT_OF_DIE *
-    //        DIE_CNT_OF_CHIP * NandStorageInfo.ChipCnt  / 1024 * DATA_BLK_CNT_OF_ZONE);
-    props->total_sectors = NAND_GetDiskSize();
-    props->sectors_per_page = SECTOR_CNT_OF_SINGLE_PAGE;
-    props->pages_per_block = PAGE_CNT_OF_PHY_BLK * (SUPPORT_MULTI_PROGRAM ? PLANE_CNT_OF_DIE : 1);
+    props->areas[FMAREA_BOOT0].sectors_per_page = 2;
+    props->areas[FMAREA_BOOT0].first_pageno = 0;
+    props->areas[FMAREA_BOOT0].page_count = 512;
+
+    props->areas[FMAREA_BOOT1].sectors_per_page = SECTOR_CNT_OF_SINGLE_PAGE;
+    props->areas[FMAREA_BOOT1].first_pageno = 512;
+    props->areas[FMAREA_BOOT1].page_count =
+            DIE0_FIRST_BLK_NUM * PAGE_CNT_OF_PHY_BLK - 512;
+
+    props->areas[FMAREA_PHYDISK].sectors_per_page = SECTOR_CNT_OF_SINGLE_PAGE;
+    props->areas[FMAREA_PHYDISK].first_pageno =
+            DIE0_FIRST_BLK_NUM * PAGE_CNT_OF_PHY_BLK;
+    props->areas[FMAREA_PHYDISK].page_count = PAGE_CNT_OF_PHY_BLK *
+        (BLOCK_CNT_OF_DIE * DIE_CNT_OF_CHIP * NandStorageInfo.ChipCnt
+         - DIE0_FIRST_BLK_NUM);
+
+    props->areas[FMAREA_LOGDISK].sectors_per_page = SECTOR_CNT_OF_SINGLE_PAGE
+        * (SUPPORT_MULTI_PROGRAM ? PLANE_CNT_OF_DIE : 1);
+    props->areas[FMAREA_LOGDISK].first_pageno = 0;
+    props->areas[FMAREA_LOGDISK].page_count = PAGE_CNT_OF_PHY_BLK *
+        BLOCK_CNT_OF_DIE * DIE_CNT_OF_CHIP * NandStorageInfo.ChipCnt 
+        / 1024 * DATA_BLK_CNT_OF_ZONE
+        / (SUPPORT_MULTI_PROGRAM ? PLANE_CNT_OF_DIE : 1);
 }
 

@@ -36,24 +36,25 @@ struct bootdisk_resp_header {
 enum FlashMemoryArea {
     FMAREA_BOOT0,
     FMAREA_BOOT1,
+    FMAREA_PHYDISK,
     FMAREA_LOGDISK,
     FMAREA_COUNT
 };
 
 struct flashmarea_properties {
-    uint64_t total_sectors;
     uint32_t sectors_per_page;
-    uint32_t pages_per_block; 
+    uint32_t first_pageno;
+    uint32_t page_count;
 };
 
 struct flashmem_properties {
     struct flashmarea_properties areas[FMAREA_COUNT];
-	uint32_t chip_cnt;
-	uint32_t blocks_per_chip;
-	uint32_t pages_per_block;
 	uint32_t sectors_per_page;
+	uint32_t pages_per_block;
+	uint32_t blocks_per_chip;
+	uint32_t chip_cnt;
 	uint32_t pagewithbadflag; /*bad block flag was written at the first byte of spare area of this page*/
-    uint32_t unused;
+    uint32_t block_cnt_of_zone;
 };
 
 enum BoardExitMode {
