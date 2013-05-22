@@ -16,3 +16,10 @@ A tool for dump header information from Android _fastboot_ image and optionally 
 
 
 A tool to read/write NAND flash disk on allwinner device without need to have Android operating system on device.
+
+
+## arm-dis
+
+
+ARM binary code disassembler
+
