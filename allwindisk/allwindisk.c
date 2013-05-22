@@ -497,7 +497,11 @@ static void cmd_memread(int argc, char *argv[])
         printf("error: wrong number of parameters\n");
         return;
     }
-    address = strtoul(argv[0], NULL, 0);
+    address = strtoul(argv[0], &endptr, 0);
+    if( *endptr ) {
+        printf("wrong address\n");
+        return;
+    }
     size = strtoul(argv[1], &endptr, 0);
     if( *endptr == 'k' )
         size *= 0x400;
@@ -536,7 +540,11 @@ static void cmd_memdump(int argc, char *argv[])
         printf("error: wrong number of parameters\n");
         return;
     }
-    address = strtoul(argv[0], NULL, 0);
+    address = strtoul(argv[0], &endptr, 0);
+    if( *endptr ) {
+        printf("wrong address\n");
+        return;
+    }
     if( argv[0][0] == '0' && argv[0][1] != '\0' ) {
         if( argv[0][1] == 'x' || argv[0][1] == 'X' )
             fmt = "%04X  ";
@@ -582,6 +590,97 @@ static void cmd_memdump(int argc, char *argv[])
         size -= toRead;
     }
     printf("\n");
+}
+
+static void cmd_memfill(int argc, char *argv[])
+{
+    unsigned address, repeat, i, repeatOnce, fillLen;
+    char buf[0x4000], *dest, *endptr;
+    const char *fill;
+
+    if( argc != 2 && argc != 3 ) {
+        printf("error: wrong number of parameters\n");
+        return;
+    }
+    address = strtoul(argv[0], &endptr, 0);
+    if( *endptr ) {
+        printf("wrong address\n");
+        return;
+    }
+    fill = argv[1];
+    if( argc == 3 ) {
+        repeat = strtoul(argv[2], &endptr, 0);
+        if( *endptr == 'k' )
+            repeat *= 0x400;
+        else if( *endptr == 'M' )
+            repeat *= 0x100000;
+    }else
+        repeat = 1;
+    dest = buf;
+    while( *fill ) {
+        if( dest - buf >= sizeof(buf) - 1 ) {
+            printf("fill string too long\n");
+            return;
+        }
+        if( *fill == '\\' ) {
+            switch( *++fill ) {
+            case 'a':   *dest++ = '\a'; ++fill; break;
+            case 'b':   *dest++ = '\b'; ++fill; break;
+            case 'f':   *dest++ = '\f'; ++fill; break;
+            case 'n':   *dest++ = '\n'; ++fill; break;
+            case 'r':   *dest++ = '\r'; ++fill; break;
+            case 't':   *dest++ = '\t'; ++fill; break;
+            case 'v':   *dest++ = '\v'; ++fill; break;
+            case '\\':  *dest++ = '\\'; ++fill; break;
+            case '\0':  *dest++ = '\\'; break;
+            case 'x':
+                ++fill;
+                {
+                    unsigned val = 0;
+                    for(i = 0; i < 2 && ((*fill >= '0' && *fill <= '9') ||
+                            (*fill >= 'A' && *fill <= 'F') ||
+                            (*fill >= 'a' && *fill <= 'f')); ++i)
+                    {
+                        unsigned char c = *fill++;
+                        val = 16 * val + c - (c >= '0' && c <= '9' ?  '0' :
+                                (c >= 'A' && c <= 'F' ? 'A' : 'a') - 10);
+                    }
+                    *dest++ = val;
+                }
+                break;
+            default:
+                if( *fill >= '0' && *fill <= '7' ) {
+                    unsigned val = 0;
+                    for(i = 0; i < 3 && *fill >= '0' && *fill <= '7'; ++i) {
+                        val = 8 * val + *fill++ - '0';
+                    }
+                    *dest++ = val;
+                }else{
+                    *dest++ = '\\';
+                    *dest++ = *fill++;
+                }
+                break;
+            }
+        }else
+            *dest++ = *fill++;
+    }
+    fillLen = dest - buf;
+    if( fillLen == 0 ) {
+        printf("error: empty fill string\n");
+        return;
+    }
+    repeatOnce = 1;
+    while( repeatOnce < repeat && 2 * repeatOnce * fillLen < sizeof(buf) ) {
+        memcpy(buf + repeatOnce * fillLen, buf, repeatOnce * fillLen);
+        repeatOnce *= 2;
+    }
+    while( repeat > 0 ) {
+        if( repeatOnce > repeat )
+            repeatOnce = repeat;
+        send_command(BCMD_MEMWRITE, 0, address, 0, buf, repeatOnce * fillLen);
+        address += repeatOnce * fillLen;
+        repeat -= repeatOnce;
+    }
 }
 
 /* upload file to memory at the specified address
@@ -685,7 +784,8 @@ int main(int argc, char *argv[])
         printf("                                      address; execute code\n");
         printf("    allwindisk mj <address> [<file>]- optionally load file to the specified\n");
         printf("                                      address; jump to code\n");
-        printf("    allwindisk md <address> [<size[k|M]>] - memory dump\n");
+        printf("    allwindisk md <address> [<size[k|M]>]       - memory dump\n");
+        printf("    allwindisk mf <address> <string> [<repeat[k|M]>] - memory fill\n");
         printf("\n");
         printf("The <partname> may be a pseudo-partition, one of: boot0, boot1, disk-logic\n");
         printf("\n");
@@ -739,6 +839,9 @@ int main(int argc, char *argv[])
             break;
         case 'd':
             cmd_memdump(argc-2, argv+2);
+            break;
+        case 'f':
+            cmd_memfill(argc-2, argv+2);
             break;
         case 'w':
             cmd_memwrexec(argc-2, argv+2, BCMD_NONE);
