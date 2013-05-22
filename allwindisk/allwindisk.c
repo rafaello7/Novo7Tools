@@ -152,7 +152,7 @@ static void read_disk(enum FlashMemoryArea fmarea,
         unsigned long long firstSector,
         unsigned long long count, void *rdbuf)
 {
-    send_command(BCMD_READ, fmarea, firstSector, count, NULL, 0);
+    send_command(BCMD_DISKREAD, fmarea, firstSector, count, NULL, 0);
     get_response_data(rdbuf, count * 512);
 }
 
@@ -374,13 +374,13 @@ static void cmd_diskwrite(int argc, char *argv[])
         if( toWr + count > toWrMax ) {
             printf("warning: file size exceed disk space, cut\n");
             if( toWrMax > count ) {
-                send_command(BCMD_WRITE, fmarea, firstSector,
+                send_command(BCMD_DISKWRITE, fmarea, firstSector,
                         toWrMax - count, buf, (toWrMax-count)*512);
                 count = toWrMax;
             }
             break;
         }
-        send_command(BCMD_WRITE, fmarea, firstSector, toWr, buf, toWr*512);
+        send_command(BCMD_DISKWRITE, fmarea, firstSector, toWr, buf, toWr*512);
         firstSector += toWr;
         count += toWr;
         putchar('.');
@@ -487,34 +487,122 @@ static void cmd_ping(void)
     printf("OK\n");
 }
 
-static void cmd_jumpto(const char *fname)
+static void cmd_memread(int argc, char *argv[])
 {
+    unsigned address, size, toRdTot;
+    int fd;
+    char buf[0x40000], *endptr;
+
+    if( argc != 3 ) {
+        printf("error: wrong number of parameters\n");
+        return;
+    }
+    address = strtoul(argv[0], NULL, 0);
+    size = strtoul(argv[1], &endptr, 0);
+    if( *endptr == 'k' )
+        size *= 0x400;
+    else if( *endptr == 'M' )
+        size *= 0x100000;
+    fd = open(argv[2], O_RDWR | O_CREAT | O_TRUNC, 0664);
+    if( fd < 0 ) {
+        printf("failed to open %s: %s\n", argv[2], strerror(errno));
+        return;
+    }
+    toRdTot = size;
+    while( toRdTot > 0 ) {
+        unsigned toRead = sizeof(buf);
+        if( toRdTot < toRead )
+            toRead = toRdTot;
+        send_command(BCMD_MEMREAD, 0, address, toRead, NULL, 0);
+        get_response_data(buf, toRead);
+        if( write(fd, buf, toRead) != toRead ) {
+            printf("file write error\n");
+            close(fd);
+            return;
+        }
+        address += toRead;
+        toRdTot -= toRead;
+    }
+    printf("%d bytes transferred\n", size);
+}
+
+/* upload file to memory at the specified address
+ * if defaultAddr is non-zero, the file should be a eGON image;
+ * in this case upload address is default address of the image,
+ * i.e. 0 for eGON.BT0, 0x42400000 for eGON.BT1
+ */
+static unsigned mem_write(const char *fname, int defaultAddr, unsigned startAddr)
+{
+    unsigned address, wrTot;
     int fd, rd;
-    char buf[0x200000+1];
+    char buf[0x40000];
+
+    fd = open(fname, O_RDONLY);
+    if( fd < 0 ) {
+        printf("failed to open %s: %s\n", fname, strerror(errno));
+        return 0xffffffff;
+    }
+    wrTot = 0;
+    address = startAddr;
+    while( (rd = read(fd, buf, sizeof(buf))) > 0 ) {
+        if( defaultAddr ) {
+            if( rd >= 20 && ! memcmp(buf + 4, "eGON.BT0", 8) ) {
+                startAddr = 0;
+            }else if( rd >= 20 && !memcmp(buf + 4, "eGON.BT1", 8) ) {
+                startAddr = 0x42400000;
+            }else{
+                printf("error: %s is not eGON image\n", fname);
+                close(fd);
+                return 0xffffffff;
+            }
+            address = startAddr;
+            defaultAddr = 0;
+        }
+        send_command(BCMD_MEMWRITE, 0, address, 0, buf, rd);
+        address += rd;
+        wrTot += rd;
+    }
+    close(fd);
+    if( wrTot < 1024 )
+        printf("%d bytes transferred\n", wrTot);
+    else
+        printf("%d%s kB transferred\n", wrTot / 1024, wrTot % 1024 ? "+" : "");
+    return startAddr;
+}
+
+static void cmd_memwrexec(int argc, char *argv[], enum BootdiskCommand cmd)
+{
+    unsigned address;
+
+    if( argc != 1 && argc != 2 ) {
+        printf("error: wrong number of parameters\n");
+        return;
+    }
+    address = strtoul(argv[0], NULL, 0);
+    if( (argc == 1 || mem_write(argv[1], 0, address) != 0xffffffff) &&
+            cmd != BCMD_NONE )
+    {
+        send_command(cmd, 0, address, 0, NULL, 0);
+        if( cmd == BCMD_MEMEXEC )
+            printf("OK\n");
+        else
+            printf("jumped to 0x%x...\n", address);
+    }
+}
+
+static void cmd_egonjumpto(const char *fname)
+{
+    unsigned address;
 
     if( fname == NULL ) {
         printf("no image file provided\n");
         return;
     }
-    fd = open(fname, O_RDONLY);
-    if( fd < 0 ) {
-        printf("failed to open %s: %s\n", fname, strerror(errno));
-        return;
+    address = mem_write(fname, 1, 0);
+    if( address != 0xffffffff ) {
+        send_command(BCMD_MEMJUMPTO, 0, address, 0, NULL, 0);
+        printf("jumped to 0x%x...\n", address);
     }
-    rd = read(fd, buf, sizeof(buf));
-    close(fd);
-    if( rd < 20 || (memcmp(buf + 4, "eGON.BT0", 8) != 0 &&
-            memcmp(buf + 4, "eGON.BT1", 8) != 0))
-    {
-        printf("error: %s is not eGON image\n", fname);
-        return;
-    }
-    if( rd == sizeof(buf) ) {
-        printf("file to big\n");
-        return;
-    }
-    send_command(BCMD_JUMPTO, 0, 0, 0, buf, rd);
-    print_response_data();
 }
 
 int main(int argc, char *argv[])
@@ -527,12 +615,18 @@ int main(int argc, char *argv[])
         printf("    allwindisk w <partname> [<offsetkB>]          <file>    - write partition\n");
         printf("    allwindisk p                    - print existing disk partitions\n");
         printf("    allwindisk i                    - ping (check if alive)\n");
-        printf("    allwindisk j <eGON_imgfile>     - load the image into memory and jump to it\n");
-        printf("    allwindisk x                    - board reset\n");
+        printf("    allwindisk g <eGON_imgfile>     - load the image into memory and jump to it\n");
+        printf("    allwindisk q                    - board reset\n");
         printf("    allwindisk f                    - go back to FEL mode\n");
-        printf("    allwindisk l                    - see debug log from device\n");
-        printf("    allwindisk g  <file>            - embed eGON image (must have valid magic\n");
-        printf("                                      and place for size and checksum)\n");
+        printf("    allwindisk l                    - print debug log from device\n");
+        printf("    allwindisk e  <file>            - embed eGON image (must have valid magic\n");
+        printf("                                      and the place for size and checksum)\n");
+        printf("    allwindisk mr <address> <size[k|M]> <file>  - memory read\n");
+        printf("    allwindisk mw <address> <file>  - memory write\n");
+        printf("    allwindisk mx <address> [<file>]- optionally load file to the specified\n");
+        printf("                                      address; execute code\n");
+        printf("    allwindisk mj <address> [<file>]- optionally load file to the specified\n");
+        printf("                                      address; jump to code\n");
         printf("\n");
         printf("The <partname> may be a pseudo-partition, one of: boot0, boot1, disk-logic\n");
         printf("\n");
@@ -564,17 +658,42 @@ int main(int argc, char *argv[])
     }
     libusb_claim_interface(usb, 0);
     switch( argv[1][0] ) {
-    case 'x':
-        cmd_board_exit(BE_BOARD_RESET);
+    case 'e':
+        // not implemented yet
         break;
     case 'f':
         cmd_board_exit(BE_GO_FEL);
         break;
+    case 'g':
+        cmd_egonjumpto(argv[2]);
+        break;
     case 'i':
         cmd_ping();
         break;
-    case 'j':
-        cmd_jumpto(argv[2]);
+    case 'l':
+        cmd_log(argv[2]);
+        break;
+    case 'm':
+        switch( argv[1][1] ) {
+        case 'r':
+            cmd_memread(argc-2, argv+2);
+            break;
+        case 'w':
+            cmd_memwrexec(argc-2, argv+2, BCMD_NONE);
+            break;
+        case 'j':
+            cmd_memwrexec(argc-2, argv+2, BCMD_MEMJUMPTO);
+            break;
+        case 'x':
+            cmd_memwrexec(argc-2, argv+2, BCMD_MEMEXEC);
+            break;
+        }
+        break;
+    case 'p':
+        cmd_partitions();
+        break;
+    case 'q':
+        cmd_board_exit(BE_BOARD_RESET);
         break;
     case 'r':
         cmd_diskread(argc - 2, argv + 2);
@@ -582,18 +701,8 @@ int main(int argc, char *argv[])
     case 'w':
         cmd_diskwrite(argc - 2, argv + 2);
         break;
-    case 'p':
-        cmd_partitions();
-        break;
-    case 'l':
-        cmd_log(argv[2]);
-        break;
     case 'S':
         cmd_sdelay(argv[2]);
-        break;
-    case 'U':
-        send_command(BCMD_USBSPDTEST, 0, 0, 0, NULL, 0);
-        printf("OK\n");
         break;
     default:
         printf("unknown command %s\n", argv[1]);

@@ -24,6 +24,7 @@
 
 void clock_init(void);
 void clock_restore(void);
+void reset_board(void);
 
 /* Forward decl */
 static int rx_handler (const char *buffer, unsigned int buffer_size);
@@ -44,7 +45,7 @@ static struct bootdisk_cmd_header cur_cmd;
 static unsigned cur_cmd_bytes_written;
 
 static int board_exit;
-static char *exitaddr_jumpto = (char*)0xffff0020; /* FEL address by default */
+static void (*exitaddr_jumpto)(void) = (void(*)(void))0xffff0020; /* FEL address by default */
 
 void dolog(const char *fmt, ...)
 {
@@ -108,9 +109,18 @@ static void dispatch_cmd(uint16_t cmd, uint32_t param1, uint64_t start,
         }
         break;
     case BCMD_BOARD_EXIT:
-        send_resp_OK(param1 == BE_GO_FEL ? "going to FEL..." :
-                "board reset...", -1);
-        board_exit = param1;
+        switch( param1 ) {
+        case BE_GO_FEL:
+            send_resp_OK("going to FEL...", -1);
+            board_exit = 1;
+            exitaddr_jumpto = (void(*)(void))0xffff0020;
+            break;
+        case BE_BOARD_RESET:
+            send_resp_OK("board reset...", -1);
+            board_exit = 1;
+            exitaddr_jumpto = reset_board;
+            break;
+        }
         break;
     case BCMD_PING:
         send_resp_OK(NULL, 0);
@@ -125,11 +135,7 @@ static void dispatch_cmd(uint16_t cmd, uint32_t param1, uint64_t start,
         sdelay(param1);
         send_resp_OK(NULL, 0);
         break;
-    case BCMD_USBSPDTEST:
-        dolog("rx_handler: usb speed test count=%d\n", count);
-        send_resp_OK(transfer_buffer, count << 9);
-        break;
-    case BCMD_READ:
+    case BCMD_DISKREAD:
         dolog("rx_handler: read param1=%d, first=0x%llx, count=0x%x\n",
                 param1, start, count);
         switch(param1) {
@@ -150,7 +156,7 @@ static void dispatch_cmd(uint16_t cmd, uint32_t param1, uint64_t start,
             send_resp_fail();
         }
         break;
-    case BCMD_WRITE:
+    case BCMD_DISKWRITE:
         dolog("rx_handler: write param1=%d, first=0x%llx, size=0x%x\n",
                 param1, start, datasize);
         switch(param1) {
@@ -175,23 +181,24 @@ static void dispatch_cmd(uint16_t cmd, uint32_t param1, uint64_t start,
             send_resp_fail();
         }
         break;
-    case BCMD_JUMPTO:
-        board_exit = BE_GO_FEL;
-        if( ! memcmp(transfer_buffer + 4, "eGON.BT0", 8) ) {
-            exitaddr_jumpto = (char*)0;
-            memcpy(exitaddr_jumpto, transfer_buffer, datasize);
-            send_resp_OK("jump to BT0...", -1);
-        }else if( ! memcmp(transfer_buffer + 4, "eGON.BT1", 8) ) {
-            exitaddr_jumpto = (char*)0x42400000;
-            memcpy(exitaddr_jumpto, transfer_buffer, datasize);
-            send_resp_OK("jump to BT1...", -1);
-        }else{
-            board_exit = 0;
-            dolog("rx_handler: not eGON image\n");
-            send_resp_fail();
-        }
+    case BCMD_MEMREAD:
+        send_resp_OK((const char*)(unsigned)start, count);
+        break;
+    case BCMD_MEMWRITE:
+        memcpy((char*)(unsigned)start, transfer_buffer, datasize);
+        send_resp_OK(NULL, 0);
+        break;
+    case BCMD_MEMEXEC:
+        asm("blx %[jumpaddr]" : : [jumpaddr] "r" ((unsigned)start));
+        send_resp_OK(NULL, 0);
+        break;
+    case BCMD_MEMJUMPTO:
+        board_exit = 1;
+        exitaddr_jumpto = (void(*)(void))(unsigned)start;
+        send_resp_OK(NULL, 0);
         break;
     default:
+        dolog("unknown command %c\n", cmd);
         send_resp_fail();
         break;
     }
@@ -251,22 +258,14 @@ void main_loop(void)
                 /* beak, cleanup and re-init */
                 break;
             }
-            if( board_exit ) {
+            if( board_exit )
                 break;
-            }
         }
     }
     NAND_Exit();
     sdelay(0x200);
     fastboot_shutdown();
     clock_restore();
-    if( board_exit == BE_GO_FEL ) {
-        // jump to specified address
-        asm("movw sp, 0x8000; mov pc, %[jumpaddr]": :
-                [jumpaddr] "r" (exitaddr_jumpto));
-    }else{
-        // reset board
-        asm("ldr r1, =0x01C20C94; mov r3, #0x3; str r3, [r1]; 1: b 1b");
-    }
+    exitaddr_jumpto();
 }
 

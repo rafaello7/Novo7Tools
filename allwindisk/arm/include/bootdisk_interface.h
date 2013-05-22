@@ -6,12 +6,14 @@ enum BootdiskCommand {
     BCMD_FLASHMEM_PARAMS    = 'F',
     BCMD_BOARD_EXIT         = 'E',
     BCMD_PING               = 'I',
-    BCMD_JUMPTO             = 'J',
+    BCMD_MEMJUMPTO          = 'J',
     BCMD_GETLOG             = 'L',
     BCMD_SLEEPTEST          = 'S',
-    BCMD_USBSPDTEST         = 'U',
-    BCMD_READ               = 'R',
-    BCMD_WRITE              = 'W',
+    BCMD_DISKREAD           = 'R',
+    BCMD_DISKWRITE          = 'W',
+    BCMD_MEMREAD            = 'r',
+    BCMD_MEMWRITE           = 'w',
+    BCMD_MEMEXEC            = 'x',
 };
 
 /* command header sent from host to device

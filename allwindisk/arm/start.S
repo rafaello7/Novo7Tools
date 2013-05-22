@@ -36,5 +36,10 @@ clbss_l:
 	add	r0, r0, #4
 	cmp	r0, r1
 	bne	clbss_l
-	b	main_loop
-
+	bl	main_loop
+.globl reset_board
+reset_board:
+    ldr r1, =0x01C20C94
+    mov r3, #0x3
+    str r3, [r1]
+1:  b 1b

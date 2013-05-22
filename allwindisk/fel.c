@@ -157,6 +157,7 @@ static void aw_read_fel_status(void)
     aw_usb_read(&buf, sizeof(buf));
 }
 
+#if 0  // not used for now
 /* sends request which reads a data from device
  */
 static void send_read_request(
@@ -170,6 +171,7 @@ static void send_read_request(
     aw_usb_read(buf, to_read);
     aw_read_fel_status();
 }
+#endif
 
 /* sends request which writes a data from device
  */
@@ -193,6 +195,7 @@ static void send_exec_request(
     aw_read_fel_status();
 }
 
+#if 0   // not used for now
 static void aw_fel_get_version(libusb_device_handle *usb)
 {
     struct aw_fel_version {
@@ -226,6 +229,7 @@ static void aw_fel_read(uint32_t offset,
 {
     send_read_request(AW_FEL_1_READ, offset, len, buf, len);
 }
+#endif
 
 static int send_bootfile(const char *fname, unsigned load_addr)
 {
