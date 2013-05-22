@@ -39,7 +39,7 @@
 #define SUNXI_CCM_NAND_SCLK_CFG		(SUNXI_CCM_BASE + 0x80)
 
 /* pll1 factors */
-#define PLL1_FACTOR_N			21
+#define PLL1_FACTOR_N			8
 #define PLL1_FACTOR_K			1
 #define PLL1_FACTOR_M			0
 #define PLL1_FACTOR_P			0
@@ -97,7 +97,7 @@ void clock_init(void)
 	/* set clock divider, cpu:axi:ahb:apb0 = 8:4:2:1 */
 	sr32(SUNXI_CCM_CPU_AHB_APB0_CFG, 0, 2, AXI_DIV);	/* AXI_CLK_DIV_RATIO [1:0] */
 	sr32(SUNXI_CCM_CPU_AHB_APB0_CFG, 4, 2, AHB_DIV);	/* AHB_CLK_DIV_RATIO [5:4] */
-	sr32(SUNXI_CCM_CPU_AHB_APB0_CFG, 9, 2, APB0_DIV);	/* APB0_CLK_DIV_RATIO [9:8] */
+	sr32(SUNXI_CCM_CPU_AHB_APB0_CFG, 8, 2, APB0_DIV);	/* APB0_CLK_DIV_RATIO [9:8] */
 
 	/* change cpu clock source to pll1 */
 	sr32(SUNXI_CCM_CPU_AHB_APB0_CFG, 16, 2, CPU_CLK_SRC_PLL1);/* CPU_CLK_SRC_SEL [17:16] */
@@ -125,5 +125,14 @@ void clock_init(void)
 
     /* open DMA clock */
     sr32(SUNXI_CCM_AHB_GATING0, 6, 1, CLK_GATE_OPEN);
+}
+
+void clock_restore(void)
+{
+    /* close DMA clock */
+    sr32(SUNXI_CCM_AHB_GATING0, 6, 1, CLK_GATE_CLOSE);
+
+    /* set clock source to OSC24M */
+    sr32(SUNXI_CCM_CPU_AHB_APB0_CFG, 16, 2, CPU_CLK_SRC_OSC24M);
 }
 

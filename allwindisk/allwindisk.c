@@ -221,21 +221,18 @@ static int getParitionParams(const char *partName,
     MBR mbr;
     struct flashmem_properties *props = get_flashmem_props();
 
+    *pFMArea = FMAREA_COUNT;
     if( ! strcmp(partName, "boot0") ) {
         *pFMArea = FMAREA_BOOT0;
-        *pFirstSector = 0LL;
-        *pPartSize = props->areas[FMAREA_BOOT0].sectors_per_page *
-            props->areas[FMAREA_BOOT0].page_count;
     }else if( ! strcmp(partName, "boot1") ) {
         *pFMArea = FMAREA_BOOT1;
-        *pFirstSector = 0LL;
-        *pPartSize = props->areas[FMAREA_BOOT1].sectors_per_page *
-            props->areas[FMAREA_BOOT1].page_count;
     }else if( ! strcmp(partName, "disk-logic") ) {
         *pFMArea = FMAREA_LOGDISK;
+    }
+    if( *pFMArea != FMAREA_COUNT ) {
         *pFirstSector = 0LL;
-        *pPartSize = props->areas[FMAREA_LOGDISK].sectors_per_page *
-            props->areas[FMAREA_LOGDISK].page_count;
+        *pPartSize = 1ULL * props->areas[*pFMArea].sectors_per_page *
+            props->areas[*pFMArea].page_count;
     }else{
         int i;
         unsigned long long diskSize;
@@ -257,7 +254,7 @@ static int getParitionParams(const char *partName,
             + mbr.array[i].addrlo;
         *pPartSize = ((unsigned long long)mbr.array[i].lenhi << 32)
                 + mbr.array[i].lenlo;
-        diskSize = props->areas[FMAREA_LOGDISK].sectors_per_page *
+        diskSize = 1ULL * props->areas[FMAREA_LOGDISK].sectors_per_page *
             props->areas[FMAREA_LOGDISK].page_count;
         if( *pFirstSector >= diskSize || *pFirstSector + *pPartSize > diskSize)
         {
@@ -411,16 +408,14 @@ static void cmd_partitions(void)
     printf("flash properties:\n");
     printf("        page        pages      blocks     chip          pages    block count\n");
     printf("     kB-size    per block    per chip    count     marked bad        of zone\n");
-    printf("    %8u%s   %8u    %8u %8u       %8u       %8u\n",
-            props->sectors_per_page / 2,
-            props->sectors_per_page % 2 ? ".5" : "  ",
-            props->pages_per_block,
+    printf("    %8u     %8u    %8u %8u       %8u       %8u\n",
+            props->sectors_per_page / 2, props->pages_per_block,
             props->blocks_per_chip, props->chip_cnt, props->pagewithbadflag,
             props->block_cnt_of_zone);
     printf("\n");
     printf("flash areas:\n");
     printf("                                 page       erase block\n");
-    printf("    AREA          kB-size     kB-size           kB-size\n");
+    printf("    NAME          kB-size     kB-size           kB-size\n");
     for(i = 0; i < FMAREA_COUNT; ++i) {
         const char *area_name = "unknown";
         switch(i) {
@@ -431,9 +426,8 @@ static void cmd_partitions(void)
         }
         pgsize = props->areas[i].sectors_per_page;
         dsize = (unsigned long long)props->areas[i].page_count * pgsize;
-        printf("    %-10s   %8llu%s  %8u%s",
-                area_name, dsize / 2, dsize & 1 ? ".5" : "  ",
-                pgsize / 2, pgsize & 1 ? ".5" : "  ");
+        printf("    %-10s   %8llu    %8u%s",
+                area_name, dsize / 2, pgsize / 2, pgsize & 1 ? ".5" : "  ");
         if( i != FMAREA_LOGDISK )
             printf("        %8u", pgsize * props->pages_per_block / 2);
         printf("\n");
@@ -493,6 +487,36 @@ static void cmd_ping(void)
     printf("OK\n");
 }
 
+static void cmd_jumpto(const char *fname)
+{
+    int fd, rd;
+    char buf[0x200000+1];
+
+    if( fname == NULL ) {
+        printf("no image file provided\n");
+        return;
+    }
+    fd = open(fname, O_RDONLY);
+    if( fd < 0 ) {
+        printf("failed to open %s: %s\n", fname, strerror(errno));
+        return;
+    }
+    rd = read(fd, buf, sizeof(buf));
+    close(fd);
+    if( rd < 20 || (memcmp(buf + 4, "eGON.BT0", 8) != 0 &&
+            memcmp(buf + 4, "eGON.BT1", 8) != 0))
+    {
+        printf("error: %s is not eGON image\n", fname);
+        return;
+    }
+    if( rd == sizeof(buf) ) {
+        printf("file to big\n");
+        return;
+    }
+    send_command(BCMD_JUMPTO, 0, 0, 0, buf, rd);
+    print_response_data();
+}
+
 int main(int argc, char *argv[])
 {
     int i;
@@ -503,6 +527,7 @@ int main(int argc, char *argv[])
         printf("    allwindisk w <partname> [<offsetkB>]          <file>    - write partition\n");
         printf("    allwindisk p                    - print existing disk partitions\n");
         printf("    allwindisk i                    - ping (check if alive)\n");
+        printf("    allwindisk j <eGON_imgfile>     - load the image into memory and jump to it\n");
         printf("    allwindisk x                    - board reset\n");
         printf("    allwindisk f                    - go back to FEL mode\n");
         printf("    allwindisk l                    - see debug log from device\n");
@@ -547,6 +572,9 @@ int main(int argc, char *argv[])
         break;
     case 'i':
         cmd_ping();
+        break;
+    case 'j':
+        cmd_jumpto(argv[2]);
         break;
     case 'r':
         cmd_diskread(argc - 2, argv + 2);

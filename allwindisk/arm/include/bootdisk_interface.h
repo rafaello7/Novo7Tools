@@ -6,6 +6,7 @@ enum BootdiskCommand {
     BCMD_FLASHMEM_PARAMS    = 'F',
     BCMD_BOARD_EXIT         = 'E',
     BCMD_PING               = 'I',
+    BCMD_JUMPTO             = 'J',
     BCMD_GETLOG             = 'L',
     BCMD_SLEEPTEST          = 'S',
     BCMD_USBSPDTEST         = 'U',

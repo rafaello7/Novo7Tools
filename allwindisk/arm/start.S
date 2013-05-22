@@ -17,6 +17,7 @@
 
 .globl _start
 _start:
+    movw sp, 0x8000
 	/*
 	 * set the cpu to SVC32 mode
 	 */

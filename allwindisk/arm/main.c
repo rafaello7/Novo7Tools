@@ -23,6 +23,7 @@
 #include <bootdisk_interface.h>
 
 void clock_init(void);
+void clock_restore(void);
 
 /* Forward decl */
 static int rx_handler (const char *buffer, unsigned int buffer_size);
@@ -35,14 +36,15 @@ static struct cmd_fastboot_interface interface =
 };
 
 static char *transfer_buffer    = (char*)0x41000000;
-static char *malloc_base        = (char*)0x42000000; /* till 0x45ffffff */
+static char *malloc_base        = (char*)0x43000000; /* till 0x46ffffff */
 static char *log_addr           = (char*)0x49000000;
-// code is at 0x4a000000
+// start of code is at 0x4a000000
 
 static struct bootdisk_cmd_header cur_cmd;
 static unsigned cur_cmd_bytes_written;
 
 static int board_exit;
+static char *exitaddr_jumpto = (char*)0xffff0020; /* FEL address by default */
 
 void dolog(const char *fmt, ...)
 {
@@ -173,6 +175,22 @@ static void dispatch_cmd(uint16_t cmd, uint32_t param1, uint64_t start,
             send_resp_fail();
         }
         break;
+    case BCMD_JUMPTO:
+        board_exit = BE_GO_FEL;
+        if( ! memcmp(transfer_buffer + 4, "eGON.BT0", 8) ) {
+            exitaddr_jumpto = (char*)0;
+            memcpy(exitaddr_jumpto, transfer_buffer, datasize);
+            send_resp_OK("jump to BT0...", -1);
+        }else if( ! memcmp(transfer_buffer + 4, "eGON.BT1", 8) ) {
+            exitaddr_jumpto = (char*)0x42400000;
+            memcpy(exitaddr_jumpto, transfer_buffer, datasize);
+            send_resp_OK("jump to BT1...", -1);
+        }else{
+            board_exit = 0;
+            dolog("rx_handler: not eGON image\n");
+            send_resp_fail();
+        }
+        break;
     default:
         send_resp_fail();
         break;
@@ -241,9 +259,11 @@ void main_loop(void)
     NAND_Exit();
     sdelay(0x200);
     fastboot_shutdown();
+    clock_restore();
     if( board_exit == BE_GO_FEL ) {
-        // jump to FEL
-        asm("ldr r0, =0xffff0020; bx r0");
+        // jump to specified address
+        asm("movw sp, 0x8000; mov pc, %[jumpaddr]": :
+                [jumpaddr] "r" (exitaddr_jumpto));
     }else{
         // reset board
         asm("ldr r1, =0x01C20C94; mov r3, #0x3; str r3, [r1]; 1: b 1b");
