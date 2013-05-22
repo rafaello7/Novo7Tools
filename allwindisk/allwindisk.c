@@ -526,6 +526,64 @@ static void cmd_memread(int argc, char *argv[])
     printf("%d bytes transferred\n", size);
 }
 
+static void cmd_memdump(int argc, char *argv[])
+{
+    unsigned address, size, i, prInLine, prMaxInLine = 20;
+    char buf[0x4000], *endptr;
+    const char *fmt = "%4d  ";
+
+    if( argc != 1 && argc != 2 ) {
+        printf("error: wrong number of parameters\n");
+        return;
+    }
+    address = strtoul(argv[0], NULL, 0);
+    if( argv[0][0] == '0' && argv[0][1] != '\0' ) {
+        if( argv[0][1] == 'x' || argv[0][1] == 'X' )
+            fmt = "%04X  ";
+        else
+            fmt = "%04o  ";
+        prMaxInLine = 16;
+    }
+    if( argc == 2 ) {
+        size = strtoul(argv[1], &endptr, 0);
+        if( *endptr == 'k' )
+            size *= 0x400;
+        else if( *endptr == 'M' )
+            size *= 0x100000;
+    }else{
+        size = prMaxInLine == 20 ? 260 : 256;
+    }
+    printf(fmt, address);
+    prInLine = 0;
+    while( size > 0 ) {
+        unsigned toRead = sizeof(buf);
+        if( size < toRead )
+            toRead = size;
+        send_command(BCMD_MEMREAD, 0, address, toRead, NULL, 0);
+        get_response_data(buf, toRead);
+        for(i = 0; i < toRead; ++i) {
+            if(prInLine == prMaxInLine) {
+                printf("\n");
+                printf(fmt, address+i);
+                prInLine = 0;
+            }
+            if( buf[i] >= 32 && buf[i] < 127 ) {
+                printf("  %c", buf[i]);
+            }else if( buf[i] == '\r' ) {
+                printf(" \\r");
+            }else if( buf[i] == '\n' ) {
+                printf(" \\n");
+            }else{
+                printf(" %02X", (unsigned char)buf[i]);
+            }
+            ++prInLine;
+        }
+        address += toRead;
+        size -= toRead;
+    }
+    printf("\n");
+}
+
 /* upload file to memory at the specified address
  * if defaultAddr is non-zero, the file should be a eGON image;
  * in this case upload address is default address of the image,
@@ -627,6 +685,7 @@ int main(int argc, char *argv[])
         printf("                                      address; execute code\n");
         printf("    allwindisk mj <address> [<file>]- optionally load file to the specified\n");
         printf("                                      address; jump to code\n");
+        printf("    allwindisk md <address> [<size[k|M]>] - memory dump\n");
         printf("\n");
         printf("The <partname> may be a pseudo-partition, one of: boot0, boot1, disk-logic\n");
         printf("\n");
@@ -677,6 +736,9 @@ int main(int argc, char *argv[])
         switch( argv[1][1] ) {
         case 'r':
             cmd_memread(argc-2, argv+2);
+            break;
+        case 'd':
+            cmd_memdump(argc-2, argv+2);
             break;
         case 'w':
             cmd_memwrexec(argc-2, argv+2, BCMD_NONE);
