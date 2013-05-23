@@ -332,8 +332,8 @@ static void cmd_diskwrite(int argc, char *argv[])
 {
     enum FlashMemoryArea fmarea;
     unsigned long long firstSector, toWrMax, count, partOffset, partSize;
-    int fd, rd;
-    char buf[0x200000];
+    int fd, rd, bufsize = 0x80000;
+    char *buf;
     struct timeval tvpre, tvpost;
     double transferTime;
 
@@ -359,9 +359,17 @@ static void cmd_diskwrite(int argc, char *argv[])
                 strerror(errno));
         return;
     }
+    if( fmarea != FMAREA_LOGDISK ) {
+        struct flashmem_properties *props = get_flashmem_props();
+        int blocksize = 512 * props->areas[fmarea].sectors_per_page *
+            props->pages_per_block;
+        if( blocksize > bufsize )
+            bufsize = blocksize;
+    }
+    buf = malloc(bufsize);
     gettimeofday(&tvpre, NULL);
     count = 0;
-    while( (rd = read(fd, buf, sizeof(buf))) > 0 ) {
+    while( (rd = read(fd, buf, bufsize)) > 0 ) {
         unsigned toWr;
         if( rd & 0x1FF ) {
             int toPad = 512 - (rd & 0x1ff);
@@ -387,6 +395,7 @@ static void cmd_diskwrite(int argc, char *argv[])
         fflush(stdout);
     }
     printf("\n");
+    free(buf);
     gettimeofday(&tvpost, NULL);
     transferTime = (tvpost.tv_sec - tvpre.tv_sec) +
         (tvpost.tv_usec - tvpre.tv_usec) * 1e-9;
@@ -395,7 +404,6 @@ static void cmd_diskwrite(int argc, char *argv[])
     else
         printf("%lld kB transferred in %.0f seconds, %.0f kB/s\n",
                 count / 2, transferTime, count / transferTime / 2);
-
 }
 
 static void cmd_partitions(void)
@@ -594,7 +602,7 @@ static void cmd_memdump(int argc, char *argv[])
 
 static void cmd_memfill(int argc, char *argv[])
 {
-    unsigned address, repeat, i, repeatOnce, fillLen;
+    unsigned address, size, repeat, i, sizeOnce, fillLen;
     char buf[0x4000], *dest, *endptr;
     const char *fill;
 
@@ -609,13 +617,18 @@ static void cmd_memfill(int argc, char *argv[])
     }
     fill = argv[1];
     if( argc == 3 ) {
-        repeat = strtoul(argv[2], &endptr, 0);
+        repeat = 0;
+        size = strtoul(argv[2], &endptr, 0);
         if( *endptr == 'k' )
-            repeat *= 0x400;
+            size *= 0x400;
         else if( *endptr == 'M' )
-            repeat *= 0x100000;
-    }else
+            size *= 0x100000;
+        else if( *endptr == 'x' )
+            repeat = 1;
+    }else{
+        size = 1;
         repeat = 1;
+    }
     dest = buf;
     while( *fill ) {
         if( dest - buf >= sizeof(buf) - 1 ) {
@@ -669,17 +682,19 @@ static void cmd_memfill(int argc, char *argv[])
         printf("error: empty fill string\n");
         return;
     }
-    repeatOnce = 1;
-    while( repeatOnce < repeat && 2 * repeatOnce * fillLen < sizeof(buf) ) {
-        memcpy(buf + repeatOnce * fillLen, buf, repeatOnce * fillLen);
-        repeatOnce *= 2;
+    if( repeat )
+        size *= fillLen;
+    sizeOnce = fillLen;
+    while( sizeOnce < size && 2 * sizeOnce < sizeof(buf) ) {
+        memcpy(buf + sizeOnce, buf, sizeOnce);
+        sizeOnce *= 2;
     }
-    while( repeat > 0 ) {
-        if( repeatOnce > repeat )
-            repeatOnce = repeat;
-        send_command(BCMD_MEMWRITE, 0, address, 0, buf, repeatOnce * fillLen);
-        address += repeatOnce * fillLen;
-        repeat -= repeatOnce;
+    while( size > 0 ) {
+        if( sizeOnce > size )
+            sizeOnce = size;
+        send_command(BCMD_MEMWRITE, 0, address, 0, buf, sizeOnce);
+        address += sizeOnce;
+        size -= sizeOnce;
     }
 }
 
@@ -785,7 +800,7 @@ int main(int argc, char *argv[])
         printf("    allwindisk mj <address> [<file>]- optionally load file to the specified\n");
         printf("                                      address; jump to code\n");
         printf("    allwindisk md <address> [<size[k|M]>]       - memory dump\n");
-        printf("    allwindisk mf <address> <string> [<repeat[k|M]>] - memory fill\n");
+        printf("    allwindisk mf <address> <string> [<size[k|M|x]>] - memory fill\n");
         printf("\n");
         printf("The <partname> may be a pseudo-partition, one of: boot0, boot1, disk-logic\n");
         printf("\n");
