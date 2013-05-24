@@ -69,27 +69,39 @@ static void reset_handler (void)
     cur_cmd.cmd = BCMD_NONE;
 }
 
-static void send_resp_fail(void)
-{
-    struct bootdisk_resp_header resp;
-    resp.magic = 0x1234;
-    resp.status = 0;
-    resp.datasize = 0;
-    fastboot_tx(&resp, sizeof(resp));
-}
-
-static void send_resp_OK(const void *data, int datasize)
+static void send_resp_st(const void *data, int datasize, int status)
 {
     struct bootdisk_resp_header resp;
 
     if( datasize < 0 )
         datasize = strlen(data);
     resp.magic = 0x1234;
-    resp.status = 1;
+    resp.status = status;
     resp.datasize = datasize;
     fastboot_tx(&resp, sizeof(resp));
     if( datasize > 0 )
         fastboot_tx(data, datasize);
+}
+
+static void send_resp_fail(void)
+{
+    send_resp_st(NULL, 0, BRST_FAIL);
+}
+
+static void send_resp_OK(const void *data, int datasize)
+{
+    send_resp_st(data, datasize, BRST_OK);
+}
+
+void send_resp_msg(const char *fmt, ...)
+{
+    va_list args;
+    int len;
+
+    va_start(args, fmt);
+    len = vsprintf(transfer_buffer, fmt, args);
+    va_end(args);
+    send_resp_st(transfer_buffer, len, BRST_MSG);
 }
 
 static void dispatch_cmd(uint16_t cmd, uint32_t param1, uint64_t start,

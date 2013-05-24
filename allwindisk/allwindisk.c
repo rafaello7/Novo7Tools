@@ -48,6 +48,25 @@ static struct bootdisk_resp_header cur_resp_header;
 int fel_ainol(void);
 
 
+static void print_response_data(void)
+{
+    int status, transferred, toRead;
+    char buf[0x40000];
+
+    while( cur_resp_header.datasize > 0 ) {
+        toRead = sizeof(buf) < cur_resp_header.datasize ?
+            sizeof(buf) : cur_resp_header.datasize;
+        if( (status = libusb_bulk_transfer(usb, 1 | LIBUSB_ENDPOINT_IN,
+                (unsigned char*)buf, toRead, &transferred, 0)) != 0)
+        {
+            printf("read error: status=%d\n", status);
+            exit(1);
+        }
+        fwrite(buf, transferred, 1, stdout);
+        cur_resp_header.datasize -= transferred;
+    }
+}
+
 /* Sends command to device and reads response header
  */
 static void send_command(unsigned cmd, unsigned param1,
@@ -83,24 +102,28 @@ static void send_command(unsigned cmd, unsigned param1,
         exit(1);
     }
 
-    if( (status = libusb_bulk_transfer(usb, 1 | LIBUSB_ENDPOINT_IN,
-            (void*)&cur_resp_header, sizeof(cur_resp_header),
-            &transferred, 0)) != 0)
-    {
-        printf("read error: status=%d\n", status);
-        exit(1);
-    }
-    if( transferred != sizeof(cur_resp_header) ) {
-        printf("read error: bad header size=%d\n", transferred);
-        exit(1);
-    }
-    cur_resp_header.magic = le16toh(cur_resp_header.magic);
-    cur_resp_header.status = le16toh(cur_resp_header.status);
-    cur_resp_header.datasize = le32toh(cur_resp_header.datasize);
-    if( cur_resp_header.magic != 0x1234 ) {
-        printf("read error: bad magic=%x\n", cur_resp_header.magic);
-    }
-    if( cur_resp_header.status == 0 ) {
+    do {
+        if( (status = libusb_bulk_transfer(usb, 1 | LIBUSB_ENDPOINT_IN,
+                (void*)&cur_resp_header, sizeof(cur_resp_header),
+                &transferred, 0)) != 0)
+        {
+            printf("read error: status=%d\n", status);
+            exit(1);
+        }
+        if( transferred != sizeof(cur_resp_header) ) {
+            printf("read error: bad header size=%d\n", transferred);
+            exit(1);
+        }
+        cur_resp_header.magic = le16toh(cur_resp_header.magic);
+        cur_resp_header.status = le16toh(cur_resp_header.status);
+        cur_resp_header.datasize = le32toh(cur_resp_header.datasize);
+        if( cur_resp_header.magic != 0x1234 ) {
+            printf("read error: bad magic=%x\n", cur_resp_header.magic);
+        }
+        if( cur_resp_header.status == BRST_MSG )
+            print_response_data();
+    }while( cur_resp_header.status == BRST_MSG );
+    if( cur_resp_header.status == BRST_FAIL ) {
         printf("command execution failed on device\n");
         exit(1);
     }
@@ -126,26 +149,6 @@ static void get_response_data(void *buf, unsigned bufsize)
         buf += transferred;
         cur_resp_header.datasize -= transferred;
     }
-}
-
-static void print_response_data(void)
-{
-    int status, transferred, toRead;
-    char buf[0x40000];
-
-    while( cur_resp_header.datasize > 0 ) {
-        toRead = sizeof(buf) < cur_resp_header.datasize ?
-            sizeof(buf) : cur_resp_header.datasize;
-        if( (status = libusb_bulk_transfer(usb, 1 | LIBUSB_ENDPOINT_IN,
-                (unsigned char*)buf, toRead, &transferred, 0)) != 0)
-        {
-            printf("read error: status=%d\n", status);
-            exit(1);
-        }
-        fwrite(buf, transferred, 1, stdout);
-        cur_resp_header.datasize -= transferred;
-    }
-    printf("\n");
 }
 
 static void read_disk(enum FlashMemoryArea fmarea,
@@ -471,6 +474,7 @@ static void cmd_board_exit(enum BoardExitMode mode)
 {
     send_command(BCMD_BOARD_EXIT, mode, 0, 0, NULL, 0);
     print_response_data();
+    printf("\n");
 }
 
 static void cmd_log(const char *par)
@@ -479,6 +483,7 @@ static void cmd_log(const char *par)
     send_command(BCMD_GETLOG, doclear, 0, 0, NULL, 0);
     printf("log size: %d\n\n", cur_resp_header.datasize);
     print_response_data();
+    printf("\n");
 }
 
 /* sleep time test */

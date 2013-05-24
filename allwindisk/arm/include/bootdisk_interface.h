@@ -16,6 +16,12 @@ enum BootdiskCommand {
     BCMD_MEMEXEC            = 'x',
 };
 
+enum BootdiskResponseStatus {
+    BRST_FAIL,
+    BRST_OK,
+    BRST_MSG
+};
+
 /* command header sent from host to device
  * 24 bytes structure, integer values are little endian
  */

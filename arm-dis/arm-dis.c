@@ -4505,7 +4505,7 @@ int main(int argc, char *argv[])
     while( (rd = read(fd, bytes, sizeof(bytes))) > 0 ) {
         addr_offset = 0;
         while( addr_offset < rd ) {
-            printf("%X  ", addr_beg + addr_offset);
+            printf("%04X  ", addr_beg + addr_offset);
             stream_buf[0] = '\0';
             int octets = print_insn_little_arm (addr_beg + addr_offset, &info);
             for(i = 0; i < octets; ++i) {

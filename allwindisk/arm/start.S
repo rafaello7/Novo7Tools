@@ -17,6 +17,9 @@
 
 .globl _start
 _start:
+    b init
+    b send_resp_msg  /* 0x4A000004, printf handler for "allwindisk mx" */
+init:
     movw sp, 0x8000
 	/*
 	 * set the cpu to SVC32 mode
