@@ -4474,7 +4474,7 @@ static void my_fprintf(void *stream, const char *fmt, ...)
 
 static void print_address(bfd_vma addr, struct disassemble_info *dinfo)
 {
-    sprintf(dinfo->stream + strlen(dinfo->stream), "%lX", addr);
+    sprintf(dinfo->stream + strlen(dinfo->stream), "L%04lX", addr);
 }
 
 int main(int argc, char *argv[])
@@ -4496,7 +4496,7 @@ int main(int argc, char *argv[])
 
     fd = open(argv[1], O_RDONLY);
     if( fd < 0 ) {
-        printf("can't open boot0.bin\n");
+        printf("can't open %s\n", argv[1]);
         return 1;
     }
     addr_beg = 0x40000000;
@@ -4505,7 +4505,7 @@ int main(int argc, char *argv[])
     while( (rd = read(fd, bytes, sizeof(bytes))) > 0 ) {
         addr_offset = 0;
         while( addr_offset < rd ) {
-            printf("%04X  ", addr_beg + addr_offset);
+            printf("L%04X:  ", addr_beg + addr_offset);
             stream_buf[0] = '\0';
             int octets = print_insn_little_arm (addr_beg + addr_offset, &info);
             for(i = 0; i < octets; ++i) {
@@ -4515,7 +4515,7 @@ int main(int argc, char *argv[])
                 printf("%c", c);
             }
             printf("  ");
-            for(i = 0; i < octets; ++i) {
+            for(i = octets-1; i >= 0; --i) {
                 printf("%02X", bytes[addr_offset + i]);
             }
             printf("\t%s\n", stream_buf);
