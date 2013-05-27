@@ -39,7 +39,7 @@ struct bootdisk_cmd_header {
 struct bootdisk_resp_header {
     uint16_t magic;         /* 0x1234 */
     uint16_t status;        /* 1 - OK, 0 - FAIL */
-    uint32_t datasize;      /* size of response data after heder */
+    uint32_t datasize;      /* size of response data after header */
 };
 
 enum FlashMemoryArea {
