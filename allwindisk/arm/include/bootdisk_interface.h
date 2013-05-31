@@ -14,6 +14,7 @@ enum BootdiskCommand {
     BCMD_MEMREAD            = 'r',
     BCMD_MEMWRITE           = 'w',
     BCMD_MEMEXEC            = 'x',
+    BCMD_MOUNT              = 'M',
 };
 
 enum BootdiskResponseStatus {

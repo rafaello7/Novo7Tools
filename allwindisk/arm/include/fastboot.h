@@ -71,6 +71,11 @@ extern int fastboot_fifo_size(void);
 /* Send data to the client app */
 extern void fastboot_tx(const void *buffer, unsigned buffer_size);
 
+extern void masstorage_tx(const void *buffer, unsigned buffer_size);
+
 void sdelay(unsigned long loops);
+
+int masstorage_mount(unsigned firstSector, unsigned sectorCount,
+        int read_write);
 
 #endif /* FASTBOOT_H */

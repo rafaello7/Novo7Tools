@@ -38,6 +38,7 @@ static struct cmd_fastboot_interface interface =
 
 static char *transfer_buffer    = (char*)0x41000000;
 static char *malloc_base        = (char*)0x43000000; /* till 0x46ffffff */
+char        *masstorage_buffer  = (char*)0x48000000;
 static char *log_addr           = (char*)0x49000000;
 // start of code is at 0x4a000000
 
@@ -208,6 +209,13 @@ static void dispatch_cmd(uint16_t cmd, uint32_t param1, uint64_t start,
         board_exit = 1;
         exitaddr_jumpto = (void(*)(void))(unsigned)start;
         send_resp_OK(NULL, 0);
+        break;
+    case BCMD_MOUNT:
+        if( masstorage_mount(start, count, param1) != 0 ) {
+            send_resp_fail();
+        }else{
+            send_resp_OK(NULL, 0);
+        }
         break;
     default:
         dolog("unknown command %c\n", cmd);

@@ -197,7 +197,7 @@ static void cmd_partitions(void)
                         part->name,
                         part->firstSector / 2,
                         part->firstSector & 1 ? ".5" : "  ",
-                        part->sectorCount,
+                        part->sectorCount / 2,
                         part->sectorCount & 1 ? ".5" : "  ",
                         part->ro,
                         part->user_type,
@@ -520,6 +520,25 @@ static void cmd_egonjumpto(const char *fname)
     }
 }
 
+static void cmd_exposepart(int argc, char *argv[])
+{
+    enum FlashMemoryArea fmarea;
+    unsigned long long firstSector, sectorCount;
+
+    if( argc == 0 ) {
+        printf("error: partition name not provided\n");
+        return;
+    }
+    if( ! getParitionParams(argv[0], &fmarea, &firstSector, &sectorCount) )
+        return;
+    if( fmarea != FMAREA_LOGDISK ) {
+        printf("error: only logical disk partitions are supported\n");
+        return;
+    }
+    send_command(BCMD_MOUNT, argc == 2 && !strcmp(argv[1], "rw"),
+            firstSector, sectorCount, NULL, 0);
+}
+
 int main(int argc, char *argv[])
 {
     if( argc == 1 ) {
@@ -534,6 +553,7 @@ int main(int argc, char *argv[])
         printf("    allwindisk l                    - print debug log from device\n");
         printf("    allwindisk e  <file>            - embed eGON image (must have valid magic\n");
         printf("                                      and the place for size and checksum)\n");
+        printf("    allwindisk m  <partname> [rw]   - make partition available as disk on host\n");
         printf("    allwindisk mr <address> <size[k|M]> <file>  - memory read\n");
         printf("    allwindisk mw <address> <file>  - memory write\n");
         printf("    allwindisk mx <address> [<file>]- optionally load file to the specified\n");
@@ -567,6 +587,9 @@ int main(int argc, char *argv[])
         break;
     case 'm':
         switch( argv[1][1] ) {
+        case '\0':
+            cmd_exposepart(argc-2, argv+2);
+            break;
         case 'r':
             cmd_memread(argc-2, argv+2);
             break;

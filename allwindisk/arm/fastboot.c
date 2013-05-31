@@ -13,7 +13,7 @@
 /* debug */
 #define DMSG_DEBUG(...)
 #define DMSG_INFO(...)
-#define DMSG_PANIC(...)
+#define DMSG_PANIC  dolog
 
 /* usb & ccmu */
 #define FASTBOOT_USB_BASE               0x01c13000
@@ -47,16 +47,25 @@
 #define FASTBOOT_INTERFACE_SUB_CLASS 0x42
 #define FASTBOOT_INTERFACE_PROTOCOL  0x03
 
+enum {
+    MASSTORAGE_INTERFACE_CLASS      = 0x08,
+    MASSTORAGE_INTERFACE_SUB_CLASS  = 0x06, /* SCSI transparent command set */
+    MASSTORAGE_INTERFACE_PROTOCOL   = 0x50, /* BBB, bulk only transport */
+};
+
 /* ep packet size */
 #define EP0_MAX_PACKET_SIZE					64
 #define FULL_SPEED_EP_MAX_PACKET_SIZE		64
 #define HIGH_SPEED_EP_MAX_PACKET_SIZE		512
 
-#define CTRL_EP_INDEX		0
-#define BULK_IN_EP_INDEX	1	/* tx */
-#define BULK_OUT_EP_INDEX	2	/* rx */
-
-#define FASTBOOT_EP_NUM     3
+enum {
+    CTRL_EP_INDEX,
+    BULK_IN_EP_INDEX,           /* tx */
+    BULK_OUT_EP_INDEX,          /* rx */
+    MASSTORAGE_IN_EP_INDEX,     /* tx */
+    MASSTORAGE_OUT_EP_INDEX,    /* rx */
+    FASTBOOT_EP_NUM
+};
 
 /* ep fifo size */
 #define EP0_FIFOSIZE		64
@@ -131,8 +140,7 @@ enum usb_device_speed {
 	USB_SPEED_SUPER,			        /* usb 3.0 */
 };
 
-//-----------------------------------------------------------------------------
-//  Ô¤¶¨Òå
+
 //-----------------------------------------------------------------------------
 
 static char *device_strings[DEVICE_STRING_MANUFACTURER_INDEX + 1];
@@ -143,7 +151,9 @@ static char fastboot_fifo_ep0[EP0_FIFOSIZE];
 static char fastboot_fifo_bulk_ep[BULK_FIFOSIZE];
 
 static unsigned int set_address = 0;
-static unsigned int deferred_rx = 0;    /* rx ´«ÊäÑÓÊ± */
+static unsigned int deferred_rx = 0;
+
+int masstorage_rx_handler(const char *message, int count);
 
 static void print_sw_udc(struct sw_udc *sw_udc)
 {
@@ -222,14 +232,26 @@ static void fastboot_bulk_endpoint_reset (void)
 	/* tx */
 	USBC_SelectActiveEp(udc.bsp, BULK_IN_EP_INDEX);
     USBC_Dev_ConfigEp(udc.bsp, USBC_TS_TYPE_BULK, USBC_EP_TYPE_TX, 1, udc.bulk_ep_size & 0x7ff);
-	USBC_ConfigFifo(udc.bsp, USBC_EP_TYPE_TX, 1, udc.fifo_size, 1024);		//1k¿ªÊ¼, Ã¿¸öep·ÖÅä1KµÄ¿Õ¼ä
+	USBC_ConfigFifo(udc.bsp, USBC_EP_TYPE_TX, 1, udc.fifo_size, 512);
 	USBC_INT_EnableEp(udc.bsp, USBC_EP_TYPE_TX, BULK_IN_EP_INDEX);
 
 	/* rx */
 	USBC_SelectActiveEp(udc.bsp, BULK_OUT_EP_INDEX);
 	USBC_Dev_ConfigEp(udc.bsp, USBC_TS_TYPE_BULK, USBC_EP_TYPE_RX, 1, udc.bulk_ep_size & 0x7ff);
-	USBC_ConfigFifo(udc.bsp, USBC_EP_TYPE_RX, 1, udc.fifo_size, 2048);		//2k¿ªÊ¼, Ã¿¸öep·ÖÅä1KµÄ¿Õ¼ä
+	USBC_ConfigFifo(udc.bsp, USBC_EP_TYPE_RX, 1, udc.fifo_size, 1024);
 	USBC_INT_EnableEp(udc.bsp, USBC_EP_TYPE_RX, BULK_OUT_EP_INDEX);
+
+	/* mass storage tx */
+	USBC_SelectActiveEp(udc.bsp, MASSTORAGE_IN_EP_INDEX);
+    USBC_Dev_ConfigEp(udc.bsp, USBC_TS_TYPE_BULK, USBC_EP_TYPE_TX, 1, udc.bulk_ep_size & 0x7ff);
+	USBC_ConfigFifo(udc.bsp, USBC_EP_TYPE_TX, 1, udc.fifo_size, 1536);
+	USBC_INT_EnableEp(udc.bsp, USBC_EP_TYPE_TX, MASSTORAGE_IN_EP_INDEX);
+
+	/* mass storage rx */
+	USBC_SelectActiveEp(udc.bsp, MASSTORAGE_OUT_EP_INDEX);
+	USBC_Dev_ConfigEp(udc.bsp, USBC_TS_TYPE_BULK, USBC_EP_TYPE_RX, 1, udc.bulk_ep_size & 0x7ff);
+	USBC_ConfigFifo(udc.bsp, USBC_EP_TYPE_RX, 1, udc.fifo_size, 2048);
+	USBC_INT_EnableEp(udc.bsp, USBC_EP_TYPE_RX, MASSTORAGE_OUT_EP_INDEX);
 
 	USBC_SelectActiveEp(udc.bsp, old_ep_index);
 
@@ -395,9 +417,9 @@ static int do_usb_req_get_descriptor(void)
 #else
 			d.bcdUSB             = 0x200;
 #endif
-			d.bDeviceClass       = 0xff;
-			d.bDeviceSubClass    = 0xff;
-			d.bDeviceProtocol    = 0xff;
+			d.bDeviceClass       = 0x0;
+			d.bDeviceSubClass    = 0x0;
+			d.bDeviceProtocol    = 0x0;
 			d.bMaxPacketSize0    = 0x40;
 			d.idVendor           = DEVICE_VENDOR_ID;
 			d.idProduct          = DEVICE_PRODUCT_ID;
@@ -424,6 +446,7 @@ static int do_usb_req_get_descriptor(void)
 			unsigned char bytes_remaining = udc.req.wLength;
 			unsigned char bytes_total = 0;
 
+            dolog("USB_DT_CONFIG: max=%d\n", bytes_remaining);
 			memset(&c, 0, sizeof(struct usb_configuration_descriptor));
 			memset(&i, 0, sizeof(struct usb_interface_descriptor));
 			memset(&ep_in, 0, sizeof(struct usb_endpoint_descriptor));
@@ -433,8 +456,9 @@ static int do_usb_req_get_descriptor(void)
 			/* configuration */
 			c.bLength            	= min(bytes_remaining, sizeof (c));
 			c.bDescriptorType    	= USB_DT_CONFIG;
-			c.wTotalLength 			= sizeof (c) + sizeof (i) + sizeof (ep_in) + sizeof (ep_out);
-			c.bNumInterfaces     	= 1;
+			c.wTotalLength 			= sizeof (c) + 2 * (sizeof (i) +
+                    sizeof (ep_in) + sizeof (ep_out));
+			c.bNumInterfaces     	= 2;
 			c.bConfigurationValue	= CONFIGURATION_NORMAL;
 			c.iConfiguration     	= DEVICE_STRING_CONFIG_INDEX;
 			c.bmAttributes       	= 0xc0;
@@ -479,6 +503,53 @@ static int do_usb_req_get_descriptor(void)
 			ep_out.bLength            = min (bytes_remaining, sizeof (ep_out));
 			ep_out.bDescriptorType    = USB_DT_ENDPOINT;
 			ep_out.bEndpointAddress   = BULK_OUT_EP_INDEX; /* OUT */
+			ep_out.bmAttributes       = USB_ENDPOINT_XFER_BULK;
+			if(fastboot_is_highspeed()){
+				ep_out.wMaxPacketSize = HIGH_SPEED_EP_MAX_PACKET_SIZE;
+			}else{
+				ep_out.wMaxPacketSize = FULL_SPEED_EP_MAX_PACKET_SIZE;
+			}
+			ep_out.bInterval          = 0x00;
+
+			bytes_remaining -= ep_out.bLength;
+			memcpy (&fastboot_fifo_ep0[bytes_total], &ep_out, ep_out.bLength);
+			bytes_total += ep_out.bLength;
+
+			/* interface II */
+			i.bLength             = min (bytes_remaining, sizeof(i));
+			i.bDescriptorType     = USB_DT_INTERFACE;
+			i.bInterfaceNumber    = 0x01;
+			i.bAlternateSetting   = 0x00;
+			i.bNumEndpoints       = 0x02;
+			i.bInterfaceClass     = MASSTORAGE_INTERFACE_CLASS;
+			i.bInterfaceSubClass  = MASSTORAGE_INTERFACE_SUB_CLASS;
+			i.bInterfaceProtocol  = MASSTORAGE_INTERFACE_PROTOCOL;
+			i.iInterface          = DEVICE_STRING_INTERFACE_INDEX;
+
+			bytes_remaining -= i.bLength;
+			memcpy (&fastboot_fifo_ep0[bytes_total], &i, i.bLength);
+			bytes_total += i.bLength;
+
+			/* ep_in II */
+			ep_in.bLength            = min (bytes_remaining, sizeof (ep_in));
+			ep_in.bDescriptorType    = USB_DT_ENDPOINT;
+			ep_in.bEndpointAddress   = 0x80 | MASSTORAGE_IN_EP_INDEX; /* IN */
+			ep_in.bmAttributes       = USB_ENDPOINT_XFER_BULK;
+			if(fastboot_is_highspeed()){
+				ep_in.wMaxPacketSize = HIGH_SPEED_EP_MAX_PACKET_SIZE;
+			}else{
+				ep_in.wMaxPacketSize = FULL_SPEED_EP_MAX_PACKET_SIZE;
+			}
+			ep_in.bInterval          = 0x00;
+
+			bytes_remaining -= ep_in.bLength;
+			memcpy (&fastboot_fifo_ep0[bytes_total], &ep_in, ep_in.bLength);
+			bytes_total += ep_in.bLength;
+
+			/* ep_out II */
+			ep_out.bLength            = min (bytes_remaining, sizeof (ep_out));
+			ep_out.bDescriptorType    = USB_DT_ENDPOINT;
+			ep_out.bEndpointAddress   = MASSTORAGE_OUT_EP_INDEX; /* OUT */
 			ep_out.bmAttributes       = USB_ENDPOINT_XFER_BULK;
 			if(fastboot_is_highspeed()){
 				ep_out.wMaxPacketSize = HIGH_SPEED_EP_MAX_PACKET_SIZE;
@@ -596,7 +667,7 @@ static int do_usb_req_get_status(void)
 		return FASTBOOT_ERROR;
 	}
 
-	bLength = min(udc.req.wValue, 2);
+	bLength = min(udc.req.wLength, 2);
 
 	memset(fastboot_fifo_ep0, 0, EP0_FIFOSIZE);
 	fastboot_fifo_ep0[0] = USB_STATUS_SELFPOWERED;
@@ -607,6 +678,60 @@ static int do_usb_req_get_status(void)
 	WriteDataStatusComplete(udc.bsp, USBC_EP_TYPE_EP0, 1);
 
 	return ret;
+}
+
+static int usb_req_get_max_lun(void)
+{
+	int ret = FASTBOOT_OK;
+	u32 fifo;
+
+    dolog(">> usb_req_get_max_lun\n");
+	if(0 == udc.req.wLength){
+		/* sent zero packet */
+		WriteDataStatusComplete(udc.bsp, USBC_EP_TYPE_EP0, 1);
+		return FASTBOOT_ERROR;
+	}
+
+    fastboot_fifo_ep0[0] = 0;   /* one lun */
+    fifo = USBC_SelectFIFO(udc.bsp, CTRL_EP_INDEX);
+    USBC_WritePacket(udc.bsp, fifo, 1, fastboot_fifo_ep0);
+    WriteDataStatusComplete(udc.bsp, USBC_EP_TYPE_EP0, 1);
+    return ret;
+}
+
+static int do_process_class_request(void)
+{
+	int ret = FASTBOOT_OK;
+
+    dolog(">> do_process_class_request: bmRequestType=0x%x, bRequest=0x%x\n",
+            udc.req.bmRequestType, udc.req.bRequest);
+    if (0 == (udc.req.bmRequestType & USB_REQ_DIRECTION_MASK)) {
+        /* host-to-device */
+    }else{
+        /* device-to-host */
+        if(USB_RECIP_INTERFACE == (udc.req.bmRequestType & USB_REQ_RECIPIENT_MASK)) {
+            switch( udc.req.bRequest ) {
+            case 0xfe:      /* GET MAX LUN */
+                ret = usb_req_get_max_lun();
+                break;
+            case 0xff:      /* reset */
+                WriteDataStatusComplete(udc.bsp, USBC_EP_TYPE_EP0, 1);
+                break;
+            default:
+                dolog("do_process_class_request: unknown request\n");
+                DMSG_PANIC("do_process_class_request: unkown bRequest(%d)\n",
+                        udc.req.bRequest);
+                USBC_Dev_EpSendStall(udc.bsp, USBC_EP_TYPE_EP0);
+                ret = FASTBOOT_ERROR;
+                break;
+            }
+        }else{
+            DMSG_PANIC("err: unkown bmRequestType(%d)\n", udc.req.bmRequestType);
+            USBC_Dev_EpSendStall(udc.bsp, USBC_EP_TYPE_EP0);
+            ret = FASTBOOT_ERROR;
+        }
+    }
+    return ret;
 }
 
 static int fastboot_poll_h(void)
@@ -625,6 +750,8 @@ static int fastboot_poll_h(void)
 			ret = FASTBOOT_ERROR;
 			goto end;
 		}
+        dolog("fastboot_poll_h: bmRequestType=0x%x, bRequest=%d\n",
+                udc.req.bmRequestType, udc.req.bRequest);
 
 		/* Check data */
 		if(USB_REQ_TYPE_STANDARD == (udc.req.bmRequestType & USB_REQ_TYPE_MASK)){
@@ -691,6 +818,8 @@ static int fastboot_poll_h(void)
 					ret = FASTBOOT_ERROR;
 				}
 			}
+        }else if(USB_REQ_TYPE_CLASS == (udc.req.bmRequestType & USB_REQ_TYPE_MASK)){
+            ret = do_process_class_request();
 		}else{/* if(USB_REQ_TYPE_STANDARD == (req.bmRequestType & USB_REQ_TYPE_MASK)) */
 			/* Non-Standard Req */
 			DMSG_PANIC("err: unkown bmRequestType(%d)\n", udc.req.bmRequestType);
@@ -743,12 +872,12 @@ static int fastboot_resume(void)
 	return fastboot_poll_h();
 }
 
-static void fastboot_rx_error(void)
+static void rx_error(int ep_index)
 {
 	u8 old_ep_index = 0;
 
 	old_ep_index = USBC_GetActiveEp(udc.bsp);
-	USBC_SelectActiveEp(udc.bsp, BULK_OUT_EP_INDEX);
+	USBC_SelectActiveEp(udc.bsp, ep_index);
 
 	/* Clear the RXPKTRDY bit */
 	ReadDataStatusComplete(udc.bsp, USBC_EP_TYPE_RX, 1);
@@ -765,8 +894,6 @@ static void fastboot_rx_error(void)
 	USBC_Dev_EpClearStall(udc.bsp, USBC_EP_TYPE_RX);
 
 	USBC_SelectActiveEp(udc.bsp, old_ep_index);
-
-	return;
 }
 
 static int fastboot_rx(void)
@@ -790,7 +917,7 @@ static int fastboot_rx(void)
 		USBC_ReadPacket(udc.bsp, fifo, count, (void *)fastboot_fifo_bulk_ep);
 
         if(count > fifo_size){
-			fastboot_rx_error();
+			rx_error(BULK_OUT_EP_INDEX);
 		}else{
 			ReadDataStatusComplete(udc.bsp, USBC_EP_TYPE_RX, 1);
 		}
@@ -805,6 +932,48 @@ static int fastboot_rx(void)
 
 		if(err){
 		    DMSG_PANIC("err: rx_handler failed\n");
+		    ret = FASTBOOT_ERROR;
+	    }
+	}
+
+	USBC_SelectActiveEp(udc.bsp, old_ep_index);
+
+	return ret;
+}
+
+static int masstorage_rx(void)
+{
+	int ret = FASTBOOT_INACTIVE;
+	u8 old_ep_index = 0;
+	int err = 1;
+
+	old_ep_index = USBC_GetActiveEp(udc.bsp);
+	USBC_SelectActiveEp(udc.bsp, MASSTORAGE_OUT_EP_INDEX);
+
+	if(USBC_Dev_IsReadDataReady(udc.bsp, USBC_EP_TYPE_RX)){
+		u16 count = 0;
+		u32 fifo  = 0;
+		int fifo_size = fastboot_fifo_size();
+
+		ret = FASTBOOT_OK;
+
+		count = USBC_ReadLenFromFifo(udc.bsp, USBC_EP_TYPE_RX);
+		fifo = USBC_SelectFIFO(udc.bsp, MASSTORAGE_OUT_EP_INDEX);
+		USBC_ReadPacket(udc.bsp, fifo, count, (void *)fastboot_fifo_bulk_ep);
+
+        if(count > fifo_size){
+			rx_error(MASSTORAGE_OUT_EP_INDEX);
+		}else{
+			ReadDataStatusComplete(udc.bsp, USBC_EP_TYPE_RX, 1);
+		}
+
+		/* Pass this up to the interface's handler */
+        if( ! masstorage_rx_handler(fastboot_fifo_bulk_ep, count) ) {
+            err = 0;
+		}
+
+		if(err){
+		    DMSG_PANIC("err: masstorage rx_handler failed\n");
 		    ret = FASTBOOT_ERROR;
 	    }
 	}
@@ -942,14 +1111,21 @@ int fastboot_poll(void)
 		/* The fastboot client blocks of read and
 		   intrrx is not reliable.
 		   Really poll */
-		if(deferred_rx){
+		if(deferred_rx & (1 << BULK_OUT_EP_INDEX)){
 			ret = fastboot_rx ();
 			if(FASTBOOT_OK > ret){
     			return ret;
     		}
 		}
+        deferred_rx &= ~(1 << BULK_OUT_EP_INDEX);
 
-		deferred_rx = 0;
+		if(deferred_rx & (1 << MASSTORAGE_OUT_EP_INDEX)){
+			ret = masstorage_rx ();
+			if(FASTBOOT_OK > ret){
+    			return ret;
+    		}
+		}
+        deferred_rx &= ~(1 << MASSTORAGE_OUT_EP_INDEX);
 	}
 
 	/* ep0 */
@@ -982,7 +1158,7 @@ int fastboot_poll(void)
 			USBC_INT_ClearEpPending(udc.bsp, USBC_EP_TYPE_RX, i);
 
 			/* Defer this to SOF */
-			deferred_rx = 1;
+			deferred_rx |= tmp;
 		}
 	}
 
@@ -1045,6 +1221,40 @@ void fastboot_tx(const void *buffer, unsigned int buffer_size)
     	transfer_size = min(fifo_size, buffer_size);
 
         fifo = USBC_SelectFIFO(udc.bsp, BULK_IN_EP_INDEX);
+
+        memcpy(fastboot_fifo_bulk_ep, buffer, transfer_size);
+        this_len = USBC_WritePacket(udc.bsp, fifo, transfer_size, (void *)fastboot_fifo_bulk_ep);
+
+        buffer += this_len;
+        buffer_size -= this_len;
+
+        WriteDataStatusComplete(udc.bsp, USBC_EP_TYPE_TX, 1);
+    }
+    USBC_SelectActiveEp(udc.bsp, old_ep_idx);
+}
+
+void masstorage_tx(const void *buffer, unsigned int buffer_size)
+{
+	u32 transfer_size = 0;
+    u32 old_ep_idx = 0;
+    u32 fifo = 0;
+
+    u32 this_len = 0;
+    int fifo_size = fastboot_fifo_size();
+
+    /* Save index */
+	old_ep_idx = USBC_GetActiveEp(udc.bsp);
+	USBC_SelectActiveEp(udc.bsp, MASSTORAGE_IN_EP_INDEX);
+
+    /* wait for tx packet sent out */
+    while(USBC_Dev_IsWriteDataReady(udc.bsp, USBC_EP_TYPE_TX)){
+        sdelay(1);
+    }
+
+    while( buffer_size > 0 ){
+    	transfer_size = min(fifo_size, buffer_size);
+
+        fifo = USBC_SelectFIFO(udc.bsp, MASSTORAGE_IN_EP_INDEX);
 
         memcpy(fastboot_fifo_bulk_ep, buffer, transfer_size);
         this_len = USBC_WritePacket(udc.bsp, fifo, transfer_size, (void *)fastboot_fifo_bulk_ep);
