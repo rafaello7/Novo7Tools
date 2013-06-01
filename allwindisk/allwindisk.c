@@ -184,7 +184,7 @@ static void cmd_partitions(void)
     printf("\n");
     partCount = getPartitionCount();
     if( partCount >= 0 ) {
-        printf("logic disk partitions:                                "
+        printf("logical disk partitions:                              "
                 "(mbr ver: %x)\n", getMbrVersion());
         if( partCount == 0 ) {
             printf("No partitions.\n");
