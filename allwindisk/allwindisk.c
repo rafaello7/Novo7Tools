@@ -281,11 +281,45 @@ static void cmd_memread(int argc, char *argv[])
     printf("%d bytes transferred\n", size);
 }
 
+static void prdump_addr(unsigned address, const char *fmtParam,
+        unsigned *prInLine)
+{
+    int prMaxInLine = 20;
+    const char *fmt = "%4d  ";
+
+    if( fmtParam != NULL && fmtParam[0] == '0' && fmtParam[1] != '\0' ) {
+        if( fmtParam[1] == 'x' || fmtParam[1] == 'X' )
+            fmt = "%04X  ";
+        else
+            fmt = "%04o  ";
+        prMaxInLine = 16;
+    }
+    if(*prInLine == 0 || *prInLine >= prMaxInLine) {
+        if( *prInLine != 0 )
+            printf("\n");
+        printf(fmt, address);
+        *prInLine = 0;
+    }
+    ++*prInLine;
+}
+
+static void prdump_char(char c)
+{
+    if( c >= 32 && c < 127 ) {
+        printf("  %c", c);
+    }else if( c == '\r' ) {
+        printf(" \\r");
+    }else if( c == '\n' ) {
+        printf(" \\n");
+    }else{
+        printf(" %02X", (unsigned char)c);
+    }
+}
+
 static void cmd_memdump(int argc, char *argv[])
 {
-    unsigned address, size, i, prInLine, prMaxInLine = 20;
+    unsigned address, size, i, prInLine = 0;
     char buf[0x4000], *endptr;
-    const char *fmt = "%4d  ";
 
     if( argc != 1 && argc != 2 ) {
         printf("error: wrong number of parameters\n");
@@ -296,13 +330,6 @@ static void cmd_memdump(int argc, char *argv[])
         printf("wrong address\n");
         return;
     }
-    if( argv[0][0] == '0' && argv[0][1] != '\0' ) {
-        if( argv[0][1] == 'x' || argv[0][1] == 'X' )
-            fmt = "%04X  ";
-        else
-            fmt = "%04o  ";
-        prMaxInLine = 16;
-    }
     if( argc == 2 ) {
         size = strtoul(argv[1], &endptr, 0);
         if( *endptr == 'k' )
@@ -310,10 +337,8 @@ static void cmd_memdump(int argc, char *argv[])
         else if( *endptr == 'M' )
             size *= 0x100000;
     }else{
-        size = prMaxInLine == 20 ? 260 : 256;
+        size = 256;
     }
-    printf(fmt, address);
-    prInLine = 0;
     while( size > 0 ) {
         unsigned toRead = sizeof(buf);
         if( size < toRead )
@@ -321,24 +346,56 @@ static void cmd_memdump(int argc, char *argv[])
         send_command(BCMD_MEMREAD, 0, address, toRead, NULL, 0);
         get_response_data(buf, toRead);
         for(i = 0; i < toRead; ++i) {
-            if(prInLine == prMaxInLine) {
-                printf("\n");
-                printf(fmt, address+i);
-                prInLine = 0;
-            }
-            if( buf[i] >= 32 && buf[i] < 127 ) {
-                printf("  %c", buf[i]);
-            }else if( buf[i] == '\r' ) {
-                printf(" \\r");
-            }else if( buf[i] == '\n' ) {
-                printf(" \\n");
-            }else{
-                printf(" %02X", (unsigned char)buf[i]);
-            }
-            ++prInLine;
+            prdump_addr(address+i, argv[0], &prInLine);
+            prdump_char(buf[i]);
         }
         address += toRead;
         size -= toRead;
+    }
+    printf("\n");
+}
+
+static void cmd_diskdump(int argc, char *argv[])
+{
+    enum FlashMemoryArea fmarea;
+    unsigned long long firstSector, count, partOffset, partSize;
+    unsigned i, prInLine = 0;
+    char buf[0x4000], *endptr;
+
+    if( argc < 1 || argc > 3 ) {
+        printf("error: wrong number of parameters\n");
+        return;
+    }
+    if( ! getParitionParams(argv[0], &fmarea, &firstSector, &partSize) )
+        return;
+    count = 1;
+    if( argc > 1 ) {
+        partOffset = strtoull(argv[1], &endptr, 0) << 1;
+        if( *endptr ) {
+            printf("wrong address\n");
+            return;
+        }
+        if( argc > 2 ) {
+            count = strtoull(argv[2], NULL, 0) << 1;
+        }
+        if( partOffset + count > partSize ) {
+            printf("error: requested read beyond disk size\n");
+            return;
+        }
+    }else{
+        partOffset = 0;
+    }
+    while( count > 0 ) {
+        unsigned toRead = sizeof(buf) >> 9;
+        if( count < toRead )
+            toRead = count;
+        read_disk(fmarea, firstSector + partOffset, toRead, buf);
+        for(i = 0; i < toRead << 9; ++i) {
+            prdump_addr((partOffset << 9) + i, argv[1], &prInLine);
+            prdump_char(buf[i]);
+        }
+        partOffset += toRead;
+        count -= toRead;
     }
     printf("\n");
 }
@@ -543,17 +600,13 @@ int main(int argc, char *argv[])
 {
     if( argc == 1 ) {
         printf("usage:\n");
-        printf("    allwindisk r <partname> [<offsetkB> <sizekB>] <file>    - read partition\n");
-        printf("    allwindisk w <partname> [<offsetkB>]          <file>    - write partition\n");
-        printf("    allwindisk p                    - print existing disk partitions\n");
-        printf("    allwindisk i                    - ping (check if alive)\n");
-        printf("    allwindisk g <eGON_imgfile>     - load the image into memory and jump to it\n");
-        printf("    allwindisk q                    - board reset\n");
-        printf("    allwindisk f                    - go back to FEL mode\n");
-        printf("    allwindisk l                    - print debug log from device\n");
-        printf("    allwindisk e  <file>            - embed eGON image (must have valid magic\n");
+        printf("    allwindisk dp                   - print existing disk partitions\n");
+        printf("    allwindisk dr <partname> [<offsetkB> <sizekB>] <file>   - read partition\n");
+        printf("    allwindisk dw <partname> [<offsetkB>]          <file>   - write partition\n");
+        printf("    allwindisk dm <partname> [rw]   - make partition available as disk on host\n");
+        printf("    allwindisk dd <partname> [<offsetkB> [<sizekB>]]        - dump partition\n");
+        printf("    allwindisk dg <eGON_imgfile>    - embed eGON image (must have valid magic\n");
         printf("                                      and the place for size and checksum)\n");
-        printf("    allwindisk m  <partname> [rw]   - make partition available as disk on host\n");
         printf("    allwindisk mr <address> <size[k|M]> <file>  - memory read\n");
         printf("    allwindisk mw <address> <file>  - memory write\n");
         printf("    allwindisk mx <address> [<file>]- optionally load file to the specified\n");
@@ -562,6 +615,11 @@ int main(int argc, char *argv[])
         printf("                                      address; jump to code\n");
         printf("    allwindisk md <address> [<size[k|M]>]       - memory dump\n");
         printf("    allwindisk mf <address> <string> [<size[k|M|x]>] - memory fill\n");
+        printf("    allwindisk mg <eGON_imgfile>    - load the image into memory and jump to it\n");
+        printf("    allwindisk i                    - ping (check if alive)\n");
+        printf("    allwindisk q                    - board reset\n");
+        printf("    allwindisk f                    - go back to FEL mode\n");
+        printf("    allwindisk l                    - print debug log from device\n");
         printf("\n");
         printf("The <partname> may be a pseudo-partition, one of: boot0, boot1, disk-logic\n");
         printf("\n");
@@ -570,14 +628,33 @@ int main(int argc, char *argv[])
     if( usbcomm_init() != 0 )
         return 1;
     switch( argv[1][0] ) {
-    case 'e':
-        // not implemented yet
+    case 'd':
+        switch( argv[1][1] ) {
+        case 'd':
+            cmd_diskdump(argc-2, argv+2);
+            break;
+        case 'g':
+            // not implemented yet
+            break;
+        case 'm':
+            cmd_exposepart(argc-2, argv+2);
+            break;
+        case 'p':
+            cmd_partitions();
+            break;
+        case 'r':
+            cmd_diskread(argc - 2, argv + 2);
+            break;
+        case 'w':
+            cmd_diskwrite(argc - 2, argv + 2);
+            break;
+        default:
+            printf("unknown command %s\n", argv[1]);
+            break;
+        }
         break;
     case 'f':
         cmd_board_exit(BE_GO_FEL);
-        break;
-    case 'g':
-        cmd_egonjumpto(argv[2]);
         break;
     case 'i':
         cmd_ping();
@@ -587,23 +664,23 @@ int main(int argc, char *argv[])
         break;
     case 'm':
         switch( argv[1][1] ) {
-        case '\0':
-            cmd_exposepart(argc-2, argv+2);
-            break;
-        case 'r':
-            cmd_memread(argc-2, argv+2);
-            break;
         case 'd':
             cmd_memdump(argc-2, argv+2);
             break;
         case 'f':
             cmd_memfill(argc-2, argv+2);
             break;
-        case 'w':
-            cmd_memwrexec(argc-2, argv+2, BCMD_NONE);
+        case 'g':
+            cmd_egonjumpto(argv[2]);
             break;
         case 'j':
             cmd_memwrexec(argc-2, argv+2, BCMD_MEMJUMPTO);
+            break;
+        case 'r':
+            cmd_memread(argc-2, argv+2);
+            break;
+        case 'w':
+            cmd_memwrexec(argc-2, argv+2, BCMD_NONE);
             break;
         case 'x':
             cmd_memwrexec(argc-2, argv+2, BCMD_MEMEXEC);
@@ -613,17 +690,8 @@ int main(int argc, char *argv[])
             break;
         }
         break;
-    case 'p':
-        cmd_partitions();
-        break;
     case 'q':
         cmd_board_exit(BE_BOARD_RESET);
-        break;
-    case 'r':
-        cmd_diskread(argc - 2, argv + 2);
-        break;
-    case 'w':
-        cmd_diskwrite(argc - 2, argv + 2);
         break;
     case 'S':
         cmd_sdelay(argv[2]);
