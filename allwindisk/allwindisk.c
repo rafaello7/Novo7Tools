@@ -608,6 +608,9 @@ int main(int argc, char *argv[])
         case 'x':
             cmd_memwrexec(argc-2, argv+2, BCMD_MEMEXEC);
             break;
+        default:
+            printf("unknown command %s\n", argv[1]);
+            break;
         }
         break;
     case 'p':

@@ -241,7 +241,7 @@ static int do_read(struct fsg_common *common)
                 (u32)curlun->sectorCount);
         return -ERR_EINVAL;
     }
-    dolog(">> do_read: first=0x%x, count=0x%x\n", lba, sectorCount);
+    //dolog(">> do_read: first=0x%x, count=0x%x\n", lba, sectorCount);
     if( NAND_LogicRead(curlun->firstSector + lba, sectorCount,
             masstorage_buffer) )
     {
@@ -432,7 +432,6 @@ static int do_request_sense(struct fsg_common *common)
     u32     sd, sdinfo;
     int     valid;
 
-    dolog(">> do_request_sense\n");
     /*
      * From the SCSI-2 spec., section 7.9 (Unit attention condition):
      *
@@ -636,7 +635,7 @@ static int do_prevent_allow(struct fsg_common *common)
     struct fsg_lun  *curlun = common->curlun;
     int     prevent;
 
-    dolog(">> do_prevent_allow: prevent=%d\n", cur_cmd.CBWCB[4] & 0x01);
+    //dolog(">> do_prevent_allow: prevent=%d\n", cur_cmd.CBWCB[4] & 0x01);
     if (!common->curlun) {
         return -ERR_EINVAL;
     } else if (!common->curlun->removable) {
@@ -721,7 +720,10 @@ static void send_status(struct fsg_common *common)
                 SK(sd), ASC(sd), ASCQ(sd), sdinfo);
     }
 
-    dolog("         send_status: %d, sd=%d\n", status, sd);
+    if( status != 0 && cur_cmd.CBWCB[0] != TEST_UNIT_READY) {
+        dolog(">> send_status: cmd=0x%x, status=%d, sd=0x%x\n",
+                cur_cmd.CBWCB[0], status, sd);
+    }
     csw.dCSWSignature = cpu_to_le32(USB_BULK_CS_SIG);
     csw.dCSWTag = cur_cmd.dCBWTag;
     csw.dCSWDataResidue = cpu_to_le32(common->residue);
@@ -1012,7 +1014,6 @@ static void do_scsi_command(struct fsg_common *common)
         break;
 
     case TEST_UNIT_READY:
-        dolog(">> TEST_UNIT_READY\n");
         common->data_size_from_cmnd = 0;
         reply = check_command(common, 6, DATA_DIR_NONE,
                 0, 1,

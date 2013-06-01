@@ -232,25 +232,25 @@ static void fastboot_bulk_endpoint_reset (void)
 	/* tx */
 	USBC_SelectActiveEp(udc.bsp, BULK_IN_EP_INDEX);
     USBC_Dev_ConfigEp(udc.bsp, USBC_TS_TYPE_BULK, USBC_EP_TYPE_TX, 1, udc.bulk_ep_size & 0x7ff);
-	USBC_ConfigFifo(udc.bsp, USBC_EP_TYPE_TX, 1, udc.fifo_size, 512);
+	USBC_ConfigFifo(udc.bsp, USBC_EP_TYPE_TX, 1, udc.fifo_size, 1024);
 	USBC_INT_EnableEp(udc.bsp, USBC_EP_TYPE_TX, BULK_IN_EP_INDEX);
 
 	/* rx */
 	USBC_SelectActiveEp(udc.bsp, BULK_OUT_EP_INDEX);
 	USBC_Dev_ConfigEp(udc.bsp, USBC_TS_TYPE_BULK, USBC_EP_TYPE_RX, 1, udc.bulk_ep_size & 0x7ff);
-	USBC_ConfigFifo(udc.bsp, USBC_EP_TYPE_RX, 1, udc.fifo_size, 1024);
+	USBC_ConfigFifo(udc.bsp, USBC_EP_TYPE_RX, 1, udc.fifo_size, 2048);
 	USBC_INT_EnableEp(udc.bsp, USBC_EP_TYPE_RX, BULK_OUT_EP_INDEX);
 
 	/* mass storage tx */
 	USBC_SelectActiveEp(udc.bsp, MASSTORAGE_IN_EP_INDEX);
     USBC_Dev_ConfigEp(udc.bsp, USBC_TS_TYPE_BULK, USBC_EP_TYPE_TX, 1, udc.bulk_ep_size & 0x7ff);
-	USBC_ConfigFifo(udc.bsp, USBC_EP_TYPE_TX, 1, udc.fifo_size, 1536);
+	USBC_ConfigFifo(udc.bsp, USBC_EP_TYPE_TX, 1, udc.fifo_size, 3072);
 	USBC_INT_EnableEp(udc.bsp, USBC_EP_TYPE_TX, MASSTORAGE_IN_EP_INDEX);
 
 	/* mass storage rx */
 	USBC_SelectActiveEp(udc.bsp, MASSTORAGE_OUT_EP_INDEX);
 	USBC_Dev_ConfigEp(udc.bsp, USBC_TS_TYPE_BULK, USBC_EP_TYPE_RX, 1, udc.bulk_ep_size & 0x7ff);
-	USBC_ConfigFifo(udc.bsp, USBC_EP_TYPE_RX, 1, udc.fifo_size, 2048);
+	USBC_ConfigFifo(udc.bsp, USBC_EP_TYPE_RX, 1, udc.fifo_size, 4096);
 	USBC_INT_EnableEp(udc.bsp, USBC_EP_TYPE_RX, MASSTORAGE_OUT_EP_INDEX);
 
 	USBC_SelectActiveEp(udc.bsp, old_ep_index);
@@ -750,8 +750,6 @@ static int fastboot_poll_h(void)
 			ret = FASTBOOT_ERROR;
 			goto end;
 		}
-        dolog("fastboot_poll_h: bmRequestType=0x%x, bRequest=%d\n",
-                udc.req.bmRequestType, udc.req.bRequest);
 
 		/* Check data */
 		if(USB_REQ_TYPE_STANDARD == (udc.req.bmRequestType & USB_REQ_TYPE_MASK)){
