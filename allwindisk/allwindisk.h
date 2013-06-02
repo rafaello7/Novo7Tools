@@ -75,5 +75,7 @@ void get_mountstatus(struct diskmount_status*);
 /* fel.c */
 int fel_ainol(void);
 
+/* egon.c */
+int egonfile_embed(const char *fname);
 
 #endif /* ALLWINDISK_H */

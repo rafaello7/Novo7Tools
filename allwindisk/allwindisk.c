@@ -614,6 +614,15 @@ static void cmd_egonjumpto(const char *fname)
     }
 }
 
+static void cmd_egonembed(const char *fname)
+{
+    if( fname == NULL ) {
+        printf("no image file provided\n");
+        return;
+    }
+    egonfile_embed(fname);
+}
+
 static void cmd_exposepart(int argc, char *argv[])
 {
     enum FlashMemoryArea fmarea;
@@ -671,7 +680,7 @@ int main(int argc, char *argv[])
             cmd_diskdump(argc-2, argv+2);
             break;
         case 'g':
-            // not implemented yet
+            cmd_egonembed(argv[2]);
             break;
         case 'm':
             cmd_exposepart(argc-2, argv+2);

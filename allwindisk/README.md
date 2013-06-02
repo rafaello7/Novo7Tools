@@ -38,8 +38,8 @@ Invoke allwindisk without parameters for possible operations.
 
 On Ainol Novo 7 Aurora the FEL mode may be entered as follows:
 
-1. Turn off the device by press "power" button and hold it for at least
-   10 seconds.
+1. Turn off the device. Either by Android power off or by press "power" button
+   and hold it for at least 10 seconds.
 2. Press "volume down" button (don't release).
 3. Plug in USB cable to device (the cable should be already connected
    to computer).
@@ -198,7 +198,6 @@ Other Commands
 
         allwindisk dg <eGON_imgfile>
  
-Not implemented yet.
 Embed eGON image (must have valid magic and the place for size and checksum).
 
 

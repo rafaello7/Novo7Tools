@@ -1,4 +1,4 @@
-OBJS = usbcomm.o allwindisk.o fel.o
+OBJS = usbcomm.o allwindisk.o fel.o egon.o
 
 all: allwindisk
 	cd arm; make

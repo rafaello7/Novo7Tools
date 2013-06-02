@@ -448,7 +448,6 @@ static int do_usb_req_get_descriptor(void)
 			unsigned char bytes_remaining = udc.req.wLength;
 			unsigned char bytes_total = 0;
 
-            dolog("USB_DT_CONFIG: max=%d\n", bytes_remaining);
 			memset(&c, 0, sizeof(struct usb_configuration_descriptor));
 			memset(&i, 0, sizeof(struct usb_interface_descriptor));
 			memset(&ep_in, 0, sizeof(struct usb_endpoint_descriptor));
