@@ -25,6 +25,7 @@
  */
 
 #include <io.h>
+#include <diskboot.h>
 
 #define SUNXI_CCM_BASE              0X01C20000
 #define SUNXI_CCM_PLL1_CFG			(SUNXI_CCM_BASE + 0x00)		/* PLL1 control */
@@ -65,7 +66,6 @@
 #define NAND_CLK_DIV_N			0
 #define NAND_CLK_DIV_M			0
 
-void sdelay(unsigned long loops);
 
 /*****************************************************************
  * sr32 - clear & set a value in a bit range for a 32 bit address

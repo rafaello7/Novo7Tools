@@ -8,6 +8,17 @@
 #include "allwindisk.h"
 
 
+static int checkIsMounted(void)
+{
+    struct diskmount_status stat;
+    get_mountstatus(&stat);
+    if( stat.mountMode != MOUNTM_NOMOUNT ) {
+        printf("error: please eject volume first\n");
+        return -1;
+    }
+    return 0;
+}
+
 static void cmd_diskread(int argc, char *argv[])
 {
     enum FlashMemoryArea fmarea;
@@ -153,7 +164,10 @@ static void cmd_partitions(void)
     struct MbrPartition *part;
     unsigned long long dsize;
     int i, partCount, pgsize;
+    struct diskmount_status mountstat;
+    const char *mountStr;
 
+    get_mountstatus(&mountstat);
     printf("flash properties:\n");
     printf("        page        pages      blocks     chip          pages    block count\n");
     printf("     kB-size    per block    per chip    count     marked bad        of zone\n");
@@ -177,8 +191,16 @@ static void cmd_partitions(void)
         dsize = (unsigned long long)props->areas[i].page_count * pgsize;
         printf("    %-10s   %8llu    %8u%s",
                 area_name, dsize / 2, pgsize / 2, pgsize & 1 ? ".5" : "  ");
-        if( i != FMAREA_LOGDISK )
+        if( i == FMAREA_LOGDISK ) {
+            if( mountstat.mountMode != MOUNTM_NOMOUNT &&
+                    mountstat.firstSector == 0 &&
+                    mountstat.sectorCount == dsize)
+            {
+                printf("                    (mounted)");
+            }
+        }else{
             printf("        %8u", pgsize * props->pages_per_block / 2);
+        }
         printf("\n");
     }
     printf("\n");
@@ -192,7 +214,15 @@ static void cmd_partitions(void)
             printf(" #  NAME        kB-offset   kB-length     ro   usertype        class\n");
             for(i = 0; i < partCount; ++i) {
                 part = getPartitionNoParams(i);
-                printf("%2d  %-12.12s %8lld%s  %8lld%s %4d   %8d %12.12s\n",
+                if( mountstat.mountMode != MOUNTM_NOMOUNT &&
+                        mountstat.firstSector == part->firstSector &&
+                        mountstat.sectorCount <= part->sectorCount)
+                {
+                    mountStr = " (mounted)";
+                }else{
+                    mountStr = "";
+                }
+                printf("%2d  %-12.12s %8lld%s  %8lld%s %4d   %8d %12.12s%s\n",
                         i,
                         part->name,
                         part->firstSector / 2,
@@ -201,7 +231,8 @@ static void cmd_partitions(void)
                         part->sectorCount & 1 ? ".5" : "  ",
                         part->ro,
                         part->user_type,
-                        part->classname);
+                        part->classname,
+                        mountStr);
             }
         }
     }
@@ -210,6 +241,8 @@ static void cmd_partitions(void)
 
 static void cmd_board_exit(enum BoardExitMode mode)
 {
+    if( checkIsMounted() )
+        return;
     send_command(BCMD_BOARD_EXIT, mode, 0, 0, NULL, 0);
     print_response_data();
     printf("\n");
@@ -550,6 +583,8 @@ static void cmd_memwrexec(int argc, char *argv[], enum BootdiskCommand cmd)
         printf("error: wrong number of parameters\n");
         return;
     }
+    if( cmd == BCMD_MEMJUMPTO && checkIsMounted() )
+        return;
     address = strtoul(argv[0], NULL, 0);
     if( (argc == 1 || mem_write(argv[1], 0, address) != 0xffffffff) &&
             cmd != BCMD_NONE )
@@ -566,6 +601,8 @@ static void cmd_egonjumpto(const char *fname)
 {
     unsigned address;
 
+    if( checkIsMounted() )
+        return;
     if( fname == NULL ) {
         printf("no image file provided\n");
         return;

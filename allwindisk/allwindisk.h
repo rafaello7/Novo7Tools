@@ -69,6 +69,7 @@ void write_disk(enum FlashMemoryArea fmarea,
         unsigned long long firstSector,
         unsigned long long count, const void *wrbuf);
 
+void get_mountstatus(struct diskmount_status*);
 
 
 /* fel.c */

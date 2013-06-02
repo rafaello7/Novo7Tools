@@ -1,6 +1,6 @@
 include config.mk
 
-OBJS_DISKBOOT = start.o main.o fastboot.o string.o usbc.o usbc_dev.o sunxi_dma.o malloc.o vsprintf.o eabi_compat.o board.o masstorage.o
+OBJS_DISKBOOT = start.o main.o usbdcomm.o string.o usbc.o usbc_dev.o sunxi_dma.o malloc.o vsprintf.o eabi_compat.o board.o masstorage.o
 OBJS_DRAMINIT = draminit.o
 
 GCCINC =  -I$$($(CROSS_COMPILE)gcc -print-file-name=include)

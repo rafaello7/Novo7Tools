@@ -1,7 +1,7 @@
 #include <string.h>
 #include <io.h>
 #include <usbdevice.h>
-#include <fastboot.h>
+#include <diskboot.h>
 #include <usb_bsp.h>
 
 
@@ -16,20 +16,20 @@
 #define DMSG_PANIC  dolog
 
 /* usb & ccmu */
-#define FASTBOOT_USB_BASE               0x01c13000
-#define FASTBOOT_SRAM_BASE              0x01c00000
-#define FASTBOOT_CCMU                   0x01c20000
+#define DISKBOOT_USB_BASE               0x01c13000
+#define DISKBOOT_SRAM_BASE              0x01c00000
+#define DISKBOOT_CCMU                   0x01c20000
 
 /* vid & pid */
 #define	DEVICE_VENDOR_ID  					0x0BB4  //0x1F3A
 #define	DEVICE_PRODUCT_ID 					0x0FFF  //0x1010
 #define	DEVICE_BCD        					0x0200
 
-#define DEVICE_MANUFACTURER		            "USB Developer"  		/* ³§ÉÌÐÅÏ¢ 	*/
-#define DEVICE_PRODUCT				        "Android Fastboot"  	/* ²úÆ·ÐÅÏ¢ 	*/
-#define DEVICE_SERIAL_NUMBER			    "20080411"  			/* ²úÆ·ÐòÁÐºÅ 	*/
-#define DEVICE_CONFIG                       "Android Fastboot"
-#define DEVICE_INTERFACE                    "Android Bootloader Interface"
+#define DEVICE_MANUFACTURER		            "rafaello7 ;-)"
+#define DEVICE_PRODUCT				        "Diskboot"
+#define DEVICE_SERIAL_NUMBER			    "20080411"
+#define DEVICE_CONFIG                       "DiskBoot"
+#define DEVICE_INTERFACE                    "DiskBoot Interface"
 
 /* String 0 is the language id */
 #define DEVICE_STRING_PRODUCT_INDEX       	1
@@ -43,9 +43,9 @@
 
 #define CONFIGURATION_NORMAL        1
 
-#define FASTBOOT_INTERFACE_CLASS     0xff
-#define FASTBOOT_INTERFACE_SUB_CLASS 0x42
-#define FASTBOOT_INTERFACE_PROTOCOL  0x03
+#define DISKBOOT_INTERFACE_CLASS     0xff
+#define DISKBOOT_INTERFACE_SUB_CLASS 0x42
+#define DISKBOOT_INTERFACE_PROTOCOL  0x03
 
 enum {
     MASSTORAGE_INTERFACE_CLASS      = 0x08,
@@ -64,7 +64,7 @@ enum {
     BULK_OUT_EP_INDEX,          /* rx */
     MASSTORAGE_IN_EP_INDEX,     /* tx */
     MASSTORAGE_OUT_EP_INDEX,    /* rx */
-    FASTBOOT_EP_NUM
+    USBDEV_EP_NUM
 };
 
 /* ep fifo size */
@@ -144,16 +144,13 @@ enum usb_device_speed {
 //-----------------------------------------------------------------------------
 
 static char *device_strings[DEVICE_STRING_MANUFACTURER_INDEX + 1];
-static struct cmd_fastboot_interface *fastboot_interface = NULL;
 static struct sw_udc udc;
 
-static char fastboot_fifo_ep0[EP0_FIFOSIZE];
-static char fastboot_fifo_bulk_ep[BULK_FIFOSIZE];
+static char usbdcomm_fifo_ep0[EP0_FIFOSIZE];
+static char usbdcomm_fifo_bulk_ep[BULK_FIFOSIZE];
 
 static unsigned int set_address = 0;
 static unsigned int deferred_rx = 0;
-
-int masstorage_rx_handler(const char *message, int count);
 
 static void print_sw_udc(struct sw_udc *sw_udc)
 {
@@ -171,7 +168,7 @@ static void print_sw_udc(struct sw_udc *sw_udc)
 }
 
 
-void sdelay(unsigned long loops)
+void sdelay(unsigned loops)
 {
     loops <<= 3;
 	__asm__ volatile ("1:   subs %0, %1, #1; bne 1b"
@@ -219,11 +216,11 @@ static void ReadDataStatusComplete(__hdle hUSB, u32 ep_type, u32 complete)
 	return;
 }
 
-static void fastboot_bulk_endpoint_reset (void)
+static void usbdcomm_bulk_endpoint_reset (void)
 {
 	u8 old_ep_index = 0;
 
-    DMSG_INFO("fastboot_bulk_endpoint_reset\n");
+    DMSG_INFO("usbdcomm_bulk_endpoint_reset\n");
 
 	old_ep_index = USBC_GetActiveEp(udc.bsp);
 
@@ -258,9 +255,9 @@ static void fastboot_bulk_endpoint_reset (void)
 	return;
 }
 
-static void fastboot_reset(void)
+static void usbdcomm_reset(void)
 {
-    DMSG_INFO("fastboot_reset\n");
+    DMSG_INFO("usbdcomm_reset\n");
 
 	udc.address = 0;
 	udc.speed = USB_SPEED_UNKNOWN;
@@ -300,9 +297,9 @@ static void fastboot_reset(void)
     /* enbale ep0_tx_irq */
 	USBC_INT_EnableEp(udc.bsp, USBC_EP_TYPE_TX, 0);
 
-    fastboot_bulk_endpoint_reset();
+    usbdcomm_bulk_endpoint_reset();
 
-//    USBC_PrintAllReg(udc.usb_base, 0, 5, "fastboot_reset", printf);
+//    USBC_PrintAllReg(udc.usb_base, 0, 5, "usbdcomm_reset", printf);
 
     USBC_Dev_ConectSwitch(udc.bsp, USBC_DEVICE_SWITCH_ON);
 
@@ -313,7 +310,7 @@ static int read_request(struct usb_device_request *req)
 {
 	u32 fifo_count  = 0;
 	u32 fifo        = 0;
-	int ret = FASTBOOT_OK;
+	int ret = USBDCOMM_OK;
 	u8 old_ep_index = 0;
 
 	old_ep_index = USBC_GetActiveEp(udc.bsp);
@@ -323,7 +320,7 @@ static int read_request(struct usb_device_request *req)
     fifo_count = USBC_ReadLenFromFifo(udc.bsp, USBC_EP_TYPE_EP0);
     if(fifo_count != 8 ){
     	DMSG_PANIC("err: ep0 fifo_count is not 8\n", fifo_count);
-    	return FASTBOOT_ERROR;
+    	return USBDCOMM_ERROR;
     }
 
 	USBC_ReadPacket(udc.bsp, fifo, fifo_count, (void *)req);
@@ -336,17 +333,22 @@ static int read_request(struct usb_device_request *req)
 
 static int do_usb_req_set_interface(void)
 {
-	int ret = FASTBOOT_OK;
+	int ret = USBDCOMM_OK;
 
 	/* Only support interface 0, alternate 0 */
 	if((0 == udc.req.wIndex) && (0 == udc.req.wValue)){
-		fastboot_bulk_endpoint_reset ();
+		usbdcomm_bulk_endpoint_reset ();
 	}else{
 		DMSG_PANIC("err: invalid wIndex and wValue, (0, %d), (0, %d)\n", udc.req.wIndex, udc.req.wValue);
-		ret = FASTBOOT_ERROR;
+		ret = USBDCOMM_ERROR;
 	}
 
 	return ret;
+}
+
+static int usbdcomm_is_highspeed(void)
+{
+	return ((udc.speed == USB_SPEED_HIGH) ? 1 : 0);
 }
 
 static int do_usb_req_set_address(void)
@@ -355,7 +357,7 @@ static int do_usb_req_set_address(void)
 
 	udc.address         = (u8) (udc.req.wValue & 0x7f);
 	udc.speed           = USBC_Dev_QueryTransferMode(udc.bsp);
-	udc.bulk_ep_size    = fastboot_is_highspeed() ? HIGH_SPEED_EP_MAX_PACKET_SIZE : FULL_SPEED_EP_MAX_PACKET_SIZE;
+	udc.bulk_ep_size    = usbdcomm_is_highspeed() ? HIGH_SPEED_EP_MAX_PACKET_SIZE : FULL_SPEED_EP_MAX_PACKET_SIZE;
     udc.fifo_size       = BULK_FIFOSIZE;
 
     DMSG_INFO("address:%d, speed:%d, bulk_ep_size:%d, fifo_size:%d\n",
@@ -363,19 +365,19 @@ static int do_usb_req_set_address(void)
 
     DMSG_INFO("usb enter %s\n", (udc.speed == USB_SPEED_HIGH) ? "high speed" : "full speed");
 
-	return FASTBOOT_OK;
+	return USBDCOMM_OK;
 }
 
 static int do_usb_req_set_configuration(void)
 {
-	int ret = FASTBOOT_OK;
+	int ret = USBDCOMM_OK;
 
 	/* Only support 1 configuration so nak anything else */
 	if (CONFIGURATION_NORMAL == udc.req.wValue) {
-		fastboot_bulk_endpoint_reset();
+		usbdcomm_bulk_endpoint_reset();
 	}else{
 		DMSG_PANIC("err: invalid wValue, (0, %d)\n", udc.req.wValue);
-		ret = FASTBOOT_ERROR;
+		ret = USBDCOMM_ERROR;
 	}
 
 	return ret;
@@ -385,22 +387,22 @@ static int do_usb_req_set_feature(void)
 {
     DMSG_PANIC("wrn: do_usb_req_set_feature not support\n");
 
-	return FASTBOOT_OK;
+	return USBDCOMM_OK;
 }
 
 static int do_usb_req_get_descriptor(void)
 {
-	int ret  = FASTBOOT_OK;
+	int ret  = USBDCOMM_OK;
 	u32 fifo = 0;
 
 	if(0 == udc.req.wLength){
 		DMSG_PANIC("wrn: req.wLength is zero\n");
-		return FASTBOOT_OK;
+		return USBDCOMM_OK;
 	}
 
 	if(udc.req.bmRequestType != (USB_DIR_IN | USB_TYPE_STANDARD | USB_RECIP_DEVICE)){
 		DMSG_PANIC("err: invalid bmRequestType, (0, %d), (0, %d)\n", udc.req.bmRequestType);
-		return FASTBOOT_ERROR;
+		return USBDCOMM_ERROR;
 	}
 
 	switch(udc.req.wValue >> 8){
@@ -431,8 +433,8 @@ static int do_usb_req_get_descriptor(void)
 
 			fifo = USBC_SelectFIFO(udc.bsp, CTRL_EP_INDEX);
 
-            memcpy(fastboot_fifo_ep0, &d, d.bLength);
-			USBC_WritePacket(udc.bsp, fifo, d.bLength, (void *)fastboot_fifo_ep0);
+            memcpy(usbdcomm_fifo_ep0, &d, d.bLength);
+			USBC_WritePacket(udc.bsp, fifo, d.bLength, (void *)usbdcomm_fifo_ep0);
 
 			WriteDataStatusComplete(udc.bsp, USBC_EP_TYPE_EP0, 1);
 		}
@@ -451,7 +453,7 @@ static int do_usb_req_get_descriptor(void)
 			memset(&i, 0, sizeof(struct usb_interface_descriptor));
 			memset(&ep_in, 0, sizeof(struct usb_endpoint_descriptor));
 			memset(&ep_out, 0, sizeof(struct usb_endpoint_descriptor));
-			memset(fastboot_fifo_ep0, 0, sizeof(EP0_FIFOSIZE));
+			memset(usbdcomm_fifo_ep0, 0, sizeof(EP0_FIFOSIZE));
 
 			/* configuration */
 			c.bLength            	= min(bytes_remaining, sizeof (c));
@@ -465,7 +467,7 @@ static int do_usb_req_get_descriptor(void)
 			c.bMaxPower          	= 0x32;
 
 			bytes_remaining -= c.bLength;
-			memcpy (&fastboot_fifo_ep0[0], &c, c.bLength);
+			memcpy (&usbdcomm_fifo_ep0[0], &c, c.bLength);
 			bytes_total += c.bLength;
 
 			/* interface */
@@ -474,13 +476,13 @@ static int do_usb_req_get_descriptor(void)
 			i.bInterfaceNumber    = 0x00;
 			i.bAlternateSetting   = 0x00;
 			i.bNumEndpoints       = 0x02;
-			i.bInterfaceClass     = FASTBOOT_INTERFACE_CLASS;
-			i.bInterfaceSubClass  = FASTBOOT_INTERFACE_SUB_CLASS;
-			i.bInterfaceProtocol  = FASTBOOT_INTERFACE_PROTOCOL;
+			i.bInterfaceClass     = DISKBOOT_INTERFACE_CLASS;
+			i.bInterfaceSubClass  = DISKBOOT_INTERFACE_SUB_CLASS;
+			i.bInterfaceProtocol  = DISKBOOT_INTERFACE_PROTOCOL;
 			i.iInterface          = DEVICE_STRING_INTERFACE_INDEX;
 
 			bytes_remaining -= i.bLength;
-			memcpy (&fastboot_fifo_ep0[bytes_total], &i, i.bLength);
+			memcpy (&usbdcomm_fifo_ep0[bytes_total], &i, i.bLength);
 			bytes_total += i.bLength;
 
 			/* ep_in */
@@ -488,7 +490,7 @@ static int do_usb_req_get_descriptor(void)
 			ep_in.bDescriptorType    = USB_DT_ENDPOINT;
 			ep_in.bEndpointAddress   = 0x80 | BULK_IN_EP_INDEX; /* IN */
 			ep_in.bmAttributes       = USB_ENDPOINT_XFER_BULK;
-			if(fastboot_is_highspeed()){
+			if(usbdcomm_is_highspeed()){
 				ep_in.wMaxPacketSize = HIGH_SPEED_EP_MAX_PACKET_SIZE;
 			}else{
 				ep_in.wMaxPacketSize = FULL_SPEED_EP_MAX_PACKET_SIZE;
@@ -496,7 +498,7 @@ static int do_usb_req_get_descriptor(void)
 			ep_in.bInterval          = 0x00;
 
 			bytes_remaining -= ep_in.bLength;
-			memcpy (&fastboot_fifo_ep0[bytes_total], &ep_in, ep_in.bLength);
+			memcpy (&usbdcomm_fifo_ep0[bytes_total], &ep_in, ep_in.bLength);
 			bytes_total += ep_in.bLength;
 
 			/* ep_out */
@@ -504,7 +506,7 @@ static int do_usb_req_get_descriptor(void)
 			ep_out.bDescriptorType    = USB_DT_ENDPOINT;
 			ep_out.bEndpointAddress   = BULK_OUT_EP_INDEX; /* OUT */
 			ep_out.bmAttributes       = USB_ENDPOINT_XFER_BULK;
-			if(fastboot_is_highspeed()){
+			if(usbdcomm_is_highspeed()){
 				ep_out.wMaxPacketSize = HIGH_SPEED_EP_MAX_PACKET_SIZE;
 			}else{
 				ep_out.wMaxPacketSize = FULL_SPEED_EP_MAX_PACKET_SIZE;
@@ -512,7 +514,7 @@ static int do_usb_req_get_descriptor(void)
 			ep_out.bInterval          = 0x00;
 
 			bytes_remaining -= ep_out.bLength;
-			memcpy (&fastboot_fifo_ep0[bytes_total], &ep_out, ep_out.bLength);
+			memcpy (&usbdcomm_fifo_ep0[bytes_total], &ep_out, ep_out.bLength);
 			bytes_total += ep_out.bLength;
 
 			/* interface II */
@@ -527,7 +529,7 @@ static int do_usb_req_get_descriptor(void)
 			i.iInterface          = DEVICE_STRING_INTERFACE_INDEX;
 
 			bytes_remaining -= i.bLength;
-			memcpy (&fastboot_fifo_ep0[bytes_total], &i, i.bLength);
+			memcpy (&usbdcomm_fifo_ep0[bytes_total], &i, i.bLength);
 			bytes_total += i.bLength;
 
 			/* ep_in II */
@@ -535,7 +537,7 @@ static int do_usb_req_get_descriptor(void)
 			ep_in.bDescriptorType    = USB_DT_ENDPOINT;
 			ep_in.bEndpointAddress   = 0x80 | MASSTORAGE_IN_EP_INDEX; /* IN */
 			ep_in.bmAttributes       = USB_ENDPOINT_XFER_BULK;
-			if(fastboot_is_highspeed()){
+			if(usbdcomm_is_highspeed()){
 				ep_in.wMaxPacketSize = HIGH_SPEED_EP_MAX_PACKET_SIZE;
 			}else{
 				ep_in.wMaxPacketSize = FULL_SPEED_EP_MAX_PACKET_SIZE;
@@ -543,7 +545,7 @@ static int do_usb_req_get_descriptor(void)
 			ep_in.bInterval          = 0x00;
 
 			bytes_remaining -= ep_in.bLength;
-			memcpy (&fastboot_fifo_ep0[bytes_total], &ep_in, ep_in.bLength);
+			memcpy (&usbdcomm_fifo_ep0[bytes_total], &ep_in, ep_in.bLength);
 			bytes_total += ep_in.bLength;
 
 			/* ep_out II */
@@ -551,7 +553,7 @@ static int do_usb_req_get_descriptor(void)
 			ep_out.bDescriptorType    = USB_DT_ENDPOINT;
 			ep_out.bEndpointAddress   = MASSTORAGE_OUT_EP_INDEX; /* OUT */
 			ep_out.bmAttributes       = USB_ENDPOINT_XFER_BULK;
-			if(fastboot_is_highspeed()){
+			if(usbdcomm_is_highspeed()){
 				ep_out.wMaxPacketSize = HIGH_SPEED_EP_MAX_PACKET_SIZE;
 			}else{
 				ep_out.wMaxPacketSize = FULL_SPEED_EP_MAX_PACKET_SIZE;
@@ -559,11 +561,11 @@ static int do_usb_req_get_descriptor(void)
 			ep_out.bInterval          = 0x00;
 
 			bytes_remaining -= ep_out.bLength;
-			memcpy (&fastboot_fifo_ep0[bytes_total], &ep_out, ep_out.bLength);
+			memcpy (&usbdcomm_fifo_ep0[bytes_total], &ep_out, ep_out.bLength);
 			bytes_total += ep_out.bLength;
 
 			fifo = USBC_SelectFIFO(udc.bsp, CTRL_EP_INDEX);
-			USBC_WritePacket(udc.bsp, fifo, bytes_total, (void *)fastboot_fifo_ep0);
+			USBC_WritePacket(udc.bsp, fifo, bytes_total, (void *)usbdcomm_fifo_ep0);
 			WriteDataStatusComplete(udc.bsp, USBC_EP_TYPE_EP0, 1);
 		}
 		break;
@@ -583,14 +585,14 @@ static int do_usb_req_get_descriptor(void)
 				/* Language ID */
 				bLength = min(4, udc.req.wLength);
 
-				memset(fastboot_fifo_ep0, 0, sizeof(EP0_FIFOSIZE));
-				fastboot_fifo_ep0[0] = bLength;        /* length */
-				fastboot_fifo_ep0[1] = USB_DT_STRING;  /* descriptor = string */
-				fastboot_fifo_ep0[2] = DEVICE_STRING_LANGUAGE_ID & 0xff;
-				fastboot_fifo_ep0[3] = DEVICE_STRING_LANGUAGE_ID >> 8;
+				memset(usbdcomm_fifo_ep0, 0, sizeof(EP0_FIFOSIZE));
+				usbdcomm_fifo_ep0[0] = bLength;        /* length */
+				usbdcomm_fifo_ep0[1] = USB_DT_STRING;  /* descriptor = string */
+				usbdcomm_fifo_ep0[2] = DEVICE_STRING_LANGUAGE_ID & 0xff;
+				usbdcomm_fifo_ep0[3] = DEVICE_STRING_LANGUAGE_ID >> 8;
 
 				fifo = USBC_SelectFIFO(udc.bsp, CTRL_EP_INDEX);
-				USBC_WritePacket(udc.bsp, fifo, bLength, (void *)fastboot_fifo_ep0);
+				USBC_WritePacket(udc.bsp, fifo, bLength, (void *)usbdcomm_fifo_ep0);
 				WriteDataStatusComplete(udc.bsp, USBC_EP_TYPE_EP0, 1);
 			}else{
 				/* Size of string in chars */
@@ -600,19 +602,19 @@ static int do_usb_req_get_descriptor(void)
 
 				bLength = min(bLength, udc.req.wLength);
 
-				memset(fastboot_fifo_ep0, 0, sizeof(EP0_FIFOSIZE));
+				memset(usbdcomm_fifo_ep0, 0, sizeof(EP0_FIFOSIZE));
 
-				fastboot_fifo_ep0[0] = bLength;        /* length */
-				fastboot_fifo_ep0[1] = USB_DT_STRING;  /* descriptor = string */
+				usbdcomm_fifo_ep0[0] = bLength;        /* length */
+				usbdcomm_fifo_ep0[1] = USB_DT_STRING;  /* descriptor = string */
 
 				/* Copy device string to fifo, expand to simple unicode */
 				for(s = 0; s < sl; s++){
-					fastboot_fifo_ep0[2+ 2*s + 0] = device_strings[string_index][s];
-					fastboot_fifo_ep0[2+ 2*s + 1] = 0;
+					usbdcomm_fifo_ep0[2+ 2*s + 0] = device_strings[string_index][s];
+					usbdcomm_fifo_ep0[2+ 2*s + 1] = 0;
 				}
 
 				fifo = USBC_SelectFIFO(udc.bsp, CTRL_EP_INDEX);
-				USBC_WritePacket(udc.bsp, fifo, bLength, (void *)fastboot_fifo_ep0);
+				USBC_WritePacket(udc.bsp, fifo, bLength, (void *)usbdcomm_fifo_ep0);
 				WriteDataStatusComplete(udc.bsp, USBC_EP_TYPE_EP0, 1);
 			}
 		}
@@ -639,8 +641,8 @@ static int do_usb_req_get_descriptor(void)
 			d.bRESERVED          = 0;
 
 			fifo = USBC_SelectFIFO(udc.bsp, CTRL_EP_INDEX);
-			memcpy(fastboot_fifo_ep0, &d, d.bLength);
-			USBC_WritePacket(udc.bsp, fifo, d.bLength, (void *)fastboot_fifo_ep0);
+			memcpy(usbdcomm_fifo_ep0, &d, d.bLength);
+			USBC_WritePacket(udc.bsp, fifo, d.bLength, (void *)usbdcomm_fifo_ep0);
 			WriteDataStatusComplete(udc.bsp, USBC_EP_TYPE_EP0, 1);
 #endif
 		}
@@ -649,7 +651,7 @@ static int do_usb_req_get_descriptor(void)
 		default:
 			DMSG_PANIC("err: unkown wValue(%d)\n", udc.req.wValue);
 			USBC_Dev_EpSendStall(udc.bsp, USBC_EP_TYPE_EP0);
-			ret = FASTBOOT_ERROR;
+			ret = USBDCOMM_ERROR;
 	}
 
 	return ret;
@@ -657,24 +659,24 @@ static int do_usb_req_get_descriptor(void)
 
 static int do_usb_req_get_status(void)
 {
-	int ret = FASTBOOT_OK;
+	int ret = USBDCOMM_OK;
 	unsigned char bLength = 0;
 	u32 fifo = 0;
 
 	if(0 == udc.req.wLength){
 		/* sent zero packet */
 		WriteDataStatusComplete(udc.bsp, USBC_EP_TYPE_EP0, 1);
-		return FASTBOOT_ERROR;
+		return USBDCOMM_ERROR;
 	}
 
 	bLength = min(udc.req.wLength, 2);
 
-	memset(fastboot_fifo_ep0, 0, EP0_FIFOSIZE);
-	fastboot_fifo_ep0[0] = USB_STATUS_SELFPOWERED;
-	fastboot_fifo_ep0[1] = 0;
+	memset(usbdcomm_fifo_ep0, 0, EP0_FIFOSIZE);
+	usbdcomm_fifo_ep0[0] = USB_STATUS_SELFPOWERED;
+	usbdcomm_fifo_ep0[1] = 0;
 
 	fifo = USBC_SelectFIFO(udc.bsp, CTRL_EP_INDEX);
-	USBC_WritePacket(udc.bsp, fifo, bLength, (void *)fastboot_fifo_ep0);
+	USBC_WritePacket(udc.bsp, fifo, bLength, (void *)usbdcomm_fifo_ep0);
 	WriteDataStatusComplete(udc.bsp, USBC_EP_TYPE_EP0, 1);
 
 	return ret;
@@ -682,26 +684,26 @@ static int do_usb_req_get_status(void)
 
 static int usb_req_get_max_lun(void)
 {
-	int ret = FASTBOOT_OK;
+	int ret = USBDCOMM_OK;
 	u32 fifo;
 
     dolog(">> usb_req_get_max_lun\n");
 	if(0 == udc.req.wLength){
 		/* sent zero packet */
 		WriteDataStatusComplete(udc.bsp, USBC_EP_TYPE_EP0, 1);
-		return FASTBOOT_ERROR;
+		return USBDCOMM_ERROR;
 	}
 
-    fastboot_fifo_ep0[0] = 0;   /* one lun */
+    usbdcomm_fifo_ep0[0] = 0;   /* one lun */
     fifo = USBC_SelectFIFO(udc.bsp, CTRL_EP_INDEX);
-    USBC_WritePacket(udc.bsp, fifo, 1, fastboot_fifo_ep0);
+    USBC_WritePacket(udc.bsp, fifo, 1, usbdcomm_fifo_ep0);
     WriteDataStatusComplete(udc.bsp, USBC_EP_TYPE_EP0, 1);
     return ret;
 }
 
 static int do_process_class_request(void)
 {
-	int ret = FASTBOOT_OK;
+	int ret = USBDCOMM_OK;
 
     dolog(">> do_process_class_request: bmRequestType=0x%x, bRequest=0x%x\n",
             udc.req.bmRequestType, udc.req.bRequest);
@@ -722,21 +724,21 @@ static int do_process_class_request(void)
                 DMSG_PANIC("do_process_class_request: unkown bRequest(%d)\n",
                         udc.req.bRequest);
                 USBC_Dev_EpSendStall(udc.bsp, USBC_EP_TYPE_EP0);
-                ret = FASTBOOT_ERROR;
+                ret = USBDCOMM_ERROR;
                 break;
             }
         }else{
             DMSG_PANIC("err: unkown bmRequestType(%d)\n", udc.req.bmRequestType);
             USBC_Dev_EpSendStall(udc.bsp, USBC_EP_TYPE_EP0);
-            ret = FASTBOOT_ERROR;
+            ret = USBDCOMM_ERROR;
         }
     }
     return ret;
 }
 
-static int fastboot_poll_h(void)
+static int usbdcomm_poll_h(void)
 {
-	int ret 	= FASTBOOT_INACTIVE;
+	int ret 	= USBDCOMM_INACTIVE;
 	u32 status  = 0;
 	u8 old_ep_index = 0;
 
@@ -747,7 +749,7 @@ static int fastboot_poll_h(void)
 		status = read_request(&udc.req);
 		if(status!= 0){
 			DMSG_PANIC("err: read_request failed\n");
-			ret = FASTBOOT_ERROR;
+			ret = USBDCOMM_ERROR;
 			goto end;
 		}
 
@@ -773,7 +775,7 @@ static int fastboot_poll_h(void)
 
 						default:
 							USBC_Dev_EpSendStall(udc.bsp, USBC_EP_TYPE_EP0);
-							ret = FASTBOOT_ERROR;
+							ret = USBDCOMM_ERROR;
 							break;
 					}
 				}else if (USB_RECIP_INTERFACE == (udc.req.bmRequestType & USB_REQ_RECIPIENT_MASK)){
@@ -785,13 +787,13 @@ static int fastboot_poll_h(void)
 
 						default:
 							USBC_Dev_EpSendStall(udc.bsp, USBC_EP_TYPE_EP0);
-							ret = FASTBOOT_ERROR;
+							ret = USBDCOMM_ERROR;
 							break;
 					}
 				}else{
 					DMSG_PANIC("err: unkown bmRequestType(%d)\n", udc.req.bmRequestType);
 					USBC_Dev_EpSendStall(udc.bsp, USBC_EP_TYPE_EP0);
-					ret = FASTBOOT_ERROR;
+					ret = USBDCOMM_ERROR;
 				}
 			}else{
 				/* device-to-host */
@@ -807,13 +809,13 @@ static int fastboot_poll_h(void)
 
 						default:
 							USBC_Dev_EpSendStall(udc.bsp, USBC_EP_TYPE_EP0);
-							ret = FASTBOOT_ERROR;
+							ret = USBDCOMM_ERROR;
 							break;
 					}
 				}else{
 					DMSG_PANIC("err: unkown bmRequestType(%d)\n", udc.req.bmRequestType);
 					USBC_Dev_EpSendStall(udc.bsp, USBC_EP_TYPE_EP0);
-					ret = FASTBOOT_ERROR;
+					ret = USBDCOMM_ERROR;
 				}
 			}
         }else if(USB_REQ_TYPE_CLASS == (udc.req.bmRequestType & USB_REQ_TYPE_MASK)){
@@ -822,10 +824,10 @@ static int fastboot_poll_h(void)
 			/* Non-Standard Req */
 			DMSG_PANIC("err: unkown bmRequestType(%d)\n", udc.req.bmRequestType);
 			USBC_Dev_EpSendStall(udc.bsp, USBC_EP_TYPE_EP0);
-			ret = FASTBOOT_ERROR;
+			ret = USBDCOMM_ERROR;
 		}
 
-		if(FASTBOOT_OK > ret){
+		if(USBDCOMM_OK > ret){
 			DMSG_PANIC("err: Unhandled req\n");
 			//PRINT_REQ(udc.req);
 		}
@@ -837,7 +839,7 @@ end:
 	return ret;
 }
 
-static int fastboot_resume(void)
+static int usbdcomm_resume(void)
 {
 	u8 old_ep_index = 0;
 
@@ -849,7 +851,7 @@ static int fastboot_resume(void)
 		DMSG_PANIC("ERR: ep0 stall\n");
 		USBC_Dev_EpClearStall(udc.bsp, USBC_EP_TYPE_EP0);
 
-		return FASTBOOT_OK;
+		return USBDCOMM_OK;
 	}
 
 	/* Host stopped last transaction */
@@ -867,7 +869,12 @@ static int fastboot_resume(void)
 		DMSG_INFO("SetAddress: %d\n", udc.address);
 	}
 
-	return fastboot_poll_h();
+	return usbdcomm_poll_h();
+}
+
+static int usbdcomm_fifo_size(void)
+{
+	return ((udc.speed == USB_SPEED_HIGH) ? HIGH_SPEED_EP_MAX_PACKET_SIZE : FULL_SPEED_EP_MAX_PACKET_SIZE);
 }
 
 static void rx_error(int ep_index)
@@ -894,9 +901,9 @@ static void rx_error(int ep_index)
 	USBC_SelectActiveEp(udc.bsp, old_ep_index);
 }
 
-static int fastboot_rx(void)
+static int usbdcomm_rx(void)
 {
-	int ret = FASTBOOT_INACTIVE;
+	int ret = USBDCOMM_INACTIVE;
 	u8 old_ep_index = 0;
 	int err = 1;
 
@@ -906,13 +913,13 @@ static int fastboot_rx(void)
 	if(USBC_Dev_IsReadDataReady(udc.bsp, USBC_EP_TYPE_RX)){
 		u16 count = 0;
 		u32 fifo  = 0;
-		int fifo_size = fastboot_fifo_size();
+		int fifo_size = usbdcomm_fifo_size();
 
-		ret = FASTBOOT_OK;
+		ret = USBDCOMM_OK;
 
 		count = USBC_ReadLenFromFifo(udc.bsp, USBC_EP_TYPE_RX);
 		fifo = USBC_SelectFIFO(udc.bsp, BULK_OUT_EP_INDEX);
-		USBC_ReadPacket(udc.bsp, fifo, count, (void *)fastboot_fifo_bulk_ep);
+		USBC_ReadPacket(udc.bsp, fifo, count, (void *)usbdcomm_fifo_bulk_ep);
 
         if(count > fifo_size){
 			rx_error(BULK_OUT_EP_INDEX);
@@ -921,16 +928,13 @@ static int fastboot_rx(void)
 		}
 
 		/* Pass this up to the interface's handler */
-		if (fastboot_interface &&
-		    fastboot_interface->rx_handler) {
-			if(!fastboot_interface->rx_handler(fastboot_fifo_bulk_ep, count)){
-				err = 0;
-			}
-		}
+        if(!diskboot_rx_handler(usbdcomm_fifo_bulk_ep, count)){
+            err = 0;
+        }
 
 		if(err){
 		    DMSG_PANIC("err: rx_handler failed\n");
-		    ret = FASTBOOT_ERROR;
+		    ret = USBDCOMM_ERROR;
 	    }
 	}
 
@@ -941,7 +945,7 @@ static int fastboot_rx(void)
 
 static int masstorage_rx(void)
 {
-	int ret = FASTBOOT_INACTIVE;
+	int ret = USBDCOMM_INACTIVE;
 	u8 old_ep_index = 0;
 	int err = 1;
 
@@ -951,13 +955,13 @@ static int masstorage_rx(void)
 	if(USBC_Dev_IsReadDataReady(udc.bsp, USBC_EP_TYPE_RX)){
 		u16 count = 0;
 		u32 fifo  = 0;
-		int fifo_size = fastboot_fifo_size();
+		int fifo_size = usbdcomm_fifo_size();
 
-		ret = FASTBOOT_OK;
+		ret = USBDCOMM_OK;
 
 		count = USBC_ReadLenFromFifo(udc.bsp, USBC_EP_TYPE_RX);
 		fifo = USBC_SelectFIFO(udc.bsp, MASSTORAGE_OUT_EP_INDEX);
-		USBC_ReadPacket(udc.bsp, fifo, count, (void *)fastboot_fifo_bulk_ep);
+		USBC_ReadPacket(udc.bsp, fifo, count, (void *)usbdcomm_fifo_bulk_ep);
 
         if(count > fifo_size){
 			rx_error(MASSTORAGE_OUT_EP_INDEX);
@@ -966,13 +970,13 @@ static int masstorage_rx(void)
 		}
 
 		/* Pass this up to the interface's handler */
-        if( ! masstorage_rx_handler(fastboot_fifo_bulk_ep, count) ) {
+        if( ! masstorage_rx_handler(usbdcomm_fifo_bulk_ep, count) ) {
             err = 0;
 		}
 
 		if(err){
 		    DMSG_PANIC("err: masstorage rx_handler failed\n");
-		    ret = FASTBOOT_ERROR;
+		    ret = USBDCOMM_ERROR;
 	    }
 	}
 
@@ -981,9 +985,9 @@ static int masstorage_rx(void)
 	return ret;
 }
 
-static int fastboot_suspend(void)
+static int usbdcomm_suspend(void)
 {
-    return FASTBOOT_OK;
+    return USBDCOMM_OK;
 }
 
 /*
@@ -1013,13 +1017,13 @@ static void clear_all_irq(void)
     USBC_INT_ClearMiscPendingAll(udc.bsp);
 }
 
-int fastboot_poll(void)
+int usbdcomm_poll(void)
 {
 	u8 usb_irq = 0;
 	u16 tx_irq = 0;
 	u16 rx_irq = 0;
 
-	int ret = FASTBOOT_INACTIVE;
+	int ret = USBDCOMM_INACTIVE;
     int i = 0;
     u32 old_ep_idx  = 0;
 
@@ -1034,7 +1038,7 @@ int fastboot_poll(void)
 	usb_irq = filtrate_irq_misc(usb_irq);
 
     if(deferred_rx){
-		ret = FASTBOOT_OK;
+		ret = USBDCOMM_OK;
     }
 
     /* RESET */
@@ -1050,7 +1054,7 @@ int fastboot_poll(void)
 		udc.address = 0;
 		udc.speed = USB_SPEED_UNKNOWN;
 
-		return FASTBOOT_OK;
+		return USBDCOMM_OK;
     }
 
 	/* RESUME */
@@ -1060,9 +1064,9 @@ int fastboot_poll(void)
 		/* clear interrupt */
 		USBC_INT_ClearMiscPending(udc.bsp, USBC_INTUSB_RESUME);
 
-		ret = fastboot_resume();
-		if(FASTBOOT_OK > ret){
-		    DMSG_PANIC("err: fastboot_resume failed\n");
+		ret = usbdcomm_resume();
+		if(USBDCOMM_OK > ret){
+		    DMSG_PANIC("err: usbdcomm_resume failed\n");
 			return ret;
 		}
 
@@ -1076,9 +1080,9 @@ int fastboot_poll(void)
 		/* clear interrupt */
 		USBC_INT_ClearMiscPending(udc.bsp, USBC_INTUSB_SUSPEND);
 
-		ret = fastboot_suspend ();
-		if(FASTBOOT_OK > ret){
-		    DMSG_PANIC("err: fastboot_suspend failed\n");
+		ret = usbdcomm_suspend ();
+		if(USBDCOMM_OK > ret){
+		    DMSG_PANIC("err: usbdcomm_suspend failed\n");
 			return ret;
         }
 
@@ -1091,7 +1095,7 @@ int fastboot_poll(void)
 
 		USBC_INT_ClearMiscPending(udc.bsp, USBC_INTUSB_DISCONNECT);
 
-        return FASTBOOT_DISCONNECT;
+        return USBDCOMM_DISCONNECT;
 	}
 
 	/* SOF */
@@ -1100,18 +1104,18 @@ int fastboot_poll(void)
 
 		USBC_INT_ClearMiscPending(udc.bsp, USBC_INTUSB_SOF);
 
-		ret = fastboot_resume();
-		if(FASTBOOT_OK > ret){
-		    DMSG_PANIC("err: fastboot_resume failed\n");
+		ret = usbdcomm_resume();
+		if(USBDCOMM_OK > ret){
+		    DMSG_PANIC("err: usbdcomm_resume failed\n");
 			return ret;
 		}
 
-		/* The fastboot client blocks of read and
+		/* The usbdcomm client blocks of read and
 		   intrrx is not reliable.
 		   Really poll */
 		if(deferred_rx & (1 << BULK_OUT_EP_INDEX)){
-			ret = fastboot_rx ();
-			if(FASTBOOT_OK > ret){
+			ret = usbdcomm_rx ();
+			if(USBDCOMM_OK > ret){
     			return ret;
     		}
 		}
@@ -1119,7 +1123,7 @@ int fastboot_poll(void)
 
 		if(deferred_rx & (1 << MASSTORAGE_OUT_EP_INDEX)){
 			ret = masstorage_rx ();
-			if(FASTBOOT_OK > ret){
+			if(USBDCOMM_OK > ret){
     			return ret;
     		}
 		}
@@ -1132,7 +1136,7 @@ int fastboot_poll(void)
     }
 
 	/* tx endpoint data transfers */
-	for (i = 1; i < FASTBOOT_EP_NUM; i++) {
+	for (i = 1; i < USBDEV_EP_NUM; i++) {
 		u32 tmp = 1 << i;
 
 		if (tx_irq & tmp) {
@@ -1148,7 +1152,7 @@ int fastboot_poll(void)
 	}
 
 	/* rx endpoint data transfers */
-	for (i = 1; i < FASTBOOT_EP_NUM; i++) {
+	for (i = 1; i < USBDEV_EP_NUM; i++) {
 		u32 tmp = 1 << i;
 
 		if (rx_irq & tmp) {
@@ -1165,15 +1169,12 @@ int fastboot_poll(void)
     return ret;
 }
 
-void fastboot_shutdown(void)
+void usbdcomm_shutdown(void)
 {
-    DMSG_INFO("fastboot_shutdown\n");
+    DMSG_INFO("usbdcomm_shutdown\n");
 
     /* Let the cmd layer know that we are shutting down */
-	if (fastboot_interface &&
-	    fastboot_interface->reset_handler) {
-		fastboot_interface->reset_handler();
-	}
+    diskboot_reset_handler();
 
     USBC_Dev_ConectSwitch(udc.bsp, 0);
 
@@ -1182,29 +1183,16 @@ void fastboot_shutdown(void)
     udc.bulk_ep_size    = 0;
     udc.fifo_size       = 0;
     deferred_rx         = 0;
-    fastboot_interface  = NULL;
-
-    return;
 }
 
-int fastboot_is_highspeed(void)
-{
-	return ((udc.speed == USB_SPEED_HIGH) ? 1 : 0);
-}
-
-int fastboot_fifo_size(void)
-{
-	return ((udc.speed == USB_SPEED_HIGH) ? HIGH_SPEED_EP_MAX_PACKET_SIZE : FULL_SPEED_EP_MAX_PACKET_SIZE);
-}
-
-void fastboot_tx(const void *buffer, unsigned int buffer_size)
+void usbdcomm_diskboot_tx(const void *buffer, unsigned int buffer_size)
 {
 	u32 transfer_size = 0;
     u32 old_ep_idx = 0;
     u32 fifo = 0;
 
     u32 this_len = 0;
-    int fifo_size = fastboot_fifo_size();
+    int fifo_size = usbdcomm_fifo_size();
 
     /* Save index */
 	old_ep_idx = USBC_GetActiveEp(udc.bsp);
@@ -1220,8 +1208,8 @@ void fastboot_tx(const void *buffer, unsigned int buffer_size)
 
         fifo = USBC_SelectFIFO(udc.bsp, BULK_IN_EP_INDEX);
 
-        memcpy(fastboot_fifo_bulk_ep, buffer, transfer_size);
-        this_len = USBC_WritePacket(udc.bsp, fifo, transfer_size, (void *)fastboot_fifo_bulk_ep);
+        memcpy(usbdcomm_fifo_bulk_ep, buffer, transfer_size);
+        this_len = USBC_WritePacket(udc.bsp, fifo, transfer_size, (void *)usbdcomm_fifo_bulk_ep);
 
         buffer += this_len;
         buffer_size -= this_len;
@@ -1231,14 +1219,14 @@ void fastboot_tx(const void *buffer, unsigned int buffer_size)
     USBC_SelectActiveEp(udc.bsp, old_ep_idx);
 }
 
-void masstorage_tx(const void *buffer, unsigned int buffer_size)
+void usbdcomm_masstorage_tx(const void *buffer, unsigned int buffer_size)
 {
 	u32 transfer_size = 0;
     u32 old_ep_idx = 0;
     u32 fifo = 0;
 
     u32 this_len = 0;
-    int fifo_size = fastboot_fifo_size();
+    int fifo_size = usbdcomm_fifo_size();
 
     /* Save index */
 	old_ep_idx = USBC_GetActiveEp(udc.bsp);
@@ -1254,8 +1242,8 @@ void masstorage_tx(const void *buffer, unsigned int buffer_size)
 
         fifo = USBC_SelectFIFO(udc.bsp, MASSTORAGE_IN_EP_INDEX);
 
-        memcpy(fastboot_fifo_bulk_ep, buffer, transfer_size);
-        this_len = USBC_WritePacket(udc.bsp, fifo, transfer_size, (void *)fastboot_fifo_bulk_ep);
+        memcpy(usbdcomm_fifo_bulk_ep, buffer, transfer_size);
+        this_len = USBC_WritePacket(udc.bsp, fifo, transfer_size, (void *)usbdcomm_fifo_bulk_ep);
 
         buffer += this_len;
         buffer_size -= this_len;
@@ -1317,11 +1305,11 @@ u32 close_usb_clock(u32 ccmu_base)
 	return 0;
 }
 
-int fastboot_init(struct cmd_fastboot_interface *interface)
+int usbdcomm_init(void)
 {
 	bsp_usbc_t usbc;
 
-    DMSG_INFO("fastboot_init\n");
+    DMSG_INFO("usbdcomm_init\n");
 
     device_strings[DEVICE_STRING_MANUFACTURER_INDEX]    = DEVICE_MANUFACTURER;
     device_strings[DEVICE_STRING_PRODUCT_INDEX]         = DEVICE_PRODUCT;
@@ -1330,10 +1318,9 @@ int fastboot_init(struct cmd_fastboot_interface *interface)
 	device_strings[DEVICE_STRING_INTERFACE_INDEX]       = DEVICE_INTERFACE;
 
 	/* The interface structure */
-	fastboot_interface                          = interface;
-    udc.usb_base    = FASTBOOT_USB_BASE;
-    udc.sram_base   = FASTBOOT_SRAM_BASE;
-    udc.ccmu_base   = FASTBOOT_CCMU;
+    udc.usb_base    = DISKBOOT_USB_BASE;
+    udc.sram_base   = DISKBOOT_SRAM_BASE;
+    udc.ccmu_base   = DISKBOOT_CCMU;
 
 	/* open usb clock */
 	close_usb_clock(udc.ccmu_base);
@@ -1352,7 +1339,7 @@ int fastboot_init(struct cmd_fastboot_interface *interface)
 		return -1;
 	}
 
-    fastboot_reset();
+    usbdcomm_reset();
 
     return 0;
 }

@@ -21,7 +21,7 @@
 #include <string.h>
 #include <vsprintf.h>
 #include <nand_bsp.h>
-#include <fastboot.h>
+#include <diskboot.h>
 
 /*
  *      SCSI opcodes
@@ -689,7 +689,7 @@ static void finish_reply(struct fsg_common *common)
     if( cur_cmd.dCBWDataTransferLength != 0 &&
             (cur_cmd.bmCBWFlags & USB_BULK_IN_FLAG) )
     {
-        masstorage_tx(masstorage_buffer, cur_cmd.dCBWDataTransferLength);
+        usbdcomm_masstorage_tx(masstorage_buffer, cur_cmd.dCBWDataTransferLength);
     }
 }
 
@@ -728,7 +728,7 @@ static void send_status(struct fsg_common *common)
     csw.dCSWTag = cur_cmd.dCBWTag;
     csw.dCSWDataResidue = cpu_to_le32(common->residue);
     csw.bCSWStatus = status;
-    masstorage_tx(&csw, USB_BULK_CS_WRAP_LEN);
+    usbdcomm_masstorage_tx(&csw, USB_BULK_CS_WRAP_LEN);
 }
 
 
@@ -1102,7 +1102,7 @@ static struct fsg_common common = {
     .luns = &lun
 };
 
-int masstorage_rx_handler(const char *buffer, int buffer_size)
+int masstorage_rx_handler(const char *buffer, unsigned buffer_size)
 {
     if( cur_cmd.dCBWDataTransferLength == 0 || (cur_cmd.bmCBWFlags & 0x80) ||
             cur_cmd.dCBWDataTransferLength == cur_cmd_bytes_written )
@@ -1164,5 +1164,14 @@ int masstorage_mount(unsigned firstSector, unsigned sectorCount, int read_write)
     lun.ro = ! read_write;
     lun.is_open = 1;
     return 0;
+}
+
+int masstorage_getstatus(unsigned *firstSector, unsigned *sectorCount,
+        int *read_write)
+{
+    *firstSector = lun.firstSector;
+    *sectorCount = lun.sectorCount;
+    *read_write = ! lun.ro;
+    return lun.is_open;
 }
 

@@ -15,6 +15,7 @@ enum BootdiskCommand {
     BCMD_MEMWRITE           = 'w',
     BCMD_MEMEXEC            = 'x',
     BCMD_MOUNT              = 'M',
+    BCMD_GETMOUNT_STATUS    = 'm',
 };
 
 enum BootdiskResponseStatus {
@@ -70,6 +71,18 @@ struct flashmem_properties {
 enum BoardExitMode {
     BE_GO_FEL       = 1,
     BE_BOARD_RESET  = 2
+};
+
+enum MountMode {
+    MOUNTM_NOMOUNT,
+    MOUNTM_RO,
+    MOUNTM_RW
+};
+
+struct diskmount_status {
+    uint32_t    mountMode;
+    uint32_t    firstSector;
+    uint32_t    sectorCount;
 };
 
 #endif /* BOOTDISK_INTERFACE_H */

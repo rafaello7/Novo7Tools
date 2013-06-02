@@ -15,26 +15,13 @@
  * MA 02111-1307 USA
  */
 
-#include <fastboot.h>
+#include <diskboot.h>
 #include <string.h>
 #include <nand_bsp.h>
 #include <malloc.h>
 #include <vsprintf.h>
 #include <bootdisk_interface.h>
 
-void clock_init(void);
-void clock_restore(void);
-void reset_board(void);
-
-/* Forward decl */
-static int rx_handler (const char *buffer, unsigned int buffer_size);
-static void reset_handler (void);
-
-static struct cmd_fastboot_interface interface = 
-{
-	.rx_handler            = rx_handler,
-	.reset_handler         = reset_handler,
-};
 
 static char *transfer_buffer    = (char*)0x41000000;
 static char *malloc_base        = (char*)0x43000000; /* till 0x46ffffff */
@@ -64,7 +51,7 @@ void dolog(const char *fmt, ...)
     }
 }
 
-static void reset_handler (void)
+void diskboot_reset_handler(void)
 {
     dolog("in reset handler\n");
     cur_cmd.cmd = BCMD_NONE;
@@ -79,9 +66,9 @@ static void send_resp_st(const void *data, int datasize, int status)
     resp.magic = 0x1234;
     resp.status = status;
     resp.datasize = datasize;
-    fastboot_tx(&resp, sizeof(resp));
+    usbdcomm_diskboot_tx(&resp, sizeof(resp));
     if( datasize > 0 )
-        fastboot_tx(data, datasize);
+        usbdcomm_diskboot_tx(data, datasize);
 }
 
 static void send_resp_fail(void)
@@ -217,6 +204,23 @@ static void dispatch_cmd(uint16_t cmd, uint32_t param1, uint64_t start,
             send_resp_OK(NULL, 0);
         }
         break;
+    case BCMD_GETMOUNT_STATUS:
+        {
+            unsigned firstSector, sectorCount;
+            int read_write;
+            struct diskmount_status stat;
+            if( masstorage_getstatus(&firstSector, &sectorCount, &read_write)) {
+                stat.mountMode = read_write ? MOUNTM_RW : MOUNTM_RO;
+                stat.firstSector = firstSector;
+                stat.sectorCount = sectorCount;
+            }else{
+                stat.mountMode = MOUNTM_NOMOUNT;
+                stat.firstSector = 0;
+                stat.sectorCount = 0;
+            }
+            send_resp_OK(&stat, sizeof(stat));
+        }
+        break;
     default:
         dolog("unknown command %c\n", cmd);
         send_resp_fail();
@@ -224,7 +228,7 @@ static void dispatch_cmd(uint16_t cmd, uint32_t param1, uint64_t start,
     }
 }
 
-static int rx_handler(const char *buffer, unsigned int buffer_size)
+int diskboot_rx_handler(const char *buffer, unsigned buffer_size)
 {
     if( cur_cmd.cmd == BCMD_NONE ) {
         if( buffer_size != sizeof(cur_cmd) ) {
@@ -267,14 +271,14 @@ void main_loop(void)
     malloc_init(malloc_base, 0x4000000); // 64 MB
     NAND_Init();
     sdelay(0x100);
-    if (0 == fastboot_init(&interface)) {
+    if (0 == usbdcomm_init()) {
         while (1) {
-            int poll_status = fastboot_poll();
+            int poll_status = usbdcomm_poll();
 
-            if (FASTBOOT_ERROR == poll_status) {
+            if (USBDCOMM_ERROR == poll_status) {
                 /* Error */
                 break;
-            } else if (FASTBOOT_DISCONNECT == poll_status) {
+            } else if (USBDCOMM_DISCONNECT == poll_status) {
                 /* beak, cleanup and re-init */
                 break;
             }
@@ -284,7 +288,7 @@ void main_loop(void)
     }
     NAND_Exit();
     sdelay(0x200);
-    fastboot_shutdown();
+    usbdcomm_shutdown();
     clock_restore();
     exitaddr_jumpto();
 }

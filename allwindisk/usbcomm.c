@@ -326,6 +326,15 @@ int getParitionParams(const char *partName,
     return 1;
 }
 
+void get_mountstatus(struct diskmount_status *stat)
+{
+    send_command(BCMD_GETMOUNT_STATUS, 0, 0, 0, NULL, 0);
+    get_response_data(stat, sizeof(*stat));
+    stat->mountMode = le32toh(stat->mountMode);
+    stat->firstSector = le32toh(stat->firstSector);
+    stat->sectorCount = le32toh(stat->sectorCount);
+}
+
 int usbcomm_init(void)
 {
     int i;
