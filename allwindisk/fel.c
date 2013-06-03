@@ -272,7 +272,11 @@ int fel_ainol(void)
     usb = libusb_open_device_with_vid_pid(NULL, 0x1f3a, 0xefe8);
     if (!usb)
         return -1;
-    libusb_claim_interface(usb, 0);
+    if( (res = libusb_claim_interface(usb, 0)) != 0 ) {
+        fprintf(stderr, "\nunable to claim interface: %s",
+                libusb_error_name(res));
+        return -1;
+    }
     if( (res = send_bootfile("draminit.bin", 0x2000)) == 0 ) {
         send_exec_request(AW_FEL_1_EXEC, 0x2000);
     }
