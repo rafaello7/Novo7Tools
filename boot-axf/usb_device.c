@@ -122,6 +122,19 @@ struct SCSIInquiryResponse {
     char revision[4];
 };
 
+struct SCSIRequestSenseResponse {
+    u8 responseCode;
+    u8 obsolete;
+    u8 senseKey;
+    u8 information[4];
+    u8 additionalSenseLength;
+    u8 cmdSpecific[4];
+    u8 addSenseCode;
+    u8 addSenseCodeQual;
+    u8 fieldReplUnitCode;
+    u8 senseKeySpec[3];
+} __attribute__((packed));
+
 struct ConfigDesc {
     struct usb_configuration_descriptor conf;
     struct usb_interface_descriptor interf;
@@ -278,8 +291,19 @@ static struct SCSIInquiryResponse InquiryData = {
 };
 
 static unsigned SenseData = 0x00000003;
-static unsigned RequestSense[] = {
-    0x00020007, 0x0a000000, 0x00000000, 0x0000003a, 0
+
+static struct SCSIRequestSenseResponse RequestSense = {
+    /* is set to SS_MEDIUM_NOT_PRESENT == 0x023a00 */
+    .responseCode = 0x70,
+    .obsolete = 0,
+    .senseKey = 0x2,
+    .information = { 0, 0, 0, 0 },
+    .additionalSenseLength = 0xa,
+    .cmdSpecific = { 0, 0, 0, 0 },
+    .addSenseCode = 0x3a,
+    .addSenseCodeQual = 0,
+    .fieldReplUnitCode = 0,
+    .senseKeySpec = { 0, 0, 0 }
 };
 
 struct usb_devparams {
@@ -1028,7 +1052,7 @@ int usb_dev_bulk_xfer(struct usb_devparams *var4)
                 }
                 var8 = var8 << 9;
                 var9 = var9 << 9;
-                var4->uparam848 = var8 < 16777216 ? var8 : 16777216;
+                var4->uparam848 = var8 < 0x1000000 ? var8 : 0x1000000;
             } else { 
                 var4->uparam864 = 1;
                 var4->uparam848 = 0;
@@ -1060,7 +1084,7 @@ int usb_dev_bulk_xfer(struct usb_devparams *var4)
             }
             break;
         case 3: /* REQUEST_SENSE */
-            var4->uparam844 = RequestSense;
+            var4->uparam844 = &RequestSense;
             var4->uparam848 = scsiCmd->dCBWDataTransferLength < 18 ?
                 scsiCmd->dCBWDataTransferLength : 18;
             var4->uparam852 = 0;
