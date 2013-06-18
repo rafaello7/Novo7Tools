@@ -333,16 +333,16 @@ struct usb_devparams {
     int uparam604;
     int uparam608[5];
     int uparam628[5];
-    int uparam648[5];
-    int uparam668[5];
+    int eptx_xfer_state[5];
+    int eprx_xfer_state[5];
     int uparam688;
-    const struct usb_device_descriptor *uparam692;
-    const struct ConfigDesc *uparam696;
+    const struct usb_device_descriptor *devDesc;
+    const struct ConfigDesc *configDesc;
     const struct usb_string_descriptor *uparam700[4];
-    const struct ConfigDesc *uparam716;
-    const struct ConfigDesc *uparam720;
-    const struct usb_qualifier_descriptor *uparam724;
-    const struct usb_generic_descriptor *uparam728;
+    const struct ConfigDesc *hsBulkConfigDesc;
+    const struct ConfigDesc *hsBulkConfigDesc2;
+    const struct usb_qualifier_descriptor *devQualDesc;
+    const struct usb_generic_descriptor *otgDesc;
     int uparam732;
     int uparam736[5];
     int uparam756[5];
@@ -354,7 +354,7 @@ struct usb_devparams {
     int uparam828;
     int uparam832;
     int uparam836;
-    int uparam840;
+    int epNum;
     void *uparam844;
     int uparam848;
     int uparam852;
@@ -546,7 +546,7 @@ void usb_irq_handler(struct usb_devparams *var4)
     var5 = usb_get_bus_interrupt_status(var4);
     usb_clear_bus_interrupt_status(var4, var5);
     if(var5 & 8) {
-        var4->uparam16 = var4->uparam16 + 1;
+        ++var4->uparam16;
         var5 = var5 & ~8;
     }
     if(readb(var4->uparam4 + 0x50) & var5) {
@@ -580,78 +580,68 @@ void usb_irq_handler(struct usb_devparams *var4)
     ++*L4280A404;
 }
 
-void usb_read_ep_fifo(struct usb_devparams *var4, int var5,
-        char *var6, int var7)
+void usb_read_ep_fifo(struct usb_devparams *var4, int ep,
+        char *buf, int count)
 {
-    int var8;
-    char *var9;
-    int vasl;
+    char *bufp;
+    int i;
     int vafp;
 
-    if(var5 > 5) {
+    if(ep > 5) {
         return;
     }
     vafp = usb_get_fifo_access_config(var4);
     usb_fifo_accessed_by_cpu(var4);
-    var9 = var6;
-    vasl = 0;
-    while(vasl < var7) {
-        var8 = readb(var4->uparam4 + (var5 << 2));
-        *var9 = var8;
-        var9 = var9 + 1;
-        vasl = vasl + 1;
+    bufp = buf;
+    for(i = 0; i < count; ++i) {
+        *bufp++ = readb(var4->uparam4 + (ep << 2));
     }
     usb_set_fifo_access_config(var4, vafp);
 }
 
-void usb_write_ep_fifo(struct usb_devparams *var4, int var5, const void *var6,
-        int var7)
+void usb_write_ep_fifo(struct usb_devparams *var4, int ep, const void *data,
+        int count)
 {
-    int var8;
-    const char *var9;
-    int vasl;
+    const char *datap;
+    int i;
     int vafp;
 
-    if(var5 > 5) {
+    if(ep > 5) {
         return;
     }
     vafp = usb_get_fifo_access_config(var4);
     usb_fifo_accessed_by_cpu(var4);
-    var9 = var6;
-    vasl = 0;
-    while(vasl < var7) {
-        var8 = *var9;
-        writeb(var8, var4->uparam4 + (var5 << 2));
-        var9 = var9 + 1;
-        vasl = vasl + 1;
+    datap = data;
+    for(i = 0; i < count; ++i) {
+        writeb(*datap++, var4->uparam4 + (ep << 2));
     }
     usb_set_fifo_access_config(var4, vafp);
 }
 
-static int fnL42804D48(struct usb_devparams *var4, int var5, char *var6,
-        int var7, int var8)
+static int fnL42804D48(struct usb_devparams *var4, int ep, char *buf,
+        int toRead, int var8)
 {
     int var9;
     int vasl;
     int vafp;
-    int sp0;
-    int sp4;
+    int epSave;
+    int res;
 
-    sp4 = 0;
-    sp0 = usb_get_active_ep(var4);
-    usb_select_ep(var4, var5);
+    res = 0;
+    epSave = usb_get_active_ep(var4);
+    usb_select_ep(var4, ep);
     var9 = readw(var4->uparam4 + 0x84);
     var9 = (var9 & 0x7ff) * ((var9 >> 11) + 1);
-    switch( var4->uparam668[var5 - 1] ) {
+    switch( var4->eprx_xfer_state[ep - 1] ) {
     case 0:
         var4->uparam828 = 0;
-        var4->uparam816 = var6;
-        var4->uparam820 = var7;
+        var4->uparam816 = buf;
+        var4->uparam820 = toRead;
         var4->uparam824 = 0;
         if(var9 == 0) {
             return 1;
         }
-        if(var7 >= var9) {
+        if(toRead >= var9) {
             vasl = var4->uparam820 < var9 ?
                 var4->uparam820 : var9;
             if(usb_get_eprx_csr(var4) & 1) {
@@ -659,20 +649,20 @@ static int fnL42804D48(struct usb_devparams *var4, int var5, char *var6,
                 if(usb_get_fifo_access_config(var4) & 1) {
                     wlibc_uprintf("Error: CPU Access Failed!!\n");
                 }
-                usb_read_ep_fifo(var4, var5, var4->uparam816, vasl);
+                usb_read_ep_fifo(var4, ep, var4->uparam816, vasl);
                 vafp = usb_get_eprx_csr(var4) & 0x4000;
                 usb_set_eprx_csr(var4, vafp);
                 var4->uparam820 = var4->uparam820 - vasl;
                 var4->uparam816 = var4->uparam816 + vasl;
                 var4->uparam824 = var4->uparam824 + vasl;
-                var4->uparam668[var5 - 1] = 1;
+                var4->eprx_xfer_state[ep - 1] = 1;
                 *L4280A3F4 = 0;
             } else { 
                 *L4280A3F4 = *L4280A3F4 + 1;
                 if(*L4280A3F4 < 4096) {
-                    sp4 = 0;
+                    res = 0;
                 } else { 
-                    sp4 = 2;
+                    res = 2;
                     wlibc_uprintf("Error: RxPktRdy Timeout!!\n");
                 }
             }
@@ -682,20 +672,20 @@ static int fnL42804D48(struct usb_devparams *var4, int var5, char *var6,
                 if(usb_get_fifo_access_config(var4) & 1) {
                     wlibc_uprintf("Error: CPU Access Failed!!\n");
                 }
-                usb_read_ep_fifo(var4, var5, var4->uparam816, var7);
+                usb_read_ep_fifo(var4, ep, var4->uparam816, toRead);
                 vasl = usb_get_eprx_csr(var4) & 0x4000;
                 usb_set_eprx_csr(var4, vasl);
-                var4->uparam820 = var4->uparam820 - var7;
-                var4->uparam824 = var4->uparam824 + var7;
-                var4->uparam668[var5 - 1] = 0;
-                sp4 = 1;
+                var4->uparam820 = var4->uparam820 - toRead;
+                var4->uparam824 = var4->uparam824 + toRead;
+                var4->eprx_xfer_state[ep - 1] = 0;
+                res = 1;
                 *L4280A3F4 = 0;
             } else { 
                 *L4280A3F4 = *L4280A3F4 + 1;
                 if(*L4280A3F4 < 4096) {
-                    sp4 = 0;
+                    res = 0;
                 } else { 
-                    sp4 = 2;
+                    res = 2;
                     wlibc_uprintf("Error: RxPktRdy Timeout!!\n");
                 }
             }
@@ -710,35 +700,35 @@ static int fnL42804D48(struct usb_devparams *var4, int var5, char *var6,
                 if(usb_get_fifo_access_config(var4) & 1) {
                     wlibc_uprintf("Error: CPU Access Failed!!\n");
                 }
-                usb_read_ep_fifo(var4, var5, var4->uparam816, vasl);
+                usb_read_ep_fifo(var4, ep, var4->uparam816, vasl);
                 vafp = usb_get_eprx_csr(var4) & 0x4000;
                 usb_set_eprx_csr(var4, vafp);
                 var4->uparam820 = var4->uparam820 - vasl;
                 var4->uparam816 = var4->uparam816 + vasl;
                 var4->uparam824 = var4->uparam824 + vasl;
-                var4->uparam668[var5 - 1] = 1;
+                var4->eprx_xfer_state[ep - 1] = 1;
                 *L4280A3F4 = 0;
             } else { 
                 *L4280A3F4 = *L4280A3F4 + 1;
                 if(*L4280A3F4 < 4096) {
-                    sp4 = 0;
+                    res = 0;
                 } else { 
-                    sp4 = 2;
+                    res = 2;
                     wlibc_uprintf("Error: RxPktRdy Timeout!!\n");
                 }
             }
         } else { 
-            var4->uparam668[var5 - 1] = 0;
-            sp4 = 1;
+            var4->eprx_xfer_state[ep - 1] = 0;
+            res = 1;
         }
         break;
     default:
         wlibc_uprintf("Error: Wrong eprx_xfer_state=%d\n",
-                var4->uparam668[var5 - 1], var4->uparam668);
-        var4->uparam668[var5 - 1] = 0;
+                var4->eprx_xfer_state[ep - 1]);
+        var4->eprx_xfer_state[ep - 1] = 0;
     }
-    usb_select_ep(var4, sp0);
-    return sp4;
+    usb_select_ep(var4, epSave);
+    return res;
 }
 
 static int fnL428051A8(struct usb_devparams *var4, int var5, void *var6,
@@ -753,7 +743,7 @@ static int fnL428051A8(struct usb_devparams *var4, int var5, void *var6,
     usb_select_ep(var4, var5);
     vasl = readw(var4->uparam4 + 0x80);
     vasl = (vasl & 0x7ff) * ((vasl >> 11) + 1);
-    switch( var4->uparam648[var5 - 1] ) {
+    switch( var4->eptx_xfer_state[var5 - 1] ) {
     case 0:
         var4->uparam828 = 0;
         var4->uparam816 = var6;
@@ -769,7 +759,7 @@ static int fnL428051A8(struct usb_devparams *var4, int var5, void *var6,
             var4->uparam824 = var4->uparam824 + vasl;
             var4->uparam816 = var4->uparam816 + vasl;
             usb_set_eptx_csr(var4, 0x2001);
-            var4->uparam648[var5 - 1] = 1;
+            var4->eptx_xfer_state[var5 - 1] = 1;
         } else { 
             usb_fifo_accessed_by_cpu(var4);
             usb_write_ep_fifo(var4, var5, var4->uparam816, var7);
@@ -777,7 +767,7 @@ static int fnL428051A8(struct usb_devparams *var4, int var5, void *var6,
                 wlibc_uprintf("Error: FIFO Access Config Error!!\n");
             }
             usb_set_eptx_csr(var4, 8193);
-            var4->uparam648[var5 - 1] = 2;
+            var4->eptx_xfer_state[var5 - 1] = 2;
             var4->uparam820 = 0;
             var4->uparam824 = var7;
         }
@@ -793,10 +783,10 @@ static int fnL428051A8(struct usb_devparams *var4, int var5, void *var6,
                 var4->uparam824 = var4->uparam824 + vafp;
                 var4->uparam816 = var4->uparam816 + vafp;
                 usb_set_eptx_csr(var4, 8193);
-                var4->uparam648[var5 - 1] = 1;
+                var4->eptx_xfer_state[var5 - 1] = 1;
             } else { 
                 if((usb_get_eptx_csr(var4) & 2) == 0) {
-                    var4->uparam648[var5 - 1] = 2;
+                    var4->eptx_xfer_state[var5 - 1] = 2;
                 }
             }
         }
@@ -806,14 +796,14 @@ static int fnL428051A8(struct usb_devparams *var4, int var5, void *var6,
             usb_get_eptx_csr(var4);
             vafp = usb_get_eptx_csr(var4) & 0x4000;
             usb_set_eptx_csr(var4, vafp);
-            var4->uparam648[var5 - 1] = 0;
+            var4->eptx_xfer_state[var5 - 1] = 0;
             var9 = 1;
         }
         break;
     default:
         wlibc_uprintf("Error: Wrong eptx_xfer_state=%d\n",
-                var4->uparam648[var5 - 1], var4->uparam648);
-        var4->uparam648[var5 - 1] = 0;
+                var4->eptx_xfer_state[var5 - 1]);
+        var4->eptx_xfer_state[var5 - 1] = 0;
     }
     usb_select_ep(var4, sp0);
     return var9;
@@ -848,11 +838,11 @@ int usb_dev_bulk_xfer(struct usb_devparams *var4)
     switch( var4->uparam832 ) {
     case 0:
     case 1:
-        if(var4->uparam628[var4->uparam840 - 1] == 0) {
+        if(var4->uparam628[var4->epNum - 1] == 0) {
             break;
         }
-        --var4->uparam628[var4->uparam840 - 1];
-        usb_select_ep(var4, var4->uparam840);
+        --var4->uparam628[var4->epNum - 1];
+        usb_select_ep(var4, var4->epNum);
         if((usb_get_eprx_csr(var4) & 1) == 0) {
             break;
         }
@@ -864,7 +854,7 @@ int usb_dev_bulk_xfer(struct usb_devparams *var4)
         }
         do {
             sp0 = 2;
-            res = fnL42804D48(var4, var4->uparam840, var4->uparam888, var5,
+            res = fnL42804D48(var4, var4->epNum, var4->uparam888, var5,
                     sp0);
         } while(res == 0);
         if(res == 2) {
@@ -963,7 +953,7 @@ int usb_dev_bulk_xfer(struct usb_devparams *var4)
             sp36[9] = 0;
             sp36[10] = 2;
             sp36[11] = 0;
-            sp28 = svc_6f(scsiCmd->bCBWLUN & 0xf);
+            sp28 = svc_partsectcount(scsiCmd->bCBWLUN & 0xf);
             sp36[4] = sp28 >> 24;
             sp36[5] = sp28 >> 16;
             sp36[6] = sp28 >> 8;
@@ -992,7 +982,7 @@ int usb_dev_bulk_xfer(struct usb_devparams *var4)
             sp40[5] = 0;
             sp40[6] = 2;
             sp40[7] = 0;
-            sp32 = svc_6f(scsiCmd->bCBWLUN & 15) - 1;
+            sp32 = svc_partsectcount(scsiCmd->bCBWLUN & 0xf) - 1;
             sp40[0] = sp32 >> 24;
             sp40[1] = sp32 >> 16;
             sp40[2] = sp32 >> 8;
@@ -1031,7 +1021,7 @@ int usb_dev_bulk_xfer(struct usb_devparams *var4)
             var9 = var9 | scsiCmd->CBWCB[5];
             var4->uparam844 = var4->uparam856;
             if(*L4280A40C == 0) {
-                vasl = svc_6e(scsiCmd->bCBWLUN & 15);
+                vasl = svc_partfirstsect(scsiCmd->bCBWLUN & 15);
                 if( svc_diskread(var9 + vasl, var8, var4->uparam856) < 0) {
                     sp0 = var8;
                     wlibc_uprintf("part index = %d, start = %d, "
@@ -1116,10 +1106,11 @@ int usb_dev_bulk_xfer(struct usb_devparams *var4)
                 *L4280A3E0 : 0x1000000;
             var4->uparam852 = 0;
             sp0 = 2;
-            var7 = fnL42804D48(var4, var4->uparam840, var4->uparam844,
+            var7 = fnL42804D48(var4, var4->epNum, var4->uparam844,
                     var4->uparam848, sp0);
             if(var7 == 1) {
-                var9 = svc_6e(scsiCmd->bCBWLUN & 15) + (*L4280A3E4 >> 9);
+                var9 = svc_partfirstsect(scsiCmd->bCBWLUN & 15)
+                    + (*L4280A3E4 >> 9);
                 vasl = *L4280A3E0 >> 9;
                 var8 = svc_diskwrite(var9, vasl, var4->uparam856);
                 wlibc_uprintf("part index = %d, start = %d\n",
@@ -1216,7 +1207,7 @@ int usb_dev_bulk_xfer(struct usb_devparams *var4)
                 var4->uparam848 = var9;
                 wlibc_uprintf("write size = %d\n", var9);
                 sp0 = 2;
-                var7 = fnL42804D48(var4, var4->uparam840, var4->uparam844,
+                var7 = fnL42804D48(var4, var4->epNum, var4->uparam844,
                         var4->uparam848, sp0);
                 if(var7 == 1) {
                     vafp = var9 >> 9;
@@ -1295,11 +1286,12 @@ int usb_dev_bulk_xfer(struct usb_devparams *var4)
         break;
     case 2:
         sp0 = 2;
-        var7 = fnL42804D48(var4, var4->uparam840, var4->uparam844,
+        var7 = fnL42804D48(var4, var4->epNum, var4->uparam844,
                 var4->uparam848, sp0);
         if(var7 == 1) {
             if(*L4280A40C == 0) {
-                var9 = svc_6e(scsiCmd->bCBWLUN & 15) + (*L4280A3E4 >> 9);
+                var9 = svc_partfirstsect(scsiCmd->bCBWLUN & 15)
+                    + (*L4280A3E4 >> 9);
             } else { 
                 var9 = *L4280A3EC;
             }
@@ -1413,44 +1405,36 @@ int usb_dev_bulk_xfer(struct usb_devparams *var4)
 static int fnL42806DF0(struct usb_devparams *var4)
 {
     int var5 = 0;
-    struct usb_device_request *var6;
+    struct usb_device_request *devReq;
 
-    var6 = (struct usb_device_request*)var4->uparam888;
-    if((var6->bmRequestType & 0x60) == 0) {
-        switch( var6->bRequest ) {
+    devReq = (struct usb_device_request*)var4->uparam888;
+    if((devReq->bmRequestType & 0x60) == 0) {
+        switch( devReq->bRequest ) {
         case 0:
             wlibc_uprintf("usb_device: Get Status\n");
         case 6:
-            switch( var6->wValue >> 8 ) {
+            switch( devReq->wValue >> 8 ) {
             case 1:
-                var4->uparam588 = var4->uparam692->bMaxPacketSize0;
+                var4->uparam588 = var4->devDesc->bMaxPacketSize0;
                 var4->uparam596 =
-                    (const struct usb_generic_descriptor*)var4->uparam692;
-                if(var4->uparam596->bLength < var6->wLength) {
-                } else { 
-                }
-                var4->uparam600 = var4->uparam596->bLength < var6->wLength ?
-                    var4->uparam596->bLength : var6->wLength;
+                    (const struct usb_generic_descriptor*)var4->devDesc;
+                var4->uparam600 = var4->uparam596->bLength < devReq->wLength ?
+                    var4->uparam596->bLength : devReq->wLength;
                 break;
             case 2:
-                var5 = var4->uparam696->conf.wTotalLength;
+                var5 = var4->configDesc->conf.wTotalLength;
                 var4->uparam596 =
-                    (struct usb_generic_descriptor*)var4->uparam696;
-                if(var6->wLength > var5) {
-                } else { 
-                }
-                var4->uparam600 = var5 < var6->wLength ? var5 : var6->wLength;
+                    (struct usb_generic_descriptor*)var4->configDesc;
+                var4->uparam600 = var5 < devReq->wLength ? var5 : devReq->wLength;
                 break;
             case 3:
-                var5 = var6->wValue & 255;
+                var5 = devReq->wValue & 255;
                 if(var5 < 4) {
                     var4->uparam596 =
                         (struct usb_generic_descriptor*)var4->uparam700[var5];
-                    if(var4->uparam596->bLength < var6->wLength) {
-                    } else { 
-                    }
-                    var4->uparam600 = var4->uparam596->bLength < var6->wLength ?
-                        var4->uparam596->bLength : var6->wLength;
+                    var4->uparam600 =
+                        var4->uparam596->bLength < devReq->wLength ?
+                        var4->uparam596->bLength : devReq->wLength;
                 } else { 
                     wlibc_uprintf("Unkown String Desc!!\n");
                 }
@@ -1465,20 +1449,14 @@ static int fnL42806DF0(struct usb_devparams *var4)
                 break;
             case 6:
                 var4->uparam596 =
-                    (struct usb_generic_descriptor*)var4->uparam724;
-                if(var4->uparam596->bLength < var6->wLength) {
-                } else { 
-                }
-                var4->uparam600 = var4->uparam596->bLength < var6->wLength ?
-                    var4->uparam596->bLength : var6->wLength;
+                    (struct usb_generic_descriptor*)var4->devQualDesc;
+                var4->uparam600 = var4->uparam596->bLength < devReq->wLength ?
+                    var4->uparam596->bLength : devReq->wLength;
                 break;
             case 9:
-                var4->uparam596 = var4->uparam728;
-                if(var4->uparam596->bLength < var6->wLength) {
-                } else { 
-                }
-                var4->uparam600 = var4->uparam596->bLength < var6->wLength ?
-                    var4->uparam596->bLength : var6->wLength;
+                var4->uparam596 = var4->otgDesc;
+                var4->uparam600 = var4->uparam596->bLength < devReq->wLength ?
+                    var4->uparam596->bLength : devReq->wLength;
                 break;
             case 0:
             case 7:
@@ -1503,11 +1481,11 @@ static int fnL42806DF0(struct usb_devparams *var4)
         default:
             var4->uparam600 = 0;
             wlibc_uprintf("usb_device: Unkown Standard Request = 0x%x\n",
-                    var6->bRequest);
+                    devReq->bRequest);
         }
     } else { 
-        if((var6->bmRequestType & 0x60) == 32) {
-            if(var6->bRequest == 0xfe) {
+        if((devReq->bmRequestType & 0x60) == 32) {
+            if(devReq->bRequest == 0xfe) {
                 var4->uparam596 =
                     (struct usb_generic_descriptor*)&var4->uparam732;
                 var4->uparam600 = 1;
@@ -1516,7 +1494,7 @@ static int fnL42806DF0(struct usb_devparams *var4)
                 var4->uparam600 = 0;
                 wlibc_uprintf(
                         "usb_device: Unkown Class-Specific Request = 0x%x\n",
-                        var6->bRequest);
+                        devReq->bRequest);
             }
         } else { 
             var4->uparam600 = 0;
@@ -1528,7 +1506,7 @@ static int fnL42806DF0(struct usb_devparams *var4)
 
 static int fnL42806B14(struct usb_devparams *var4)
 {
-    const struct usb_device_request *var5;
+    const struct usb_device_request *devReq;
     const struct usb_interface_descriptor *var6;
     int var7;
     int var8;
@@ -1536,27 +1514,27 @@ static int fnL42806B14(struct usb_devparams *var4)
     unsigned maxPacketSize;
     int vafp;
     int epDirection;
-    int epAddress;
+    int epNum;
     const struct usb_endpoint_descriptor *epDesc;
-    const struct ConfigDesc *sp12;
+    const struct ConfigDesc *configDesc;
 
-    var5 = (struct usb_device_request*)var4->uparam888;
+    devReq = (struct usb_device_request*)var4->uparam888;
     var8 = 0x400;
-    sp12 = var4->uparam696;
-    if(sp12->conf.bConfigurationValue != var5->wValue) {
+    configDesc = var4->configDesc;
+    if(configDesc->conf.bConfigurationValue != devReq->wValue) {
         wlibc_uprintf("Error: Right Configval %d; Error Configval %d\n",
-                sp12->conf.bConfigurationValue, var5->wValue);
+                configDesc->conf.bConfigurationValue, devReq->wValue);
         return 0;
     }
-    var6 = &var4->uparam696->interf;
+    var6 = &var4->configDesc->interf;
     var7 = 0;
     while(var7 < var6->bNumEndpoints) {
-        epDesc = &var4->uparam696->ep[var7];
-        epAddress = epDesc->bEndpointAddress & 0xf;
+        epDesc = &var4->configDesc->ep[var7];
+        epNum = epDesc->bEndpointAddress & 0xf;
         epDirection = epDesc->bEndpointAddress >> 7;
         var9 = epDesc->bmAttributes & 3;
         maxPacketSize = epDesc->wMaxPacketSize & 0x7ff;
-        usb_select_ep(var4, epAddress);
+        usb_select_ep(var4, epNum);
         if(epDirection != 0) {
             vafp = 512 / maxPacketSize;
             writew((maxPacketSize & 0x7ff) | (((vafp-1) & 31) << 11),
@@ -1568,12 +1546,12 @@ static int fnL42806B14(struct usb_devparams *var4)
             }
             vafp |= aw_log2(512 >> 3) & 0xf;
             writeb(vafp, var4->uparam4 + 0x90);
-            var4->uparam736[epAddress - 1] = var9;
-            var4->uparam776[epAddress - 1] = (maxPacketSize & 0x7fff) |
+            var4->uparam736[epNum - 1] = var9;
+            var4->uparam776[epNum - 1] = (maxPacketSize & 0x7fff) |
                 32768 | (var8 << 16);
             var8 = var8 + 1024;
             if(var6->bInterfaceProtocol == 80) {
-                var4->uparam836 = epAddress;
+                var4->uparam836 = epNum;
             }
             usb_eptx_flush_fifo(var4);
             usb_eptx_flush_fifo(var4);
@@ -1588,12 +1566,12 @@ static int fnL42806B14(struct usb_devparams *var4)
             }
             vafp |= aw_log2(512 >> 3) & 0xf;
             writeb(vafp, var4->uparam4 + 0x94);
-            var4->uparam756[epAddress-1] = var9;
-            var4->uparam796[epAddress - 1] = (maxPacketSize & 0x7fff) |
+            var4->uparam756[epNum-1] = var9;
+            var4->uparam796[epNum - 1] = (maxPacketSize & 0x7fff) |
                 32768 | (var8 << 16);
             var8 += 1024;
             if(var6->bInterfaceProtocol == 80) {
-                var4->uparam840 = epAddress;
+                var4->epNum = epNum;
             }
             usb_eprx_flush_fifo(var4);
             usb_eprx_flush_fifo(var4);
@@ -1605,16 +1583,16 @@ static int fnL42806B14(struct usb_devparams *var4)
 
 static int fnL4280722C(struct usb_devparams *var5)
 {
-    struct usb_device_request *var4;
+    struct usb_device_request *devReq;
 
-    var4 = (struct usb_device_request*)var5->uparam888;
-    switch( var4->bRequest ) {
+    devReq = (struct usb_device_request*)var5->uparam888;
+    switch( devReq->bRequest ) {
     case 1:
         break;
     case 3:
-        switch( var4->wValue ) {
+        switch( devReq->wValue ) {
         case 2:
-            switch( var4->wIndex ) {
+            switch( devReq->wIndex ) {
             case 0x100:
                 usb_set_test_mode(var5, 2);
                 wlibc_uprintf("usb_device: Send Test J Now...\n");
@@ -1635,7 +1613,7 @@ static int fnL4280722C(struct usb_devparams *var5)
                 break;
             default:
                 wlibc_uprintf("usb_device: Unkown Test Mode: 0x%x\n",
-                        var4->wIndex);
+                        devReq->wIndex);
             }
             break;
         case 3:
@@ -1645,13 +1623,13 @@ static int fnL4280722C(struct usb_devparams *var5)
             break;
         default:
             wlibc_uprintf("usb_device: Unkown SetFeature Value: 0x%x\n",
-                    var4->wValue);
+                    devReq->wValue);
         }
         break;
     case 5:
-        usb_set_dev_addr(var5, var4->wValue);
-        var5->uparam688 = var4->wValue;
-        wlibc_uprintf("usb_device: Set Address 0x%x\n", var4->wValue);
+        usb_set_dev_addr(var5, devReq->wValue);
+        var5->uparam688 = devReq->wValue;
+        wlibc_uprintf("usb_device: Set Address 0x%x\n", devReq->wValue);
         break;
     case 7:
         wlibc_uprintf("usb_device: Set Descriptor\n");
@@ -1669,7 +1647,7 @@ static int fnL4280722C(struct usb_devparams *var5)
     case 8:
     case 10:
     default:
-        wlibc_uprintf("usb_device: Unkown EP0 OUT: 0x%x!!\n", var4->bRequest);
+        wlibc_uprintf("usb_device: Unkown EP0 OUT: 0x%x!!\n", devReq->bRequest);
     }
     return 0;
 }
@@ -1720,7 +1698,7 @@ int usb_dev_ep0xfer(struct usb_devparams *var4)
                                 } else { 
                                     var7 = 0;
                                     var8 = var4->uparam588;
-                                    var4->uparam600 = var4->uparam600 - var4->uparam588;
+                                    var4->uparam600 -= var4->uparam588;
                                 }
                             }
                         }
@@ -1763,7 +1741,7 @@ int usb_dev_ep0xfer(struct usb_devparams *var4)
                         } else { 
                             var7 = 0;
                             var8 = var4->uparam588;
-                            var4->uparam600 = var4->uparam600 - var4->uparam588;
+                            var4->uparam600 -= var4->uparam588;
                         }
                     }
                     usb_write_ep_fifo(var4, 0, var4->uparam596, var8);
@@ -1828,8 +1806,8 @@ int usb_bus_irq_handler_dev(struct usb_devparams *var4)
         for(var6 = 0; var6 < 5; ++var6) {
             var4->uparam608[var6] = 0;
             var4->uparam628[var6] = 0;
-            var4->uparam648[var6] = 0;
-            var4->uparam668[var6] = 0;
+            var4->eptx_xfer_state[var6] = 0;
+            var4->eprx_xfer_state[var6] = 0;
         }
         var4->uparam688 = 0;
         var4->uparam832 = 0;
@@ -1875,13 +1853,13 @@ static void usb_struct_init(struct usb_devparams *var0)
     for(var1 = 0; var1 < 5; ++var1) {
         var0->uparam608[var1] = 0;
         var0->uparam628[var1] = 0;
-        var0->uparam648[var1] = 0;
-        var0->uparam668[var1] = 0;
+        var0->eptx_xfer_state[var1] = 0;
+        var0->eprx_xfer_state[var1] = 0;
     }
     var0->uparam688 = 0;
     var0->uparam832 = 0;
     var0->uparam836 = 1;
-    var0->uparam840 = 1;
+    var0->epNum = 1;
     var0->uparam876 = 0;
     var0->uparam884 = 0;
     *L4280A3F8 = 0;
@@ -2112,19 +2090,19 @@ void usb_params_init(void)
     L428126F8.uparam20 = 2;
     L428126F8.uparam24 = 1;
     if(L428126F8.uparam24 == 1) {
-        L428126F8.uparam692 = &USB_HS_BULK_DevDesc;
-        L428126F8.uparam696 = &USB_HS_BULK_ConfigDesc;
+        L428126F8.devDesc = &USB_HS_BULK_DevDesc;
+        L428126F8.configDesc = &USB_HS_BULK_ConfigDesc;
     } else { 
-        L428126F8.uparam692 = &USB_FS_BULK_DevDesc;
-        L428126F8.uparam696 = &USB_FS_BULK_ConfigDesc;
+        L428126F8.devDesc = &USB_FS_BULK_DevDesc;
+        L428126F8.configDesc = &USB_FS_BULK_ConfigDesc;
     }
     for(var4 = 0; var4 < 4; ++var4) {
         L428126F8.uparam700[var4] = StringDescriptors[var4];
     }
-    L428126F8.uparam716 = &USB_HS_BULK_ConfigDesc;
-    L428126F8.uparam720 = &USB_HS_BULK_ConfigDesc;
-    L428126F8.uparam724 = &USB_DevQual;
-    L428126F8.uparam728 = &USB_OTGDesc;
+    L428126F8.hsBulkConfigDesc = &USB_HS_BULK_ConfigDesc;
+    L428126F8.hsBulkConfigDesc2 = &USB_HS_BULK_ConfigDesc;
+    L428126F8.devQualDesc = &USB_DevQual;
+    L428126F8.otgDesc = &USB_OTGDesc;
     if(L4280A40C[0] == 0) {
         L428126F8.uparam732 = svc_partcount(1) - 1;
         wlibc_uprintf("part count = %d\n", L428126F8.uparam732 + 1);
