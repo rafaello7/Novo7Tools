@@ -360,7 +360,7 @@ int svc_partcount(int val)
     return res;
 }
 
-int svc_6e(int p1)
+int svc_partfirstsect(int p1)
 {
     int res;
 
@@ -371,7 +371,7 @@ int svc_6e(int p1)
     return res;
 }
 
-int svc_6f(int p1)
+int svc_partsectcount(int p1)
 {
     int res;
 

@@ -309,14 +309,14 @@ static struct SCSIRequestSenseResponse RequestSense = {
 struct usb_devparams {
     int uparam0;
     unsigned uparam4;   /* == 0x01C13000 */
-    int uparam8;
+    int interruptNo;
     int uparam12;
     int uparam16;
     int uparam20;
     int uparam24;
     int uparam28;
     int uparam32;
-    int uparam36;
+    int intusb;
     int uparam40;
     int uparam44;
     int uparam48;
@@ -325,14 +325,14 @@ struct usb_devparams {
     int uparam60;
     int uparam64;
     int uparam68;
-    int uparam584;
+    int ep0TxInterruptCount;    /* unhandled tx interrupt count for ep0 */
     int uparam588;
     int uparam592;
     const struct usb_generic_descriptor *uparam596;
     int uparam600;
     int uparam604;
-    int uparam608[5];
-    int uparam628[5];
+    int txInterruptCount[5];  /* unhandled tx interrupt count for ep1 .. ep5 */
+    int rxInterruptCount[5];  /* unhandled rx interrupt count for ep1 .. ep5 */
     int eptx_xfer_state[5];
     int eprx_xfer_state[5];
     int uparam688;
@@ -423,11 +423,11 @@ const struct usb_string_descriptor *StringDescriptors[] = {
     &iProduct_new
 };
 int             L428126E8[4];
-struct usb_devparams L428126F8;
+struct usb_devparams gDevParams;
 static unsigned L4280A3F8[1];
 static unsigned L4280A3FC[1];
-static unsigned L4280A400[1];
-static unsigned L4280A404[1];
+static unsigned gTxInterruptCount;
+static unsigned gRxInterruptCount;
 static int L4280A3EC[1];
 static int L4280A3F4[1];
 unsigned L42806340[] = { 0xffffffff, 0x00000000 };
@@ -540,44 +540,44 @@ static void usb_clear_bus_interrupt_status(struct usb_devparams *var0,
 
 void usb_irq_handler(struct usb_devparams *var4)
 {
-    int var5;
-    int var6;
+    int status;
+    int ep;
 
-    var5 = usb_get_bus_interrupt_status(var4);
-    usb_clear_bus_interrupt_status(var4, var5);
-    if(var5 & 8) {
+    status = usb_get_bus_interrupt_status(var4);
+    usb_clear_bus_interrupt_status(var4, status);
+    if(status & 8) {  /* USBC_INTUSB_SOF */
         ++var4->uparam16;
-        var5 = var5 & ~8;
+        status &= ~8;
     }
-    if(readb(var4->uparam4 + 0x50) & var5) {
-        var4->uparam36 |= var5;
+    if(readb(var4->uparam4 + 0x50) & status) { /* if enabled */
+        var4->intusb |= status;
         ++var4->uparam40;
         ++*L4280A3F8;
     }
-    var5 = readw(var4->uparam4 + 0x44);
-    writew(var5, var4->uparam4 + 0x44);
-    if(var5 & 1) {
-        ++var4->uparam584;
+    status = readw(var4->uparam4 + 0x44);   /* tx interrupts */
+    writew(status, var4->uparam4 + 0x44);
+    if(status & 1) {    /* tx interrupt for ep0 */
+        ++var4->ep0TxInterruptCount;
         ++*L4280A3FC;
     }
-    if(0xfffe & var5) {
-        for(var6 = 0; var6 < 5; ++var6) {
-            if(var5 & 2) {
-                ++var4->uparam608[var6];
+    if(0xfffe & status) {   /* tx interrupt for ep1 .. ep5 */
+        for(ep = 0; ep < 5; ++ep) {
+            if(status & 2 << ep) {
+                ++var4->txInterruptCount[ep];
             }
         }
-        ++*L4280A400;
+        ++gTxInterruptCount;
     }
-    var5 = readw(var4->uparam4 + 0x46);
-    writew(var5, var4->uparam4 + 0x46);
-    if((0xfffe & var5) == 0)
+    status = readw(var4->uparam4 + 0x46); /* rx interrupts */
+    writew(status, var4->uparam4 + 0x46);
+    if((0xfffe & status) == 0) /* return if no rx interrupt for ep1 .. ep5 */
         return;
-    for(var6 = 0; var6 < 5; ++var6) {
-        if(var5 & 2 << var6) {
-            ++var4->uparam628[var6];
+    for(ep = 0; ep < 5; ++ep) {
+        if(status & 2 << ep) {
+            ++var4->rxInterruptCount[ep];
         }
     }
-    ++*L4280A404;
+    ++gRxInterruptCount;
 }
 
 void usb_read_ep_fifo(struct usb_devparams *var4, int ep,
@@ -838,10 +838,10 @@ int usb_dev_bulk_xfer(struct usb_devparams *var4)
     switch( var4->uparam832 ) {
     case 0:
     case 1:
-        if(var4->uparam628[var4->epNum - 1] == 0) {
+        if(var4->rxInterruptCount[var4->epNum - 1] == 0) {
             break;
         }
-        --var4->uparam628[var4->epNum - 1];
+        --var4->rxInterruptCount[var4->epNum - 1];
         usb_select_ep(var4, var4->epNum);
         if((usb_get_eprx_csr(var4) & 1) == 0) {
             break;
@@ -1664,10 +1664,10 @@ int usb_dev_ep0xfer(struct usb_devparams *var4)
     if(var4->uparam20 != 2) {
         return 0;
     }
-    if(var4->uparam584 == 0) {
+    if(var4->ep0TxInterruptCount == 0) {
         return 0;
     }
-    --var4->uparam584;
+    --var4->ep0TxInterruptCount;
     usb_select_ep(var4, 0);
     var5 = readw(var4->uparam4 + 0x82);
     if(var4->uparam592 == 1) {
@@ -1724,7 +1724,7 @@ int usb_dev_ep0xfer(struct usb_devparams *var4)
         if(var5 & 1) {
             var9 = usb_get_ep0_count(var4);
             if(var9 == 8) {
-                var4->uparam584 = 0;
+                var4->ep0TxInterruptCount = 0;
                 usb_read_ep_fifo(var4, 0, var4->uparam888, 8);
                 if(var6->bmRequestType & 0x80) {
                     usb_set_ep0_csr(var4, 64);
@@ -1768,11 +1768,11 @@ int usb_dev_ep0xfer(struct usb_devparams *var4)
 
 int usb_bus_irq_handler_dev(struct usb_devparams *var4)
 {
-    int var5;
-    int var6;
-    int var7;
+    int intusbe;
+    int ep;
+    int epSave;
 
-    var7 = usb_get_active_ep(var4);
+    epSave = usb_get_active_ep(var4);
     if(var4->uparam20 != 2) {
         return 0;
     }
@@ -1781,9 +1781,9 @@ int usb_bus_irq_handler_dev(struct usb_devparams *var4)
     }
     usb_select_ep(var4, 0);
     var4->uparam40 = var4->uparam40 - 1;
-    var5 = readb(var4->uparam4 + 0x50);
-    if((var4->uparam36 & var5) & 1) {
-        var4->uparam36 = var4->uparam36 & ~1;
+    intusbe = readb(var4->uparam4 + 0x50); /* enabled USB interrupts */
+    if( var4->intusb & intusbe & 1 ) { /* USBC_INTUSB_SUSPEND */
+        var4->intusb &= ~1;
         var4->uparam48 = 1;
         if(svc_96(var4->uparam868) != 0) {
             wlibc_uprintf(
@@ -1792,22 +1792,22 @@ int usb_bus_irq_handler_dev(struct usb_devparams *var4)
         svc_93(var4->uparam868);
         wlibc_uprintf("uSuspend\n");
     }
-    if((var4->uparam36 & var5) & 2) {
-        var4->uparam36 = var4->uparam36 & ~2;
+    if( var4->intusb & intusbe & 2 ) { /* USBC_INTUSB_RESUME */
+        var4->intusb &= ~2;
         var4->uparam48 = 0;
         wlibc_uprintf("uResume\n");
     }
-    if((var4->uparam36 & var5) & 4) {
-        var4->uparam36 = var4->uparam36 & ~4;
+    if( var4->intusb & intusbe & 4 ) { /* USBC_INTUSB_RESET */
+        var4->intusb &= ~4;
         var4->uparam44 = 1;
         var4->uparam52 = 1;
         var4->uparam48 = 0;
         var4->uparam60 = var4->uparam60 + 1;
-        for(var6 = 0; var6 < 5; ++var6) {
-            var4->uparam608[var6] = 0;
-            var4->uparam628[var6] = 0;
-            var4->eptx_xfer_state[var6] = 0;
-            var4->eprx_xfer_state[var6] = 0;
+        for(ep = 0; ep < 5; ++ep) {
+            var4->txInterruptCount[ep] = 0;
+            var4->rxInterruptCount[ep] = 0;
+            var4->eptx_xfer_state[ep] = 0;
+            var4->eprx_xfer_state[ep] = 0;
         }
         var4->uparam688 = 0;
         var4->uparam832 = 0;
@@ -1821,40 +1821,40 @@ int usb_bus_irq_handler_dev(struct usb_devparams *var4)
                     "Error: DMA for EP is not finished after Bus Reset\n");
         }
         svc_93(var4->uparam868);
-        wlibc_uprintf("uSuspend\n");
+        wlibc_uprintf("uReset\n");
     }
-    if((var4->uparam36 & var5) & 32) {
-        var4->uparam36 = var4->uparam36 & ~32;
+    if( var4->intusb & intusbe & 32 ) { /* USBC_INTUSB_DISCONNECT */
+        var4->intusb &= ~32;
         var4->uparam44 = 0;
         var4->uparam52 = 0;
         var4->uparam48 = 1;
         wlibc_uprintf("uSessend\n");
     }
-    usb_select_ep(var4, var7);
+    usb_select_ep(var4, epSave);
     return 0;
 }
 
 static void usb_struct_init(struct usb_devparams *var0)
 {
-    int var1;
+    int ep;
 
     var0->uparam16 = 0;
     var0->uparam40 = 0;
-    var0->uparam36 = 0;
+    var0->intusb = 0;
     var0->uparam44 = 0;
     var0->uparam52 = 0;
     var0->uparam48 = 1;
     var0->uparam60 = 0;
     var0->uparam64 = 0;
     var0->uparam68 = 0;
-    var0->uparam584 = 0;
+    var0->ep0TxInterruptCount = 0;
     var0->uparam592 = 0;
     var0->uparam588 = 64;
-    for(var1 = 0; var1 < 5; ++var1) {
-        var0->uparam608[var1] = 0;
-        var0->uparam628[var1] = 0;
-        var0->eptx_xfer_state[var1] = 0;
-        var0->eprx_xfer_state[var1] = 0;
+    for(ep = 0; ep < 5; ++ep) {
+        var0->txInterruptCount[ep] = 0;
+        var0->rxInterruptCount[ep] = 0;
+        var0->eptx_xfer_state[ep] = 0;
+        var0->eprx_xfer_state[ep] = 0;
     }
     var0->uparam688 = 0;
     var0->uparam832 = 0;
@@ -1864,8 +1864,8 @@ static void usb_struct_init(struct usb_devparams *var0)
     var0->uparam884 = 0;
     *L4280A3F8 = 0;
     *L4280A3FC = 0;
-    *L4280A400 = 0;
-    *L4280A404 = 0;
+    gTxInterruptCount = 0;
+    gRxInterruptCount = 0;
 }
 
 static int usb_init(struct usb_devparams *var4)
@@ -1933,7 +1933,7 @@ static void fnL428085F0(void)
         *L4280A3A8 &= ~8;
     } else { 
         usb_clock_exit();
-        svc_interrupt_disable(L428126F8.uparam8);
+        svc_interrupt_disable(gDevParams.interruptNo);
         power_set_usbdc();
     }
     *L4280A408 = 0;
@@ -1944,13 +1944,13 @@ static void usb_interrupt_handler(void)
     struct usb_devparams *var4;
     int var5;
 
-    var4 = &L428126F8;
+    var4 = &gDevParams;
     var5 = usb_get_bus_interrupt_status(var4);
     usb_clear_bus_interrupt_status(var4, var5);
     if((var5 & 4) == 0) /* USBC_BP_INTUSB_RESET */
         return;
     usb_clock_exit();
-    svc_interrupt_disable(var4->uparam8);
+    svc_interrupt_disable(var4->interruptNo);
     *L4280A3A8 |= 8;
     svc_83(*L4280A410);
     svc_81(*L4280A410);
@@ -1961,9 +1961,9 @@ static void usb_interrupt_handler(void)
 
 int usb_detect_enter(void)
 {
-    L428126F8.uparam0 = 0;
-    L428126F8.uparam4 = 0x1C13000;
-    L428126F8.uparam8 = 38;
+    gDevParams.uparam0 = 0;
+    gDevParams.uparam4 = 0x1C13000;
+    gDevParams.interruptNo = 38;
     wlibc_uprintf("usb start detect\n");
     if(*L4280A408 == 0) {
         wlibc_uprintf("usb enter detect\n");
@@ -1975,12 +1975,13 @@ int usb_detect_enter(void)
         } else { 
             svc_82(*L4280A410, 400, 0);
         }
-        svc_interrupt_sethandler(L428126F8.uparam8, usb_interrupt_handler, 0);
-        svc_interrupt_enable(L428126F8.uparam8);
-        usb_init(&L428126F8);
+        svc_interrupt_sethandler(gDevParams.interruptNo,
+                usb_interrupt_handler, 0);
+        svc_interrupt_enable(gDevParams.interruptNo);
+        usb_init(&gDevParams);
         /* USBC_Dev_ConectSwitch(udc.bsp, USBC_DEVICE_SWITCH_ON); */
-        writeb(readb(L428126F8.uparam4 + 0x40) | 0x40,
-                L428126F8.uparam4 + 0x40);
+        writeb(readb(gDevParams.uparam4 + 0x40) | 0x40,
+                gDevParams.uparam4 + 0x40);
     }
     return 0;
 }
@@ -1990,7 +1991,7 @@ int usb_detect_exit(void)
     wlibc_uprintf("usb exit detect\n");
     *L4280A408 = 0;
     usb_clock_exit();
-    svc_interrupt_disable(L428126F8.uparam8);
+    svc_interrupt_disable(gDevParams.interruptNo);
     if(*L4280A410 != 0) {
         svc_83(*L4280A410);
         svc_81(*L4280A410);
@@ -2083,52 +2084,52 @@ void usb_params_init(void)
 
     usb_clock_init();
 
-    L428126F8.uparam0 = 0;
-    L428126F8.uparam4 = 0x01C13000;
-    L428126F8.uparam8 = 38;
-    L428126F8.uparam12 = 4;
-    L428126F8.uparam20 = 2;
-    L428126F8.uparam24 = 1;
-    if(L428126F8.uparam24 == 1) {
-        L428126F8.devDesc = &USB_HS_BULK_DevDesc;
-        L428126F8.configDesc = &USB_HS_BULK_ConfigDesc;
+    gDevParams.uparam0 = 0;
+    gDevParams.uparam4 = 0x01C13000;
+    gDevParams.interruptNo = 38;
+    gDevParams.uparam12 = 4;
+    gDevParams.uparam20 = 2;
+    gDevParams.uparam24 = 1;
+    if(gDevParams.uparam24 == 1) {
+        gDevParams.devDesc = &USB_HS_BULK_DevDesc;
+        gDevParams.configDesc = &USB_HS_BULK_ConfigDesc;
     } else { 
-        L428126F8.devDesc = &USB_FS_BULK_DevDesc;
-        L428126F8.configDesc = &USB_FS_BULK_ConfigDesc;
+        gDevParams.devDesc = &USB_FS_BULK_DevDesc;
+        gDevParams.configDesc = &USB_FS_BULK_ConfigDesc;
     }
     for(var4 = 0; var4 < 4; ++var4) {
-        L428126F8.uparam700[var4] = StringDescriptors[var4];
+        gDevParams.uparam700[var4] = StringDescriptors[var4];
     }
-    L428126F8.hsBulkConfigDesc = &USB_HS_BULK_ConfigDesc;
-    L428126F8.hsBulkConfigDesc2 = &USB_HS_BULK_ConfigDesc;
-    L428126F8.devQualDesc = &USB_DevQual;
-    L428126F8.otgDesc = &USB_OTGDesc;
+    gDevParams.hsBulkConfigDesc = &USB_HS_BULK_ConfigDesc;
+    gDevParams.hsBulkConfigDesc2 = &USB_HS_BULK_ConfigDesc;
+    gDevParams.devQualDesc = &USB_DevQual;
+    gDevParams.otgDesc = &USB_OTGDesc;
     if(L4280A40C[0] == 0) {
-        L428126F8.uparam732 = svc_partcount(1) - 1;
-        wlibc_uprintf("part count = %d\n", L428126F8.uparam732 + 1);
+        gDevParams.uparam732 = svc_partcount(1) - 1;
+        wlibc_uprintf("part count = %d\n", gDevParams.uparam732 + 1);
     } else { 
-        L428126F8.uparam864 = 0;
-        L428126F8.uparam732 = 0;
+        gDevParams.uparam864 = 0;
+        gDevParams.uparam732 = 0;
     }
-    L428126F8.uparam856 = svc_alloc(131072);
-    L428126F8.uparam860 = svc_alloc(65536);
-    L428126F8.uparam584 = 0;
-    L428126F8.uparam592 = 0;
-    L428126F8.uparam868 = svc_90(1);
-    if(L428126F8.uparam868 != 0)
+    gDevParams.uparam856 = svc_alloc(131072);
+    gDevParams.uparam860 = svc_alloc(65536);
+    gDevParams.ep0TxInterruptCount = 0;
+    gDevParams.uparam592 = 0;
+    gDevParams.uparam868 = svc_90(1);
+    if(gDevParams.uparam868 != 0)
         return;
     wlibc_uprintf("usb error: request dma fail\n");
 }
 
 static void fnL428081E0(void)
 {
-    usb_irq_handler(&L428126F8);
+    usb_irq_handler(&gDevParams);
 }
 
 static int fnL428081F0(void)
 {
-    svc_interrupt_sethandler(L428126F8.uparam8, fnL428081E0, 0);
-    return svc_interrupt_enable(L428126F8.uparam8);
+    svc_interrupt_sethandler(gDevParams.interruptNo, fnL428081E0, 0);
+    return svc_interrupt_enable(gDevParams.interruptNo);
 }
 
 int usb_start(int var4)
@@ -2136,7 +2137,7 @@ int usb_start(int var4)
     *L4280A40C = var4;
     usb_params_init();
     fnL428081F0();
-    usb_init(&L428126F8);
+    usb_init(&gDevParams);
     return 1;
 }
 
@@ -2157,7 +2158,7 @@ int usb_run(void)
     int var4;
 
     while(1) {
-        usb_device_function(&L428126F8);
+        usb_device_function(&gDevParams);
         if(*L4280A3F0 == 2) {
             break;
         }

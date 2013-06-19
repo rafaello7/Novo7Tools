@@ -48,8 +48,8 @@ void svc_close(int hdle);
 void svc_deletefile(const char *fname);
 
 int svc_6c(const char *p1, const char *p2, int*);
-int svc_6e(int);
-int svc_6f(int);
+int svc_partfirstsect(int);
+int svc_partsectcount(int);
 int svc_partcount(int);
 int svc_80(void(*)(void), unsigned);
 int svc_81(unsigned);
