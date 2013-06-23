@@ -105,7 +105,7 @@ static int ShowLayer(int var4, struct LayerPara *layerPara, int var7)
     return 0;
 }
 
-struct LayerPara *ShowPictureEx(const char *var4, void *var6)
+struct LayerPara *ShowPictureEx(const char *fname, void *imgdatabuf)
 {
     struct LayerPara *layerPara;
     struct BatteryChargeImg img;
@@ -115,7 +115,7 @@ struct LayerPara *ShowPictureEx(const char *var4, void *var6)
         return 0;
     }
     memset(&img, 0, sizeof(img));
-    if( Parse_Pic_BMP_ByPath(var4, &img, var6) != 0 ) {
+    if( Parse_Pic_BMP_ByPath(fname, &img, imgdatabuf) != 0 ) {
         wlibc_uprintf("ERR: Parse_Pic_BMP failed\n");
         return 0;
     }
