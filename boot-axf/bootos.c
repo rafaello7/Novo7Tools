@@ -16,72 +16,68 @@ struct ImageHeader {
     };
 };
 
-static struct ImageHeader *L4280A3BC;
+static struct ImageHeader *gImageHeader;
 
-static int fnL428015CC(void)
+static int bootModeReqestByKey(void)
 {
-    int var4;
-    int var5;
-    int var6;
-    int sp0;
-    int sp4;
+    int keyMaxFindRes;
+    int keyMinFindRes;
+    int keyVal;
+    int keyMin;
+    int keyMax;
 
-    var6 = gBootPara.bpparam0[2];
-    wlibc_uprintf("key value = %d\n", var6);
-    var4 = svc_b0("recovery_key", "key_max", &sp4, 1);
-    var5 = svc_b0("recovery_key", "key_min", &sp0, 1);
-    if(var4 != 0) {
+    keyVal = gBootPara.bpparam0[2];
+    wlibc_uprintf("key value = %d\n", keyVal);
+    keyMaxFindRes = svc_b0("recovery_key", "key_max", &keyMax, 1);
+    keyMinFindRes = svc_b0("recovery_key", "key_min", &keyMin, 1);
+    if(keyMaxFindRes != 0) {
         wlibc_uprintf("unable to find recovery_key key_max value\n");
         return -1;
 
     }
-    if(var5 != 0) {
+    if(keyMinFindRes != 0) {
         wlibc_uprintf("unable to find recovery_key key_min value\n");
         return -1;
     }
-    wlibc_uprintf("recovery key high %d, low %d\n", sp4, sp0);
-    if(var6 >= sp0) {
-        if(var6 <= sp4) {
-            wlibc_uprintf("key found, android recovery\n");
-            return 2;
-        }
+    wlibc_uprintf("recovery key high %d, low %d\n", keyMax, keyMin);
+    if(keyVal >= keyMin && keyVal <= keyMax) {
+        wlibc_uprintf("key found, android recovery\n");
+        return 2;
     }
-    var4 = svc_b0("fastboot_key", "key_max", &sp4, 1);
-    var5 = svc_b0("fastboot_key", "key_min", &sp0, 1);
-    if(var4 != 0) {
+    keyMaxFindRes = svc_b0("fastboot_key", "key_max", &keyMax, 1);
+    keyMinFindRes = svc_b0("fastboot_key", "key_min", &keyMin, 1);
+    if(keyMaxFindRes != 0) {
         wlibc_uprintf("unable to find fastboot_key key_max value\n");
         return -1;
     }
-    if(var5 != 0) {
+    if(keyMinFindRes != 0) {
         wlibc_uprintf("unable to find fastboot_key key_min value\n");
         return -1;
     }
-    wlibc_uprintf("fastboot key high %d, low %d\n", sp4, sp0);
-    if(var6 >= sp0) {
-        if(var6 <= sp4) {
-            wlibc_uprintf("key found, android fastboot\n");
-            return 1;
-        }
+    wlibc_uprintf("fastboot key high %d, low %d\n", keyMax, keyMin);
+    if(keyVal >= keyMin && keyVal <= keyMax) {
+        wlibc_uprintf("key found, android fastboot\n");
+        return 1;
     }
     wlibc_uprintf("key invalid\n");
     return -1;
 }
 
-static int fnL42801848(const char *var4, int var5, void *var6)
+static int ShowLogo(const char *fname, int logoShow, void *imgdatabuf)
 {
-    if(var5 == 0 || var4 == 0) {
+    if(logoShow == 0 || fname == 0) {
         wlibc_uprintf("logo name is invalid or dont need show logo\n");
         return -1;
     }
-    ShowPictureEx(var4, var6);
+    ShowPictureEx(fname, imgdatabuf);
     wlibc_uprintf("show pic finish\n");
     return 0;
 }
 
 static int fnL42801F44(void)
 {
-    L4280A3BC->param4 = 0;
-    L4280A3BC->param0 = 0;
+    gImageHeader->param4 = 0;
+    gImageHeader->param0 = 0;
     return 0;
 }
 
@@ -100,21 +96,21 @@ static void fnL42801F64(char *var4, int var6)
     if(*var5 == 0)
         return;
     var4[var6] = '\0';
-    L4280A3BC->param4 = 0x54410009;
-    L4280A3BC->param0 = (strlen(var5) + 13) >> 2;
-    strcpy(L4280A3BC->param8c, var5);
-    L4280A3BC = (void*)((int*)L4280A3BC + L4280A3BC->param0);
+    gImageHeader->param4 = 0x54410009;
+    gImageHeader->param0 = (strlen(var5) + 13) >> 2;
+    strcpy(gImageHeader->param8c, var5);
+    gImageHeader = (void*)((int*)gImageHeader + gImageHeader->param0);
 }
 
 static void fnL42802010(struct ImageHeader *imgHeader)
 {
-    L4280A3BC = imgHeader;
-    L4280A3BC->param4 = 0x54410001;
-    L4280A3BC->param0 = 5;
-    L4280A3BC->param8i[0] = 0;
-    L4280A3BC->param8i[1] = 0;
-    L4280A3BC->param8i[2] = 0;
-    L4280A3BC = (void*)(((int*)&L4280A3BC) + L4280A3BC->param0);
+    gImageHeader = imgHeader;
+    gImageHeader->param4 = 0x54410001;
+    gImageHeader->param0 = 5;
+    gImageHeader->param8i[0] = 0;
+    gImageHeader->param8i[1] = 0;
+    gImageHeader->param8i[2] = 0;
+    gImageHeader = (void*)(((int*)&gImageHeader) + gImageHeader->param0);
 }
 
 int do_boot_linux(struct ImageHeader *imgHeader, char *loadAddr, int var6)
@@ -199,7 +195,8 @@ int PreBootOS(struct OSImageScript *imgScript, void **bootAddrBuf,
 
     var9 = -1;
     *logoOff = imgScript->logoOff;
-    fnL42801848(imgScript->logoFileName, imgScript->logoShow, imgScript->logoAddress);
+    ShowLogo(imgScript->logoFileName, imgScript->logoShow,
+            imgScript->logoAddress);
     var9 = fnL42801894(imgScript, bootAddrBuf, var6);
     if(var9 >= 0) {
         wlibc_uprintf("start address = %x\n", *bootAddrBuf);
@@ -236,47 +233,45 @@ struct MBR
 int BootOS_detect_os_type(void **var4, void **bootAddrBuf,
         struct BootIni *bootIni, int *logoOff)
 {
-    int var8;
-    unsigned vasl;
-    int sp4;
-    char sp8[1024];
-    struct MBR sp2048;
+    int res;
+    unsigned miscPartFistSect;
+    int partNo;
+    char miscPartBuf[1024];
+    struct MBR mbr;
     struct OSImageScript imgScript;
-    int sp3916;
+    int requestedBootMode;
 
-    var8 = -1;
-    sp3916 = 0;
+    res = -1;
     memset(&imgScript, 0, sizeof(imgScript));
-    sp3916 = fnL428015CC();
-    if(sp3916 > 0) {
-        vasl = 0;
-        svc_diskread(0, 2, &sp2048);
-        for(sp4 = 0; sp4 < sp2048.PartCount; ++sp4) {
-            if(strcmp("misc", sp2048.array[sp4].name) == 0) {
-                vasl = sp2048.array[sp4].addrlo;
-                svc_diskread(vasl, 1, sp8);
-                memset(sp8, 0, 32);
-                if(sp3916 == 1) {
-                    strcpy(sp8, "boot-fastboot");
+    if( (requestedBootMode = bootModeReqestByKey()) > 0) {
+        miscPartFistSect = 0;
+        svc_diskread(0, 2, &mbr);
+        for(partNo = 0; partNo < mbr.PartCount; ++partNo) {
+            if(strcmp("misc", mbr.array[partNo].name) == 0) {
+                miscPartFistSect = mbr.array[partNo].addrlo;
+                svc_diskread(miscPartFistSect, 1, miscPartBuf);
+                memset(miscPartBuf, 0, 32);
+                if(requestedBootMode == 1) {
+                    strcpy(miscPartBuf, "boot-fastboot");
                     wlibc_uprintf("fastboot mode\n");
-                } else if(sp3916 == 2) {
-                    strcpy(sp8, "boot-recovery");
+                } else if(requestedBootMode == 2) {
+                    strcpy(miscPartBuf, "boot-recovery");
                     wlibc_uprintf("recovery mode\n");
                 }
-                svc_diskwrite(vasl, 1, sp8);
+                svc_diskwrite(miscPartFistSect, 1, miscPartBuf);
                 break;
             }
         }
     }
-    var8 = script_patch("c:\\linux\\linux.ini", &imgScript, 1);
-    if(var8 < 0) {
+    res = script_patch("c:\\linux\\linux.ini", &imgScript, 1);
+    if(res < 0) {
         wlibc_uprintf("NO OS to Boot\n");
     } else { 
         wlibc_uprintf("test for multi os boot with display\n");
-        var8 = PreBootOS(&imgScript, bootAddrBuf, var4, logoOff);
+        res = PreBootOS(&imgScript, bootAddrBuf, var4, logoOff);
     }
     svc_free(bootIni);
-    return var8;
+    return res;
 }
 
 void BootOS(void *var4, void *bootAddr)
