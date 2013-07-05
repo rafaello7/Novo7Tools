@@ -24,8 +24,13 @@ A tool to read/write NAND flash disk on allwinner device without need to have An
 ARM binary code disassembler.
 
 
-## boot-axf
+## boot-axf-org
 
 
 Reconstructed source of "boot.axf" binary for Novo 7 Aurora.
+
+## boot-axf
+
+
+Modified boot-axf-org
 
