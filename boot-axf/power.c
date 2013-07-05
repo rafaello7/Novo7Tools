@@ -15,8 +15,6 @@ static int L4280A3C4[1] = { 0x00000FA0 };
 extern int L4280A408[];
 unsigned L4280A3A8[1];
 static unsigned L4280A3B0[1];
-static struct LayerPara *L4280A3AC;
-extern unsigned L428126B4[4];
 
 int BOOT_TWI_Read(int var4, int *var5, char *var6)
 {
@@ -182,35 +180,16 @@ static int fnL428008D0(int *var4)
 {
     if(*var4 == 0) {
         *var4 = 1;
-        L4280A3AC = ShowPictureEx("c:\\os_show\\bat10.bmp", 0);
+        ShowPictureEx("c:\\os_show\\bat10.bmp", 0);
     } else { 
-        De_OpenLayer(*L428126B4);
+        //De_OpenLayer(gDeParam0);
     }
     return 0;
 }
 
 static int fnL42800848(void)
 {
-    struct LayerPara *layerPara;
-    int var6;
-    int var7;
-
-    if( L4280A3AC == 0 ) {
-        return -1;
-    }
-    layerPara = L4280A3AC;
-    var7 = layerPara->lpparam6;
-    for(var6 = 255; var6 > 0; var6 -= 5) {
-        layerPara->lpparam4 = 1;
-        var7 -= 5;
-        if(var7 > 0) {
-            De_SetLayerPara(*L428126B4, layerPara);
-            svc_delay(50);
-            layerPara->lpparam6 = var7;
-        } else { 
-            break;
-        }
-    }
+    De_DegradeBrightness();
     return 0;
 }
 
@@ -343,7 +322,7 @@ int check_power_status(void)
             power_int_rel();
             usb_detect_exit();
             wlibc_int_enable();
-            De_CloseLayer(L428126B4[0]);
+            //De_CloseLayer(gDeParam0);
             sp12 = svc_05();
             wlibc_uprintf("exit standby by %d\n", sp12);
             wlibc_int_disable();
@@ -361,7 +340,7 @@ int check_power_status(void)
         switch( sp12 - 2 ) {
         case 0:
             power_int_reg();
-            De_OpenLayer(L428126B4[0]);
+            //De_OpenLayer(gDeParam0);
 
             if(var5 == 100) {
                 if(var6 != 0) {
@@ -433,14 +412,14 @@ int check_power_status(void)
             return 0;
         case 2:
         case 3:
-            De_OpenLayer(L428126B4[0]);
+            //De_OpenLayer(gDeParam0);
             ShowBatteryCharge_rate(var6, var5);
         case 4:
         case 5:
             power_int_reg();
             if(sp12 != 4) {
                 if(sp12 != 5) {
-                    De_OpenLayer(L428126B4[0]);
+                    //De_OpenLayer(gDeParam0);
                     ShowBatteryCharge_rate(var6, var5);
                 }
             }

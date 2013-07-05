@@ -3,7 +3,6 @@
 #include "wlibc.h"
 #include "string.h"
 
-extern unsigned L428126B4[4];
 
 struct ImageHeader {
     unsigned short magic;
@@ -75,54 +74,54 @@ static int Parse_Pic_BMP_ByPath(const char *fname,
     return res;
 }
 
-static int WaitForDeInitFinish(void)
+static void CopyImage(struct BatteryChargeImg *img)
 {
-    int var4;
-    int var6;
+    int i;
+    int firstLineImg, firstLineScreen, nLines;
+    int firstColImg, firstColScreen, nCols;
+    struct MultiLayerPara mlp;
 
-    var6 = 100;
-    while(1) {
-        if( (var4 = De_IsLCDOpen()) == 1 )
-            break;
-        if(var4 == -1)
-            return -1;
-        svc_delay(50);
-        if(--var6 <= 0)
-            return -1;
+    De_GetPictBuf(&mlp);
+    if( img->height <= mlp.height ) {
+        firstLineImg = 0;
+        firstLineScreen = (mlp.height - img->height) / 2;
+        nLines = img->height;
+    }else{
+        firstLineImg = (img->height - mlp.height) / 2;
+        firstLineScreen = 0;
+        nLines = mlp.height;
     }
-    return 0;
+    if( img->width <= mlp.width ) {
+        firstColImg = 0;
+        firstColScreen = (mlp.width - img->width) / 2;
+        nCols = img->width;
+    }else{
+        firstColImg = (img->width - mlp.width) / 2;
+        firstColScreen = 0;
+        nCols = mlp.width;
+    }
+    wlibc_uprintf("CopyImage: depth=%d", img->depth);
+    // assume 32bpp image
+    for(i = 0; i < nLines; ++i) {
+        memcpy(mlp.dispbuf +
+                ((i+firstLineScreen) * mlp.width + firstColScreen) * 4,
+                img->imgdata +
+                ((i+firstLineImg) * img->width + firstColImg) * 4,
+                nCols * 4);
+    }
 }
 
-static int ShowLayer(int var4, struct LayerPara *layerPara, int var7)
+void ShowPictureEx(const char *fname, void *imgdatabuf)
 {
-    if(var7 == 0)
-        WaitForDeInitFinish();
-    if( De_SetLayerPara(var4, layerPara) != 0 ) {
-        wlibc_uprintf("ERR: De_SetLayerPara failed\n");
-        return -1;
-    }
-    De_OpenLayer(var4);
-    return 0;
-}
-
-struct LayerPara *ShowPictureEx(const char *fname, void *imgdatabuf)
-{
-    struct LayerPara *layerPara;
     struct BatteryChargeImg img;
 
-    layerPara = 0;
-    if( *L428126B4 == 0 ) {
-        return 0;
-    }
     memset(&img, 0, sizeof(img));
     if( Parse_Pic_BMP_ByPath(fname, &img, imgdatabuf) != 0 ) {
         wlibc_uprintf("ERR: Parse_Pic_BMP failed\n");
-        return 0;
+        return;
     }
-    layerPara = ui_AllocLayerPara(&img);
-    ShowLayer(*L428126B4, layerPara, L428126B4[3]);
+    CopyImage(&img);
     svc_delay(50);
-    return layerPara;
 }
 
 struct MultiPictureItem {   /* 112 bytes */
@@ -141,90 +140,13 @@ struct MultiPicture {   /* 920 bytes */
     struct MultiPictureItem items[8];
 };
 
-struct MultiPicture *ShowMultiPicture(struct MultiPictureParam *mppar, int itemCount)
-{
-    int itemNo;
-    int i;
-    int horizDist;
-    int vertDist;
-    int imgWidth;
-    int imgHeight;
-    struct MultiPicture *multiPict;
-    char *imgdata;
-    char *dispbuf;
-    char *imgline;
-    int itemWidth;
-    int sp24;
-
-    multiPict = 0;
-
-    if(*L428126B4 == 0) {
-        return 0;
-    }
-    if(itemCount > 8)
-        itemCount = 8;
-    multiPict = svc_alloc(sizeof(struct MultiPicture));
-    if(multiPict == 0) {
-        return 0;
-    }
-    memset(multiPict, 0, sizeof(struct MultiPicture));
-    multiPict->itemCount = itemCount;
-    for(itemNo = 0; itemNo < itemCount; ++itemNo) {
-        for(i = 0; i < mppar[itemNo].filecount; ++i) {
-            sp24 = Parse_Pic_BMP_ByPath(mppar[itemNo].fnames[i],
-                    &multiPict->items[itemNo].battImg[multiPict->items[itemNo].imgCount], 0);
-            if(sp24 != 0) {
-                wlibc_uprintf("decode %s bmp file failed\n",
-                        mppar[itemNo].fnames[i]);
-            } else { 
-                ++multiPict->items[itemNo].imgCount;
-            }
-        }
-    }
-    multiPict->layerPara = ui_multi_AllocLayerPara(&multiPict->mlp, 0);
-    imgWidth = multiPict->items[0].battImg[0].width;
-    imgHeight = multiPict->items[0].battImg[0].height;
-    vertDist = (multiPict->mlp.height - multiPict->items[0].battImg[0].height) >> 1;
-    itemWidth = multiPict->mlp.width / itemCount;
-    horizDist = (itemWidth - imgWidth) >> 1;
-    for(itemNo = 0; itemNo < itemCount; ++itemNo) {
-        multiPict->items[itemNo].offsetHoriz = itemNo * itemWidth + horizDist;
-        multiPict->items[itemNo].offsetVert = vertDist;
-    }
-    dispbuf = multiPict->mlp.dispbuf;
-    dispbuf += multiPict->mlp.width * vertDist * 4;
-    for(itemNo = 0; itemNo < itemCount; ++itemNo) {
-        imgline = dispbuf + multiPict->items[itemNo].offsetHoriz * 4;
-        imgdata = multiPict->items[itemNo].battImg[0].imgdata;
-        for(i = 0; i < imgHeight; ++i) {
-            memcpy(imgline, imgdata, imgWidth * 4);
-            imgline += multiPict->mlp.width * 4;
-            imgdata += imgWidth * 4;
-        }
-    }
-    ShowLayer(*L428126B4, multiPict->layerPara, L428126B4[3]);
-    svc_delay(50);
-    return multiPict;
-}
-
-int ShutPictureEx(struct LayerPara *layerPara)
-{
-    if(layerPara == 0) {
-        return 0;
-    }
-    De_CloseLayer(*L428126B4);
-    ui_FreeLayerPara(layerPara);
-    return 0;
-}
-
 struct ShowBatteryChangeHandle *ShowBatteryCharge_init(void)
 {
     struct ShowBatteryChangeHandle *hdle;
     int i;
     char fname[32];
 
-    hdle = 0;
-    if( L428126B4[0] == 0 )
+    if( ! De_IsInit() )
         return 0;
     hdle = svc_alloc(sizeof(*hdle));
     if(hdle == 0)
@@ -255,57 +177,35 @@ struct ShowBatteryChangeHandle *ShowBatteryCharge_init(void)
     if(hdle->lp.imgdata == 0)
         return 0;
     memcpy(hdle->lp.imgdata, hdle->images[0].imgdata, hdle->lp.imgsiz);
-    hdle->layerPara = ui_AllocLayerPara(&hdle->lp);
-    ShowLayer(L428126B4[0], hdle->layerPara, L428126B4[3]);
+    CopyImage(&hdle->lp);
     return hdle;
 }
 
 int ShowBatteryCharge_rate(struct ShowBatteryChangeHandle *hdle, int rate)
 {
-    void *var7;
-
     if(hdle == 0)
         return -1;
-    if(rate != 100) {
-        var7 = hdle->images[rate / 10].imgdata;
-        memcpy(hdle->lp.imgdata, var7, hdle->imgsize);
-    } else { 
-        memcpy(hdle->lp.imgdata, hdle->images[10].imgdata,
-                hdle->imgsize);
-    }
+    CopyImage(hdle->images + rate / 10);
     return 0;
 
 }
 
 int ShowBatteryCharge_degrade(struct ShowBatteryChangeHandle *hdle)
 {
-    int var7;
-    int var8;
-
     if(hdle == 0)
         return -1;
-
-    var8 = hdle->layerPara->lpparam6;
-    for(var7 = 255; var7 > 0; var7 -= 5) {
-        hdle->layerPara->lpparam4 = 1;
-        var8 -= 5;
-        if(var8 > 0) {
-            De_SetLayerPara(L428126B4[0], hdle->layerPara);
-            svc_delay(50);
-            hdle->layerPara->lpparam6 = var8;
-        } else { 
-            break;
-        }
-    }
+    De_DegradeBrightness();
     return 0;
 }
 
 int ShowBatteryCharge_exit(struct ShowBatteryChangeHandle *hdle)
 {
+#if 0
     if(hdle == 0)
         return -1;
-    De_CloseLayer( L428126B4[0] );
+    De_CloseLayer( gDeParam0 );
     ui_FreeLayerPara(hdle->layerPara);
+#endif
     return 0;
 }
 

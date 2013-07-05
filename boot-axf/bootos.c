@@ -5,6 +5,7 @@
 #include "script.h"
 #include "bootpara.h"
 #include "string.h"
+#include "fbprint.h"
 
 
 struct ImageHeader {
@@ -18,49 +19,102 @@ struct ImageHeader {
 
 static struct ImageHeader *gImageHeader;
 
-static int bootModeReqestByKey(void)
+
+/* volume down: 43
+ * volume up:   30
+ * back:        37
+ */
+static int GetKeyVal(void)
 {
-    int keyMaxFindRes;
-    int keyMinFindRes;
-    int keyVal;
-    int keyMin;
-    int keyMax;
+    static int keyvalOld = -1;
+    int keyval, rep;
 
-    keyVal = gBootPara.bpparam0[2];
-    wlibc_uprintf("key value = %d\n", keyVal);
-    keyMaxFindRes = svc_b0("recovery_key", "key_max", &keyMax, 1);
-    keyMinFindRes = svc_b0("recovery_key", "key_min", &keyMin, 1);
-    if(keyMaxFindRes != 0) {
-        wlibc_uprintf("unable to find recovery_key key_max value\n");
-        return -1;
+    do {
+        while( (keyval = svc_keyval()) == -1 )
+            ;
+    }while(keyval == keyvalOld);
+    while(keyvalOld != keyval) {
+        keyvalOld = keyval;
+        for(rep = 0; keyval == keyvalOld && rep < 5; ++rep) {
+            while( (keyval = svc_keyval()) == -1 )
+                ;
+        }
+    }
+    return keyval;
+}
 
+static void PrintMenuItem(int lineNo, const char *item, int highlightLine)
+{
+    static const struct ColorPair menuColors[2] = {
+        { .bg = 0, .fg = 0xffffff },
+        { .bg = 0x0d1e54, .fg = 0xffffff }
+    };
+    char buf[28];
+    int len;
+
+    buf[0] = ' ';
+    buf[1] = ' ';
+    strncpy(buf+2, item, sizeof(buf) - 2);
+    len = strlen(item) + 2;
+    while( len < sizeof(buf) )
+        buf[len++] = ' ';
+    buf[sizeof(buf)-1] = '\0';
+    fbprint_line(2*lineNo+2, 40, &menuColors[lineNo==highlightLine], 2, buf);
+}
+
+/* -4 - go fel
+ * -3 - power off
+ * -2 - boot recovery
+ * -1 - boot fastboot
+ *  >=0 - BootIni item number
+ */
+static int SelectBoot(struct BootIni *bootIni)
+{
+    int curItemNo = bootIni->startOSNum;
+    int isSubMenu = 0, i, lastItemNo;
+    char *subMenuItems[] = {
+        "boot fastboot",
+        "boot recovery",
+        "power off",
+        "go fel",
+        "back to main menu"
+    };
+
+    while(1) {
+        fbclear();
+        if( isSubMenu ) {
+            lastItemNo = sizeof(subMenuItems) / sizeof(subMenuItems[0]) - 1;
+            for(i = 0; i <= lastItemNo; ++i)
+            {
+                PrintMenuItem(i, subMenuItems[i], curItemNo);
+            }
+        }else{
+            PrintMenuItem(0, "android", curItemNo);
+            lastItemNo = bootIni->osCount;
+            for(i = 1; i < lastItemNo; ++i) {
+                PrintMenuItem(i, bootIni->osNames[i], curItemNo);
+            }
+            PrintMenuItem(lastItemNo, "other options submenu", curItemNo);
+        }
+        switch( GetKeyVal() ) {
+        case 30:    /* volume up */
+            curItemNo = curItemNo == 0 ? lastItemNo : curItemNo-1;
+            break;
+        case 43:    /* volume down */
+            curItemNo = curItemNo == lastItemNo ? 0 : curItemNo+1;
+            break;
+        case 37:    /* back */
+            if( curItemNo == lastItemNo ) {
+                isSubMenu = 1 - isSubMenu;
+                curItemNo = 0;
+            }else{
+                fbclear();
+                return isSubMenu ? -curItemNo - 1 : curItemNo;
+            }
+            break;
+        }
     }
-    if(keyMinFindRes != 0) {
-        wlibc_uprintf("unable to find recovery_key key_min value\n");
-        return -1;
-    }
-    wlibc_uprintf("recovery key high %d, low %d\n", keyMax, keyMin);
-    if(keyVal >= keyMin && keyVal <= keyMax) {
-        wlibc_uprintf("key found, android recovery\n");
-        return 2;
-    }
-    keyMaxFindRes = svc_b0("fastboot_key", "key_max", &keyMax, 1);
-    keyMinFindRes = svc_b0("fastboot_key", "key_min", &keyMin, 1);
-    if(keyMaxFindRes != 0) {
-        wlibc_uprintf("unable to find fastboot_key key_max value\n");
-        return -1;
-    }
-    if(keyMinFindRes != 0) {
-        wlibc_uprintf("unable to find fastboot_key key_min value\n");
-        return -1;
-    }
-    wlibc_uprintf("fastboot key high %d, low %d\n", keyMax, keyMin);
-    if(keyVal >= keyMin && keyVal <= keyMax) {
-        wlibc_uprintf("key found, android fastboot\n");
-        return 1;
-    }
-    wlibc_uprintf("key invalid\n");
-    return -1;
+    return 0;
 }
 
 static int ShowLogo(const char *fname, int logoShow, void *imgdatabuf)
@@ -230,45 +284,67 @@ struct MBR
 } __attribute__ ((packed));
 
 
+static void WriteMiscPart(const char *val)
+{
+    struct MBR mbr;
+    char miscPartBuf[1024];
+    int partNo;
+    unsigned miscPartFistSect = 0;
+
+    svc_diskread(0, 2, &mbr);
+    for(partNo = 0; partNo < mbr.PartCount; ++partNo) {
+        if(strcmp("misc", mbr.array[partNo].name) == 0) {
+            miscPartFistSect = mbr.array[partNo].addrlo;
+            svc_diskread(miscPartFistSect, 1, miscPartBuf);
+            if( strcmp(miscPartBuf, val) ) {
+                memset(miscPartBuf, 0, 32);
+                strcpy(miscPartBuf, val);
+                svc_diskwrite(miscPartFistSect, 1, miscPartBuf);
+            }
+            break;
+        }
+    }
+}
+
 int BootOS_detect_os_type(void **var4, void **bootAddrBuf,
         struct BootIni *bootIni, int *logoOff)
 {
     int res;
-    unsigned miscPartFistSect;
-    int partNo;
-    char miscPartBuf[1024];
-    struct MBR mbr;
     struct OSImageScript imgScript;
     int requestedBootMode;
+    char osIni[100];
 
     res = -1;
     memset(&imgScript, 0, sizeof(imgScript));
-    if( (requestedBootMode = bootModeReqestByKey()) > 0) {
-        miscPartFistSect = 0;
-        svc_diskread(0, 2, &mbr);
-        for(partNo = 0; partNo < mbr.PartCount; ++partNo) {
-            if(strcmp("misc", mbr.array[partNo].name) == 0) {
-                miscPartFistSect = mbr.array[partNo].addrlo;
-                svc_diskread(miscPartFistSect, 1, miscPartBuf);
-                memset(miscPartBuf, 0, 32);
-                if(requestedBootMode == 1) {
-                    strcpy(miscPartBuf, "boot-fastboot");
-                    wlibc_uprintf("fastboot mode\n");
-                } else if(requestedBootMode == 2) {
-                    strcpy(miscPartBuf, "boot-recovery");
-                    wlibc_uprintf("recovery mode\n");
-                }
-                svc_diskwrite(miscPartFistSect, 1, miscPartBuf);
-                break;
-            }
-        }
+    requestedBootMode = SelectBoot(bootIni);
+    switch( requestedBootMode ) {
+    case -1:
+        WriteMiscPart("boot-fastboot");
+        requestedBootMode = 0;
+        break;
+    case -2:
+        WriteMiscPart("boot-recovery");
+        requestedBootMode = 0;
+        break;
+    case 0:
+        WriteMiscPart("");
+        break;
     }
-    res = script_patch("c:\\linux\\linux.ini", &imgScript, 1);
-    if(res < 0) {
-        wlibc_uprintf("NO OS to Boot\n");
-    } else { 
-        wlibc_uprintf("test for multi os boot with display\n");
-        res = PreBootOS(&imgScript, bootAddrBuf, var4, logoOff);
+    if( requestedBootMode >= 0) {
+        strcpy(osIni, "c:\\");
+        strcpy(osIni+strlen(osIni), bootIni->osNames[requestedBootMode]);
+        strcpy(osIni+strlen(osIni), "\\");
+        strcpy(osIni+strlen(osIni), bootIni->osNames[requestedBootMode]);
+        strcpy(osIni+strlen(osIni), ".ini");
+        res = script_patch(osIni, &imgScript, 1);
+        if(res < 0) {
+            wlibc_uprintf("NO OS to Boot\n");
+        } else { 
+            wlibc_uprintf("test for multi os boot with display\n");
+            res = PreBootOS(&imgScript, bootAddrBuf, var4, logoOff);
+        }
+    }else{
+        res = requestedBootMode + 2;
     }
     svc_free(bootIni);
     return res;

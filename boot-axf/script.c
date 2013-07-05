@@ -191,7 +191,9 @@ enum ImgSection {
 };
 
 
-int parser_script_os_img(const char *script, int var5,
+/* parse c:\linux\linux.ini
+ */
+int parser_script_os_img(const char *script, int scriptSize,
         struct OSImageScript *imgScript)
 {
     int var7 = -1;
@@ -205,9 +207,9 @@ int parser_script_os_img(const char *script, int var5,
     enum LineType lineType;
 
     segmentNo = -1;
-    while(var5 != 0) {
-        lineLen = GetScriptLine(script, &lineType, var5);
-        var5 = var5 - lineLen;
+    while(scriptSize != 0) {
+        lineLen = GetScriptLine(script, &lineType, scriptSize);
+        scriptSize -= lineLen;
         switch( lineType ) {
         case LTYPE_COMMENT:
             break;
@@ -326,19 +328,24 @@ L42802C84:
     return var7;
 }
 
+/* parse c:\boot.ini
+ *      script      - the c:\boot.ini contents
+ *      scriptSize  - the contents size
+ *      bootIni     - buffer for parse result
+ */
 int parser_script_os_sel(const char *script, int scriptSize,
         struct BootIni *bootIni)
 {
     int var7 = -1;
     int var8;
-    int var9 = -1;
-    int vasl = -1;
+    int isSystemSect = -1;
+    int curOS = -1;
     int lineLen;
     char sp4[12];
     int sp24[8];
     char paramVal[128];
     char paramName[128];
-    int lineType;
+    enum LineType lineType;
 
     while(scriptSize != 0) {
         lineLen = GetScriptLine(script, &lineType, scriptSize);
@@ -349,30 +356,29 @@ int parser_script_os_sel(const char *script, int scriptSize,
         case LTYPE_SECTION:
             memset(paramName, 0, sizeof(paramName));
             if(GetSectionName(script, paramName) != 0) {
-                goto L42803010;
+                goto error;
             }
-            var9 = -1;
+            isSystemSect = -1;
             if(strcmp(paramName, "system") == 0) {
-                var9 = 1;
+                isSystemSect = 1;
             } else { 
-                var9 = 0;
-                ++vasl;
-                strcpy(bootIni->param4[vasl], paramName);
-                if(vasl >= 8) {
+                isSystemSect = 0;
+                if(++curOS >= 8) {
                     return -1;
                 }
+                strcpy(bootIni->osNames[curOS], paramName);
             }
             break;
         case LTYPE_PARAM:
             if(GetParam(script, paramName, paramVal) != 0) {
-                goto L42803010;
+                goto error;
             }
             var7 = ParseParamVal(paramVal, sp24);
             if(var7 == -1) {
-                goto L42803010;
+                goto error;
 
             }
-            if(var9 == 1) {
+            if(isSystemSect == 1) {
                 if(strcmp(paramName, "start_os_name") == 0) {
                     strncpy(bootIni->startOSName, paramVal, sp24[0] << 2);
                 } else if(strcmp(paramName, "timeout") == 0) {
@@ -382,36 +388,34 @@ int parser_script_os_sel(const char *script, int scriptSize,
                 } else if(strcmp(paramName, "display_mode") == 0) {
                     bootIni->displayMode = sp24[0] * sp24[1];
                 }
-            } else { 
-                if(var9 == 0) {
-                    strcpy(sp4, "os_show[0]");
-                    for(var8 = 0; var8 < 4; ++var8) {
-                        if(strcmp(paramName, sp4) == 0) {
-                            if(sp24 != 0) {
-                                strncpy(bootIni->param312[vasl].fnames[var8],
-                                        paramVal, sp24[0] << 2);
-                                ++bootIni->param312[vasl].filecount;
-                                break;
-                            }
+            } else if(isSystemSect == 0) {
+                strcpy(sp4, "os_show[0]");
+                for(var8 = 0; var8 < 4; ++var8) {
+                    if(strcmp(paramName, sp4) == 0) {
+                        if(sp24 != 0) {
+                            strncpy(bootIni->osPictures[curOS].fnames[var8],
+                                    paramVal, sp24[0] << 2);
+                            ++bootIni->osPictures[curOS].filecount;
+                            break;
                         }
-                        ++sp4[8];
                     }
+                    ++sp4[8];
                 }
             }
             break;
         default:
-            goto L42803010;
+            goto error;
         }
         script = script + lineLen;
     }
-    bootIni->param0 = vasl + 1;
+    bootIni->osCount = curOS + 1;
     for(var8 = 0; var8 < 8; ++var8) {
-        if(strcmp(bootIni->startOSName, bootIni->param4[var8]) == 0) {
-            bootIni->param292 = var8;
+        if(strcmp(bootIni->startOSName, bootIni->osNames[var8]) == 0) {
+            bootIni->startOSNum = var8;
             break;
         }
     }
-L42803010:
+error:
     var7 = var7 >> 31;
     return var7;
 }

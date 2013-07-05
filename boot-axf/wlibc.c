@@ -1,6 +1,7 @@
 #include <stdarg.h>
 #include "syscalls.h"
 #include "wlibc.h"
+#include "fbprint.h"
 
 
 int int_to_string_dec(int num, char *var5)
@@ -191,6 +192,7 @@ void wlibc_uprintf(const char *fmt, ...)
     }
     *bufpos = '\0';
     svc_4a(buf);
+    fbprint_cons(buf, bufpos - buf);
 }
 
 void wlibc_ntprintf(const char *fmt, ...)
