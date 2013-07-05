@@ -9,9 +9,9 @@ OBJS = egon2_magic.o bootmain.o wlibc.o syscalls.o display_interface.o ui.o pict
 # gcc sets .rodata section flags to "A", but ELF loader included in boot1 does
 # not load section having "A" flag, hence objcopy call which changes the flags
 # to "WA"
-boot-axf: $(OBJS)
-	$(CROSS_COMPILLE)ld $(OBJS) -o boot-axf -T boot-axf.lds
-	$(CROSS_COMPILLE)objcopy --set-section-flags .rodata=alloc boot-axf
+boot.axf: $(OBJS)
+	$(CROSS_COMPILLE)ld $(OBJS) -o boot.axf -T boot-axf.lds
+	$(CROSS_COMPILLE)objcopy --set-section-flags .rodata=alloc boot.axf
 
 $(OBJS): board.h bootos.h display_interface.h io.h picture.h power.h script.h syscalls.h ui.h usb_device.h wlibc.h bootmain.h string.h
 
@@ -22,7 +22,7 @@ $(OBJS): board.h bootos.h display_interface.h io.h picture.h power.h script.h sy
 	$(CROSS_COMPILLE)gcc $(CFLAGS) $(GCCINC) -c $<
 
 clean:
-	rm -f $(OBJS) boot-axf
+	rm -f $(OBJS) boot.axf
 
 sc:
 	make clean
