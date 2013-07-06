@@ -663,8 +663,8 @@ int main(int argc, char *argv[])
         printf("    allwindisk mf <address> <string> [<size[k|M|x]>] - memory fill\n");
         printf("    allwindisk mg <eGON_imgfile>    - load the image into memory and jump to it\n");
         printf("    allwindisk i                    - ping (check if alive)\n");
-        printf("    allwindisk q                    - board reset\n");
-        printf("    allwindisk f                    - go back to FEL mode\n");
+        printf("    allwindisk bf                   - go back to FEL mode\n");
+        printf("    allwindisk br                   - board reset\n");
         printf("    allwindisk l                    - print debug log from device\n");
         printf("\n");
         printf("The <partname> may be a pseudo-partition, one of: boot0, boot1, disk-logic\n");
@@ -674,6 +674,19 @@ int main(int argc, char *argv[])
     if( usbcomm_init() != 0 )
         return 1;
     switch( argv[1][0] ) {
+    case 'b':
+        switch( argv[1][1] ) {
+        case 'f':
+            cmd_board_exit(BE_GO_FEL);
+            break;
+        case 'r':
+            cmd_board_exit(BE_BOARD_RESET);
+            break;
+        default:
+            printf("unknown command %s\n", argv[1]);
+            break;
+        }
+        break;
     case 'd':
         switch( argv[1][1] ) {
         case 'd':
@@ -698,9 +711,6 @@ int main(int argc, char *argv[])
             printf("unknown command %s\n", argv[1]);
             break;
         }
-        break;
-    case 'f':
-        cmd_board_exit(BE_GO_FEL);
         break;
     case 'i':
         cmd_ping();
@@ -735,9 +745,6 @@ int main(int argc, char *argv[])
             printf("unknown command %s\n", argv[1]);
             break;
         }
-        break;
-    case 'q':
-        cmd_board_exit(BE_BOARD_RESET);
         break;
     case 'S':
         cmd_sdelay(argv[2]);

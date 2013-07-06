@@ -1,4 +1,3 @@
-#include <stdarg.h>
 #include "syscalls.h"
 #include "wlibc.h"
 #include "fbprint.h"
@@ -103,7 +102,7 @@ static int cpy_unix2dos(char *var2, char *var1)
 {
     int var0 = 0;
 
-    while(*var2 != 0) {
+    while(*var2 != '\0') {
         if(*var2 == '\n') {
             *var1++ = '\r';
             ++var0;
@@ -114,20 +113,15 @@ static int cpy_unix2dos(char *var2, char *var1)
     return var0;
 }
 
-/* printf, prepended with timer value
- */
-void wlibc_uprintf(const char *fmt, ...)
+int wlibc_vsprintf(char *buf, const char *fmt, va_list args)
 {
     char *bufpos;
     int hexspec;
     int numhi;
     int numlo;
-    va_list args;
-    char buf[256];
-    char numbuf[40];
+    char numbuf[48];
 
     bufpos = buf;
-    va_start(args, fmt);
 
     while(*fmt != 0) {
         if(*fmt == '%') {
@@ -144,12 +138,12 @@ void wlibc_uprintf(const char *fmt, ...)
             case 'p':
             case 'X':
                 int_to_string_hex(va_arg(args, int), numbuf, hexspec);
-                bufpos = bufpos + cpy_unix2dos(numbuf, bufpos);
+                bufpos += cpy_unix2dos(numbuf, bufpos);
                 ++fmt;
                 break;
             case 'u':
                 Uint_to_string_dec(va_arg(args, unsigned), numbuf);
-                bufpos = bufpos + cpy_unix2dos(numbuf, bufpos);
+                bufpos += cpy_unix2dos(numbuf, bufpos);
                 ++fmt;
                 break;
             case 'c':
@@ -161,25 +155,23 @@ void wlibc_uprintf(const char *fmt, ...)
                 ++fmt;
                 break;
             case 'l':
-                if(fmt[1] == 'l') {
-                    if(fmt[2] == 'x' || fmt[2] == 'X') {
-                        numlo = va_arg(args, int);
-                        numhi = va_arg(args, int);
-                        if(fmt[2] == 'x') {
-                            hexspec = 'x';
-                        } else { 
-                            hexspec = 'X';
-                        }
-                        int_to_string_hex(numhi, numbuf, hexspec);
-                        bufpos = bufpos + cpy_unix2dos(numbuf, bufpos);
-                        int_to_string_hex(numlo, numbuf, hexspec);
-                        bufpos = bufpos + cpy_unix2dos(numbuf + 2, bufpos);
-                        fmt += 3;
-                        break;
+                if(fmt[1] == 'l' && (fmt[2] == 'x' || fmt[2] == 'X')) {
+                    numlo = va_arg(args, unsigned);
+                    numhi = va_arg(args, unsigned);
+                    if(fmt[2] == 'x') {
+                        hexspec = 'x';
+                    } else { 
+                        hexspec = 'X';
                     }
+                    int_to_string_hex(numhi, numbuf, hexspec);
+                    bufpos += cpy_unix2dos(numbuf, bufpos);
+                    int_to_string_hex(numlo, numbuf, hexspec);
+                    bufpos += cpy_unix2dos(numbuf + 2, bufpos);
+                    fmt += 3;
+                    break;
                 }
                 int_to_string_dec(va_arg(args, int), numbuf);
-                bufpos = bufpos + cpy_unix2dos(numbuf, bufpos);
+                bufpos += cpy_unix2dos(numbuf, bufpos);
                 ++fmt;
                 break;
             default:
@@ -187,194 +179,55 @@ void wlibc_uprintf(const char *fmt, ...)
                 *bufpos++ = *fmt++;
             }
         } else { 
-            if(*fmt == '\n')
+            if(*fmt == '\n') {
                 *bufpos++ = '\r';
+            }
             *bufpos++ = *fmt++;
+
         }
     }
     *bufpos = '\0';
+    return bufpos - buf;
+}
+
+/* printf, prepended with timer value
+ */
+void wlibc_uprintf(const char *fmt, ...)
+{
+    char buf[256];
+    va_list args;
+    int len;
+
+    va_start(args, fmt);
+    len = wlibc_vsprintf(buf, fmt, args);
+    va_end(args);
     svc_4a(buf);
-    fbprint_cons(buf, bufpos - buf);
+    fbprint_cons(buf, len);
 }
 
 /* "nt" aka "no timer" printf */
 void wlibc_ntprintf(const char *fmt, ...)
 {
-    char *bufpos;
-    int hexspec;
-    int numhi;
-    int numlo;
-    va_list args;
     char buf[256];
-    char numbuf[40];
+    va_list args;
+    int len;
 
-    bufpos = buf;
     va_start(args, fmt);
-
-    while(*fmt != 0) {
-        if(*fmt == '%') {
-            ++fmt;
-            hexspec = 'X';
-            switch( *fmt ) {
-            case 'd':
-                int_to_string_dec(va_arg(args, int), numbuf);
-                bufpos += cpy_unix2dos(numbuf, bufpos);
-                ++fmt;
-                break;
-            case 'x':
-                hexspec = 'x';
-            case 'p':
-            case 'X':
-                int_to_string_hex(va_arg(args, int), numbuf, hexspec);
-                bufpos = bufpos + cpy_unix2dos(numbuf, bufpos);
-                ++fmt;
-                break;
-            case 'u':
-                Uint_to_string_dec(va_arg(args, unsigned), numbuf);
-                bufpos = bufpos + cpy_unix2dos(numbuf, bufpos);
-                ++fmt;
-                break;
-            case 'c':
-                *bufpos++ = va_arg(args, int);
-                ++fmt;
-                break;
-            case 's':
-                bufpos += cpy_unix2dos(va_arg(args, char*), bufpos);
-                ++fmt;
-                break;
-            case 'l':
-                if(fmt[1] == 'l') {
-                    if(fmt[2] == 'x' || fmt[2] == 'X') {
-                        numlo = va_arg(args, int);
-                        numhi = va_arg(args, int);
-                        if(fmt[2] == 'x') {
-                            hexspec = 'x';
-                        } else { 
-                            hexspec = 'X';
-                        }
-                        int_to_string_hex(numhi, numbuf, hexspec);
-                        bufpos = bufpos + cpy_unix2dos(numbuf, bufpos);
-                        int_to_string_hex(numlo, numbuf, hexspec);
-                        bufpos = bufpos + cpy_unix2dos(numbuf + 2, bufpos);
-                        fmt += 3;
-                        break;
-                    }
-                }
-                int_to_string_dec(va_arg(args, int), numbuf);
-                bufpos = bufpos + cpy_unix2dos(numbuf, bufpos);
-                ++fmt;
-                break;
-            default:
-                *bufpos++ = '%';
-                *bufpos++ = *fmt++;
-            }
-        } else { 
-            if(*fmt == '\n')
-                *bufpos++ = '\r';
-            *bufpos++ = *fmt++;
-        }
-    }
-    *bufpos = '\0';
+    len = wlibc_vsprintf(buf, fmt, args);
+    va_end(args);
     svc_49(buf);
-}
-
-static int fnL428088B4(char *var2, char *var1)
-{
-    char var3;
-    int var0;
-
-    var0 = 0;
-    while(*var2 != '\0') {
-        var3 = *var2;
-        if(var3 == '\n') {
-            var3 = '\r';
-            *var1++ = var3;
-            ++var0;
-        }
-        *var1++ = *var2++;
-        ++var0;
-    }
-    return var0;
+    fbprint_cons(buf, len);
 }
 
 int wlibc_sprintf(char *buf, const char *fmt, ...)
 {
-    char *var5;
-    char *var6;
-    int var7;
-    int var8;
-    int var9;
-    va_list sp0;
-    char sp4[48];
+    va_list args;
+    int len;
 
-    var6 = buf;
-    va_start(sp0, fmt);
-    while(*fmt != 0) {
-        if(*fmt == '%') {
-            ++fmt;
-            var5 = sp4;
-            var7 = 'X';
-            switch( *fmt ) {
-            case 'd':
-                int_to_string_dec(va_arg(sp0, int), sp4);
-                var6 += fnL428088B4(var5, var6);
-                ++fmt;
-                break;
-            case 'x':
-                var7 = 'x';
-            case 'p':
-            case 'X':
-                int_to_string_hex(va_arg(sp0, int), sp4, var7);
-                var6 = var6 + fnL428088B4(var5, var6);
-                ++fmt;
-                break;
-            case 'u':
-                Uint_to_string_dec(va_arg(sp0, unsigned), sp4);
-                var6 = var6 + fnL428088B4(var5, var6);
-                ++fmt;
-                break;
-            case 'c':
-                *var6++ = va_arg(sp0, int);
-                ++fmt;
-                break;
-            case 's':
-                var6 = var6 + fnL428088B4(va_arg(sp0, char*), var6);
-                ++fmt;
-                break;
-            case 'l':
-                if(fmt[1] == 'l' && (fmt[2] == 'x' || fmt[2] == 'X')) {
-                    var9 = va_arg(sp0, unsigned);
-                    var8 = va_arg(sp0, unsigned);
-                    if(fmt[2] == 'x') {
-                        var7 = 'x';
-                    } else { 
-                        var7 = 'X';
-                    }
-                    int_to_string_hex(var8, sp4, var7);
-                    var6 += fnL428088B4(var5, var6);
-                    int_to_string_hex(var9, sp4, var7);
-                    var6 += fnL428088B4(var5 + 2, var6);
-                    fmt = fmt + 3;
-                    break;
-                }
-                int_to_string_dec(va_arg(sp0, int), sp4);
-                var6 += fnL428088B4(var5, var6);
-                ++fmt;
-                break;
-            default:
-                *var6++ = '%';
-                *var6++ = *fmt++;
-            }
-        } else { 
-            if(*fmt == '\n') {
-                *var6++ = '\r';
-            }
-            *var6++ = *fmt++;
-
-        }
-    }
-    *var6 = '\0';
-    return 0;
+    va_start(args, fmt);
+    len = wlibc_vsprintf(buf, fmt, args);
+    va_end(args);
+    return len;
 }
 
 void wlibc_int_enable(void)

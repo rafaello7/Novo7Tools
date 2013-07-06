@@ -277,13 +277,13 @@ it is loaded at address 0. When boot1, it is loaded at address 0x42400000.
 Ping (check if alive).
 
 
-####    allwindisk q
+####    allwindisk br
 
 
 Perform the device reset.
 
 
-####    allwindisk f
+####    allwindisk bf
 
 Goes back to FEL mode.
 

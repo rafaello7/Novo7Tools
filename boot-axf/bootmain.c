@@ -50,7 +50,7 @@ int BootMain(int argc, char *argv[])
     void *bootAddr;
 
     BoardInit_Display(0, 0);
-    dotest2();
+    //dotest2();
     if( (status = svc_getpara(1, &gBootPara)) != 0 ) {
         wlibc_uprintf("ERR: wBoot_get_para failed\n");
     } else { 

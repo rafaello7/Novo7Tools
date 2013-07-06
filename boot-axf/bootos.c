@@ -24,15 +24,32 @@ static struct ImageHeader *gImageHeader;
  * volume up:   30
  * back:        37
  */
-static int GetKeyVal(void)
+static int GetKeyVal(int timeout)
 {
     static int keyvalOld = -1;
     int keyval, rep;
+    unsigned delayCounter = 1;
+    static const struct ColorPair timeoutColors = { .bg = 0, .fg = 0xffffff };
 
     do {
-        while( (keyval = svc_keyval()) == -1 )
-            ;
+        while( (keyval = svc_keyval()) == -1 ) {
+            if( --delayCounter == 0 ) {
+                if( timeout == 0 ) {
+                    return -1;
+                }else if( timeout > 0 ) {
+                    char buf[40];
+                    wlibc_sprintf(buf, "Timeout: %d ", timeout);
+                    fbprint_line(-1, 40, &timeoutColors, 1, buf);
+                    --timeout;
+                }
+                delayCounter = 50;
+            }
+            svc_delay(20);
+        }
     }while(keyval == keyvalOld);
+    if( timeout >= 0 ) {
+        fbprint_line(-1, 40, &timeoutColors, 1, "               ");
+    }
     while(keyvalOld != keyval) {
         keyvalOld = keyval;
         for(rep = 0; keyval == keyvalOld && rep < 5; ++rep) {
@@ -70,7 +87,7 @@ static void PrintMenuItem(int lineNo, const char *item, int highlightLine)
  */
 static int SelectBoot(struct BootIni *bootIni)
 {
-    int curItemNo = bootIni->startOSNum;
+    int curItemNo = bootIni->startOSNum, timeout = bootIni->timeout;
     int isSubMenu = 0, i, lastItemNo;
     char *subMenuItems[] = {
         "boot fastboot",
@@ -96,13 +113,14 @@ static int SelectBoot(struct BootIni *bootIni)
             }
             PrintMenuItem(lastItemNo, "other options submenu", curItemNo);
         }
-        switch( GetKeyVal() ) {
+        switch( GetKeyVal(timeout) ) {
         case 30:    /* volume up */
             curItemNo = curItemNo == 0 ? lastItemNo : curItemNo-1;
             break;
         case 43:    /* volume down */
             curItemNo = curItemNo == lastItemNo ? 0 : curItemNo+1;
             break;
+        case -1:    /* timeout */
         case 37:    /* back */
             if( curItemNo == lastItemNo ) {
                 isSubMenu = 1 - isSubMenu;
@@ -113,6 +131,7 @@ static int SelectBoot(struct BootIni *bootIni)
             }
             break;
         }
+        timeout = -1;
     }
     return 0;
 }
@@ -331,11 +350,9 @@ int BootOS_detect_os_type(void **var4, void **bootAddrBuf,
         break;
     }
     if( requestedBootMode >= 0) {
-        strcpy(osIni, "c:\\");
-        strcpy(osIni+strlen(osIni), bootIni->osNames[requestedBootMode]);
-        strcpy(osIni+strlen(osIni), "\\");
-        strcpy(osIni+strlen(osIni), bootIni->osNames[requestedBootMode]);
-        strcpy(osIni+strlen(osIni), ".ini");
+        wlibc_sprintf(osIni, "c:\\%s\\%s.ini",
+                bootIni->osNames[requestedBootMode],
+                bootIni->osNames[requestedBootMode]);
         res = script_patch(osIni, &imgScript, 1);
         if(res < 0) {
             wlibc_uprintf("NO OS to Boot\n");

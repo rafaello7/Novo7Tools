@@ -4637,6 +4637,12 @@ void fbprint_line(int row, int col, const struct ColorPair *colors,
     bytes_per_pixel = 4;
     bits = mlp.dispbuf;
     char_width = width / 8;
+    if( row < 0 ) {
+        row = height / 16 - row;
+        if( row < 0 )
+            row = 0;
+    }else if( row > height / 16 )
+        row = height / 16;
     for(pos = 0; line[pos]; ++pos) {
         c = line[pos];
         for(y = 0; y < 16; ++y) {
