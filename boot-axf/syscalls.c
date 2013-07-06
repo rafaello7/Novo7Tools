@@ -138,7 +138,7 @@ int svc_3e(void)
     return res;
 }
 
-int svc_40(void)
+int svc_batt_chargerate(void)
 {
     int res;
     asm("svc 0x40; mov %[res], r0"
@@ -382,42 +382,45 @@ int svc_partsectcount(int p1)
     return res;
 }
 
-int svc_80(void(*handler)(void), unsigned p2)
+void *svc_request_timer(void(*handlerFun)(unsigned), unsigned handlerParam)
 {
-    int res;
-    asm("mov r0, %[handler]; mov r1, %[p2]; svc 0x80; mov %[res], r0"
+    void *res;
+    asm("mov r0, %[handlerFun]; mov r1, %[handlerParam]; "
+            "svc 0x80; mov %[res], r0"
             : [res] "=r" (res)
-            : [handler] "r" (handler), [p2] "r" (p2):
+            : [handlerFun] "r" (handlerFun), [handlerParam] "r" (handlerParam):
             "r0", "r1", "r2", "r3", "lr", "cc");
     return res;
 }
 
-int svc_81(unsigned p1)
+int svc_release_timer(void *handle)
 {
     int res;
-    asm("mov r0, %[p1]; svc 0x81; mov %[res], r0"
+    asm("mov r0, %[handle]; svc 0x81; mov %[res], r0"
             : [res] "=r" (res)
-            : [p1] "r" (p1)
+            : [handle] "r" (handle)
             : "r0", "r1", "r2", "r3", "lr", "cc");
     return res;
 }
 
-int svc_82(unsigned p1, int p2, int p3)
+int svc_enable_timer(void *handle, unsigned msec, int isRepeatable)
 {
     int res;
-    asm("mov r0, %[p1]; mov r1, %[p2]; mov r2, %[p3]; svc 0x82; mov %[res], r0"
+    asm("mov r0, %[handle]; mov r1, %[msec]; mov r2, %[isRepeatable]; "
+            "svc 0x82; mov %[res], r0"
             : [res] "=r" (res)
-            : [p1] "r" (p1), [p2] "r" (p2), [p3] "r" (p3)
+            : [handle] "r" (handle), [msec] "r" (msec),
+              [isRepeatable] "r" (isRepeatable)
             : "r0", "r1", "r2", "r3", "lr", "cc");
     return res;
 }
 
-int svc_83(unsigned p1)
+int svc_disable_timer(void *handle)
 {
     int res;
-    asm("mov r0, %[p1]; svc 0x83; mov %[res], r0"
+    asm("mov r0, %[handle]; svc 0x83; mov %[res], r0"
             : [res] "=r" (res)
-            : [p1] "r" (p1)
+            : [handle] "r" (handle)
             : "r0", "r1", "r2", "r3", "lr", "cc");
     return res;
 }

@@ -25,7 +25,7 @@ int svc_3a(void);
 int svc_3b(void);
 void svc_poweroff(void);
 int svc_3e(void);
-int svc_40(void);
+int svc_batt_chargerate(void);
 int svc_41(int);
 int svc_42(int);
 void svc_49(const char *str);
@@ -51,10 +51,12 @@ int svc_6c(const char *p1, const char *p2, int*);
 int svc_partfirstsect(int);
 int svc_partsectcount(int);
 int svc_partcount(int);
-int svc_80(void(*)(void), unsigned);
-int svc_81(unsigned);
-int svc_82(unsigned, int, int);
-int svc_83(unsigned);
+
+void *svc_request_timer(void(*handlerFun)(unsigned), unsigned handlerParam);
+int svc_release_timer(void *timerHandle);
+int svc_enable_timer(void *timerHandle, unsigned msec, int repeatable);
+int svc_disable_timer(void *timerHandle);
+
 void svc_delay(unsigned ms);
 int svc_90(int p1);
 int svc_93(int p1);

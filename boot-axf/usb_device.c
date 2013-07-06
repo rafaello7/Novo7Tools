@@ -363,7 +363,7 @@ extern unsigned L4280A3A8[];
 static int      L4280A3F0[1];
 int      L4280A408;
 static unsigned L4280A40C;
-static unsigned L4280A410;
+static void *timerHandle;
 static unsigned gDiskWriteBytes;
 static unsigned gDiskWriteOffset;
 
@@ -1871,7 +1871,7 @@ static void usb_clock_exit(void)
     writel(readl(0x01C20000 + 96) & ~1, 0x01C20000 + 96);
 }
 
-static void fnL428085F0(void)
+static void TimerHandler(unsigned unused)
 {
     if(*L4280A3A8 & 8) {
         wlibc_uprintf("usb set pc\n");
@@ -1897,9 +1897,9 @@ static void usb_interrupt_handler(void)
     usb_clock_exit();
     svc_interrupt_disable(var4->interruptNo);
     *L4280A3A8 |= 8;
-    svc_83(L4280A410);
-    svc_81(L4280A410);
-    L4280A410 = 0;
+    svc_disable_timer(timerHandle);
+    svc_release_timer(timerHandle);
+    timerHandle = 0;
     power_set_usbpc();
     L4280A408 = 0;
 }
@@ -1914,11 +1914,11 @@ int usb_detect_enter(void)
         wlibc_uprintf("usb enter detect\n");
         L4280A408 = 1;
         usb_clock_init();
-        L4280A410 = svc_80(fnL428085F0, 0);
-        if(L4280A410 == 0) {
+        timerHandle = svc_request_timer(TimerHandler, 0);
+        if(timerHandle == 0) {
             wlibc_uprintf("timer request fail\n");
         } else { 
-            svc_82(L4280A410, 400, 0);
+            svc_enable_timer(timerHandle, 400, 0);
         }
         svc_interrupt_sethandler(gDevParams.interruptNo,
                 usb_interrupt_handler, 0);
@@ -1937,10 +1937,10 @@ int usb_detect_exit(void)
     L4280A408 = 0;
     usb_clock_exit();
     svc_interrupt_disable(gDevParams.interruptNo);
-    if(L4280A410 != 0) {
-        svc_83(L4280A410);
-        svc_81(L4280A410);
-        L4280A410 = 0;
+    if(timerHandle != 0) {
+        svc_disable_timer(timerHandle);
+        svc_release_timer(timerHandle);
+        timerHandle = 0;
     }
     return 0;
 }

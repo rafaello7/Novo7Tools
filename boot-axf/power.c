@@ -251,7 +251,7 @@ int check_power_status(void)
 
     }
     wlibc_int_disable();
-    var5 = svc_40();
+    var5 = svc_batt_chargerate();
     wlibc_int_enable();
     wlibc_uprintf("base bat_cal = %d\n", var5);
     if(var5 > 95)
@@ -326,7 +326,7 @@ int check_power_status(void)
             sp12 = svc_05();
             wlibc_uprintf("exit standby by %d\n", sp12);
             wlibc_int_disable();
-            var4 = svc_40();
+            var4 = svc_batt_chargerate();
             wlibc_int_enable();
             wlibc_uprintf("current bat_cal = %d\n", var4);
             if(var4 > var5) {

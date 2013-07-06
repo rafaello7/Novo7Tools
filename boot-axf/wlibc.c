@@ -114,6 +114,8 @@ static int cpy_unix2dos(char *var2, char *var1)
     return var0;
 }
 
+/* printf, prepended with timer value
+ */
 void wlibc_uprintf(const char *fmt, ...)
 {
     char *bufpos;
@@ -195,6 +197,7 @@ void wlibc_uprintf(const char *fmt, ...)
     fbprint_cons(buf, bufpos - buf);
 }
 
+/* "nt" aka "no timer" printf */
 void wlibc_ntprintf(const char *fmt, ...)
 {
     char *bufpos;
