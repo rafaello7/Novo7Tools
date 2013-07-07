@@ -94,7 +94,7 @@ static int SelectBoot(struct BootIni *bootIni)
         "boot recovery",
         "power off",
         "go fel",
-        "back to main menu"
+        "< back"
     };
 
     while(1) {
@@ -111,7 +111,7 @@ static int SelectBoot(struct BootIni *bootIni)
             for(i = 1; i < lastItemNo; ++i) {
                 PrintMenuItem(i, bootIni->osNames[i], curItemNo);
             }
-            PrintMenuItem(lastItemNo, "other options submenu", curItemNo);
+            PrintMenuItem(lastItemNo, "other options >", curItemNo);
         }
         switch( GetKeyVal(timeout) ) {
         case 30:    /* volume up */
@@ -345,8 +345,10 @@ int BootOS_detect_os_type(void **var4, void **bootAddrBuf,
         WriteMiscPart("boot-recovery");
         requestedBootMode = 0;
         break;
-    case 0:
-        WriteMiscPart("");
+    default:
+        if( requestedBootMode >= 0 ) {
+            WriteMiscPart("");
+        }
         break;
     }
     if( requestedBootMode >= 0) {
@@ -371,7 +373,7 @@ void BootOS(void *var4, void *bootAddr)
 {
     volatile int var0;
 
-    wlibc_uprintf("jump to\n");
+    wlibc_uprintf("jump to: %x, %x\n", var4, bootAddr);
     svc_bootos(0, 3495, var4, bootAddr);
     var0 = 85;
     while( var0 == 85 ) {
