@@ -114,10 +114,10 @@ static int SelectBoot(struct BootIni *bootIni)
             PrintMenuItem(lastItemNo, "other options >", curItemNo);
         }
         switch( GetKeyVal(timeout) ) {
-        case 30:    /* volume up */
+        case 43:    /* volume down */
             curItemNo = curItemNo == 0 ? lastItemNo : curItemNo-1;
             break;
-        case 43:    /* volume down */
+        case 30:    /* volume up */
             curItemNo = curItemNo == lastItemNo ? 0 : curItemNo+1;
             break;
         case -1:    /* timeout */

@@ -243,32 +243,28 @@ int parser_script_os_img(const char *script, int scriptSize,
                 if(strcmp(paramName, "img_name") == 0) {
                     strncpy(imgScript->images[segmentNo].name, paramVal,
                             4 * sp8[0]);
-                } else { 
-                    if(strcmp(paramName, "img_size") == 0) {
-                        imgScript->images[segmentNo].maxSize = sp8[0];
-                        if(adjustBaseAddr != 0) {
-                            imgScript->images[segmentNo].baseAddr =
-                                (char*)imgScript->images[segmentNo].baseAddr -
-                                sp8[0];
-                            adjustBaseAddr = 0;
-                        }
-                    } else { 
-                        if(strcmp(paramName, "img_base") == 0) {
-                            if(sp8[1] < 0) {
-                                sp8[0] = (gBootPara.bpparam0[7] +
-                                        (gBootPara.bpparam0[17] << 20))
-                                    - sp8[0];
-                            }
-                            if(sp8[2] < 0) {
-                                if( imgScript->images[segmentNo].maxSize  == 0) {
-                                    adjustBaseAddr = 1;
-                                } else { 
-                                    sp8[0] -= imgScript->images[segmentNo].maxSize;
-                                }
-                            }
-                            imgScript->images[segmentNo].baseAddr = (void*)sp8[0];
+                } else if(strcmp(paramName, "img_size") == 0) {
+                    imgScript->images[segmentNo].maxSize = sp8[0];
+                    if(adjustBaseAddr != 0) {
+                        imgScript->images[segmentNo].baseAddr =
+                            (char*)imgScript->images[segmentNo].baseAddr -
+                            sp8[0];
+                        adjustBaseAddr = 0;
+                    }
+                } else if(strcmp(paramName, "img_base") == 0) {
+                    if(sp8[1] < 0) {
+                        sp8[0] = (gBootPara.bpparam0[7] +
+                                (gBootPara.bpparam0[17] << 20))
+                            - sp8[0];
+                    }
+                    if(sp8[2] < 0) {
+                        if( imgScript->images[segmentNo].maxSize  == 0) {
+                            adjustBaseAddr = 1;
+                        } else { 
+                            sp8[0] -= imgScript->images[segmentNo].maxSize;
                         }
                     }
+                    imgScript->images[segmentNo].baseAddr = (void*)sp8[0];
                 }
                 break;
             case SECT_SCRIPT_INFO:
