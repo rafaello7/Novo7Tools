@@ -1,0 +1,704 @@
+/*
+ * (c) 2012 rafaello7 <fatwildcat@gmail.com>
+ *
+ * derived from the xf86-input-tslib driver
+ *
+ * Permission to use, copy, modify, distribute, and sell this software and its
+ * documentation for any purpose is  hereby granted without fee, provided that
+ * the  above copyright   notice appear  in   all  copies and  that both  that
+ * copyright  notice   and   this  permission   notice  appear  in  supporting
+ * documentation, and that   the  name of  Frederic   Lepied not  be  used  in
+ * advertising or publicity pertaining to distribution of the software without
+ * specific,  written      prior  permission.     Frederic  Lepied   makes  no
+ * representations about the suitability of this software for any purpose.  It
+ * is provided "as is" without express or implied warranty.
+ *
+ * FREDERIC  LEPIED DISCLAIMS ALL   WARRANTIES WITH REGARD  TO  THIS SOFTWARE,
+ * INCLUDING ALL IMPLIED   WARRANTIES OF MERCHANTABILITY  AND   FITNESS, IN NO
+ * EVENT  SHALL FREDERIC  LEPIED BE   LIABLE   FOR ANY  SPECIAL, INDIRECT   OR
+ * CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
+ * DATA  OR PROFITS, WHETHER  IN  AN ACTION OF  CONTRACT,  NEGLIGENCE OR OTHER
+ * TORTIOUS  ACTION, ARISING    OUT OF OR   IN  CONNECTION  WITH THE USE    OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ *
+ */
+
+/* ft5x input driver */
+
+#include "xorg-server.h"
+
+#ifndef XFree86LOADER
+#include <unistd.h>
+#include <errno.h>
+#endif
+
+#include <misc.h>
+#include <xf86.h>
+#if !defined(DGUX)
+#include <xisb.h>
+#endif
+#include <xf86_OSproc.h>
+#include <xf86Xinput.h>
+#include <exevents.h>		/* Needed for InitValuator/Proximity stuff */
+#include <X11/keysym.h>
+#include <mipointer.h>
+#include <randrstr.h>
+
+#include <sys/time.h>
+#include <time.h>
+#include <linux/input.h>
+#include <fcntl.h>
+
+
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 7
+#include <xserver-properties.h>
+#endif
+#ifdef XFree86LOADER
+#include <xf86Module.h>
+#endif
+
+#define MAXBUTTONS 3
+#define TIME23RDBUTTON 0.5
+#define MOVEMENT23RDBUTTON 4
+
+#define DEFAULT_HEIGHT		240
+#define DEFAULT_WIDTH		320
+
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 12
+#define COLLECT_INPUT_OPTIONS(pInfo, options) xf86CollectInputOptions((pInfo), (options), NULL)
+#else
+#define COLLECT_INPUT_OPTIONS(pInfo, options) xf86CollectInputOptions((pInfo), (options))
+#endif
+
+
+enum { TSLIB_ROTATE_NONE=0, TSLIB_ROTATE_CW=270, TSLIB_ROTATE_UD=180, TSLIB_ROTATE_CCW=90 };
+
+enum btn_down {
+    BTN_DOWN_NONE,
+    BTN_DOWN_LEFT,
+    BTN_DOWN_RIGHT,
+    BTN_IS_SCROLL
+};
+
+enum { SCROLL_DIST = 20, PRESS_DIST = 10 };
+
+struct ft5x_priv {
+	XISBuffer *buffer;
+    int input_fd;
+	int screen_num;
+	int rotate;
+	int height;
+	int width;
+    enum btn_down btn_down;
+
+	int lastx, lasty, lastc, pressx, pressy, scrollx, scrolly;
+    int count;
+    int x1, y1, x2, y2;
+	struct timeval	ev_tv;
+
+    int current_id, current_x, current_y;
+};
+
+static void
+PointerControlProc(DeviceIntPtr dev, PtrCtrl * ctrl)
+{
+}
+
+static Bool
+ConvertProc( InputInfoPtr local,
+			 int first,
+			 int num,
+			 int v0,
+			 int v1,
+			 int v2,
+			 int v3,
+			 int v4,
+			 int v5,
+			 int *x,
+			 int *y )
+{
+	*x = v0;
+	*y = v1;
+	return TRUE;
+}
+
+static int novo7_read(struct ft5x_priv *priv)
+{
+	struct input_event ev;
+	int rd;
+
+    while( (rd = read(priv->input_fd, &ev, sizeof(struct input_event))) ==
+         sizeof(struct input_event))
+    {
+        switch (ev.type) {
+        case EV_ABS:
+            switch (ev.code) {
+            case ABS_MT_TOUCH_MAJOR:
+                break;
+            case ABS_MT_TRACKING_ID:
+                priv->current_id = ev.value;
+                break;
+            case ABS_MT_WIDTH_MAJOR:
+                break;
+            case ABS_MT_POSITION_X:
+                priv->current_x = ev.value;
+                break;
+            case ABS_MT_POSITION_Y:
+                priv->current_y = ev.value;
+                break;
+            }
+            break;
+        case EV_SYN:
+            switch( ev.code ) {
+            case SYN_MT_REPORT:
+                if( priv->current_id == 0 ) {
+                    priv->x1 = priv->current_x;
+                    priv->y1 = priv->current_y;
+                    ++priv->count;
+                }else if( priv->current_id == 1 ) {
+                    priv->x2 = priv->current_x;
+                    priv->y2 = priv->current_y;
+                    ++priv->count;
+                }
+                break;
+            case SYN_REPORT:
+                priv->ev_tv = ev.time;
+                priv->current_id = 0;
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
+static void ReadInput (InputInfoPtr local)
+{
+    struct ft5x_priv *priv = (struct ft5x_priv *) (local->private);
+    int ret;
+    ScrnInfoPtr pScrn = xf86Screens[priv->screen_num];
+    Rotation rotation = rrGetScrPriv (pScrn->pScreen) ? RRGetRotation(pScrn->pScreen) : RR_Rotate_0;
+
+    while((ret = novo7_read(priv)) == 1) {
+        if(priv->count > 0) {
+            int tmp_x;
+
+            switch(priv->rotate) {
+            case TSLIB_ROTATE_CW:
+                tmp_x = priv->x1;
+                priv->x1 = priv->y1;
+                priv->y1 = priv->width - tmp_x;
+                tmp_x = priv->x2;
+                priv->x2 = priv->y2;
+                priv->y2 = priv->width - tmp_x;
+                break;
+            case TSLIB_ROTATE_UD:
+                priv->x1 = priv->width - priv->x1;
+                priv->y1 = priv->height - priv->y1;
+                priv->x2 = priv->width - priv->x2;
+                priv->y2 = priv->height - priv->y2;
+                break;
+            case TSLIB_ROTATE_CCW:
+                tmp_x = priv->x1;
+                priv->x1 = priv->height - priv->y1;
+                priv->y1 = tmp_x;
+                tmp_x = priv->x2;
+                priv->x2 = priv->height - priv->y2;
+                priv->y2 = tmp_x;
+                break;
+            default:
+                break;
+            }
+
+
+            switch(rotation) {
+            case RR_Rotate_90:
+                tmp_x = priv->x1;
+                priv->x1 = (priv->height - priv->y1 - 1) *
+                    priv->width / priv->height;
+                priv->y1 = tmp_x * priv->height / priv->width;
+                tmp_x = priv->x2;
+                priv->x2 = (priv->height - priv->y2 - 1) *
+                    priv->width / priv->height;
+                priv->y2 = tmp_x * priv->height / priv->width;
+                break;
+            case RR_Rotate_180:
+                priv->x1 = priv->width - priv->x1 - 1;
+                priv->y1 = priv->height - priv->y1 - 1;
+                priv->x2 = priv->width - priv->x2 - 1;
+                priv->y2 = priv->height - priv->y2 - 1;
+                break;
+            case RR_Rotate_270:
+                tmp_x = priv->x1;
+                priv->x1 = priv->y1 * priv->width / priv->height;
+                priv->y1 = (priv->width - tmp_x - 1) *
+                    priv->height / priv->width;
+                tmp_x = priv->x2;
+                priv->x2 = priv->y2 * priv->width / priv->height;
+                priv->y2 = (priv->width - tmp_x - 1) *
+                    priv->height / priv->width;
+                break;
+            }
+
+            priv->lastx = priv->x1;
+            priv->lasty = priv->y1;
+            if( priv->lastc == 0 ) {
+                priv->scrollx = priv->pressx = priv->lastx;
+                priv->scrolly = priv->pressy = priv->lasty;
+            }
+
+            /*
+               xf86XInputSetScreen(local, priv->screen_num,
+               priv->x,
+               priv->y);*/
+
+            /* deferred left button down */
+            if(priv->btn_down == BTN_DOWN_NONE &&
+                    priv->count == 1 && priv->lastc == 1 &&
+                    (abs(priv->pressx - priv->lastx) > PRESS_DIST ||
+                    abs(priv->pressy - priv->lasty) > PRESS_DIST))
+            {
+                xf86PostMotionEvent (local->dev, TRUE, 0, 2, priv->pressx,
+                        priv->pressy);
+                xf86PostButtonEvent(local->dev, TRUE, 1, TRUE, 0, 2,
+                        priv->pressx, priv->pressy);
+                priv->btn_down = BTN_DOWN_LEFT;
+            }
+            if( priv->btn_down != BTN_IS_SCROLL &&
+                    (priv->count < 2 || priv->lastc < 2) )
+            {
+                /* motion event */
+                xf86PostMotionEvent (local->dev, TRUE, 0, 2, priv->lastx,
+                        priv->lasty);
+            }
+        }else{
+            if( priv->lastc != 0 && priv->btn_down == BTN_DOWN_NONE ) {
+                /* deferred left button click */
+                xf86PostMotionEvent (local->dev, TRUE, 0, 2, priv->lastx,
+                        priv->lasty);
+                xf86PostButtonEvent(local->dev, TRUE, 1, TRUE, 0, 2,
+                        priv->lastx, priv->lasty);
+                priv->btn_down = BTN_DOWN_LEFT;
+            }
+        }
+        if( priv->count == 1 ) {
+            if( priv->btn_down == BTN_DOWN_NONE && priv->lastc == 2 ) {
+                /* right button down: press finger 1 and tap by finger 2 */
+                xf86PostButtonEvent(local->dev, TRUE, 3, TRUE, 0, 2,
+                        priv->lastx, priv->lasty);
+                priv->btn_down = BTN_DOWN_RIGHT;
+            }
+        }else{
+            if( priv->btn_down == BTN_DOWN_LEFT ||
+                    priv->btn_down == BTN_DOWN_RIGHT)
+            {
+                /* all buttons up */
+                xf86PostButtonEvent(local->dev, TRUE, 
+                        priv->btn_down == BTN_DOWN_LEFT ? 1 : 3,
+                        FALSE, 0, 2, priv->lastx, priv->lasty);
+                priv->btn_down = BTN_DOWN_NONE;
+            }
+            if( priv->count == 2 ) {
+                /* emulate wheels scroll */
+                while( priv->scrolly + SCROLL_DIST < priv->lasty ) {
+                    xf86PostButtonEvent(local->dev, FALSE,
+                            5, TRUE, 0, 2, 0, 0);
+                    xf86PostButtonEvent(local->dev, FALSE,
+                            5, FALSE, 0, 2, 0, 0);
+                    priv->scrolly += SCROLL_DIST;
+                    priv->btn_down = BTN_IS_SCROLL;
+                }
+                while( priv->scrolly - SCROLL_DIST > priv->lasty ) {
+                    xf86PostButtonEvent(local->dev, FALSE,
+                            4, TRUE, 0, 2, 0, 0);
+                    xf86PostButtonEvent(local->dev, FALSE,
+                            4, FALSE, 0, 2, 0, 0);
+                    priv->scrolly -= SCROLL_DIST;
+                    priv->btn_down = BTN_IS_SCROLL;
+                }
+                while( priv->scrollx + SCROLL_DIST < priv->lastx ) {
+                    xf86PostButtonEvent(local->dev, FALSE,
+                            7, TRUE, 0, 2, 0, 0);
+                    xf86PostButtonEvent(local->dev, FALSE,
+                            7, FALSE, 0, 2, 0, 0);
+                    priv->scrollx += SCROLL_DIST;
+                    priv->btn_down = BTN_IS_SCROLL;
+                }
+                while( priv->scrollx - SCROLL_DIST > priv->lastx ) {
+                    xf86PostButtonEvent(local->dev, FALSE,
+                            6, TRUE, 0, 2, 0, 0);
+                    xf86PostButtonEvent(local->dev, FALSE,
+                            6, FALSE, 0, 2, 0, 0);
+                    priv->scrollx -= SCROLL_DIST;
+                    priv->btn_down = BTN_IS_SCROLL;
+                }
+            }else{
+                priv->btn_down = BTN_DOWN_NONE;
+            }
+        }
+        priv->lastc = priv->count;
+        priv->count = 0;
+    }
+}
+
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 7
+static void xf86Ft5xInitButtonLabels(Atom *labels, int nlabels)
+{
+	memset(labels, 0, nlabels * sizeof(Atom));
+	switch(nlabels)
+	{
+		default:
+		case 7:
+			labels[6] = XIGetKnownProperty(BTN_LABEL_PROP_BTN_HWHEEL_RIGHT);
+		case 6:
+			labels[5] = XIGetKnownProperty(BTN_LABEL_PROP_BTN_HWHEEL_LEFT);
+		case 5:
+			labels[4] = XIGetKnownProperty(BTN_LABEL_PROP_BTN_WHEEL_DOWN);
+		case 4:
+			labels[3] = XIGetKnownProperty(BTN_LABEL_PROP_BTN_WHEEL_UP);
+		case 3:
+			labels[2] = XIGetKnownProperty(BTN_LABEL_PROP_BTN_RIGHT);
+		case 2:
+			labels[1] = XIGetKnownProperty(BTN_LABEL_PROP_BTN_MIDDLE);
+		case 1:
+			labels[0] = XIGetKnownProperty(BTN_LABEL_PROP_BTN_LEFT);
+			break;
+	}
+}
+#endif
+
+/*
+ * xf86Ft5xControlProc --
+ *
+ * called to change the state of a device.
+ */
+static int
+xf86Ft5xControlProc(DeviceIntPtr device, int what)
+{
+	InputInfoPtr pInfo;
+	unsigned char map[MAXBUTTONS + 1];
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 7
+	Atom labels[MAXBUTTONS];
+#endif
+	int i, axiswidth, axisheight;
+	struct ft5x_priv *priv;
+
+	pInfo = device->public.devicePrivate;
+	priv = pInfo->private;
+
+	switch (what) {
+	case DEVICE_INIT:
+		device->public.on = FALSE;
+
+		for (i = 0; i < MAXBUTTONS; i++) {
+			map[i + 1] = i + 1;
+		}
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 7
+		xf86Ft5xInitButtonLabels(labels, MAXBUTTONS);
+#endif
+
+		if (InitButtonClassDeviceStruct(device, MAXBUTTONS,
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 7
+						labels,
+#endif
+						map) == FALSE) {
+			ErrorF("unable to allocate Button class device\n");
+			return !Success;
+		}
+
+		if (InitValuatorClassDeviceStruct(device,
+						  2,
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 7
+						labels,
+#endif
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 3
+						  xf86GetMotionEvents,
+#endif
+						  0, Absolute) == FALSE) {
+			ErrorF("unable to allocate Valuator class device\n");
+			return !Success;
+		}
+
+		switch(priv->rotate) {
+		case TSLIB_ROTATE_CW:
+		case TSLIB_ROTATE_CCW:
+			axiswidth = priv->height;
+			axisheight = priv->width;
+			break;
+		default:
+			axiswidth = priv->width;
+			axisheight = priv->height;
+			break;
+		}
+
+		InitValuatorAxisStruct(device, 0,
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 7
+					       XIGetKnownProperty(AXIS_LABEL_PROP_ABS_X),
+#endif
+					       0,		/* min val */
+					       axiswidth - 1,	/* max val */
+					       axiswidth,	/* resolution */
+					       0,		/* min_res */
+					       axiswidth	/* max_res */
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 12
+					       ,Absolute
+#endif
+					       );
+
+		InitValuatorAxisStruct(device, 1,
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 7
+					       XIGetKnownProperty(AXIS_LABEL_PROP_ABS_Y),
+#endif
+					       0,		/* min val */
+					       axisheight - 1,	/* max val */
+					       axisheight,	/* resolution */
+					       0,		/* min_res */
+					       axisheight	/* max_res */
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 12
+					       ,Absolute
+#endif
+					       );
+
+		if (InitProximityClassDeviceStruct (device) == FALSE) {
+			ErrorF ("Unable to allocate EVTouch touchscreen ProximityClassDeviceStruct\n");
+			return !Success;
+		}
+
+		/* allocate the motion history buffer if needed */
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) == 0
+		xf86MotionHistoryAllocate(pInfo);
+#endif
+
+		if (!InitPtrFeedbackClassDeviceStruct(device, PointerControlProc))
+			return !Success;
+		break;
+
+	case DEVICE_ON:
+		AddEnabledDevice(pInfo->fd);
+
+		device->public.on = TRUE;
+		break;
+
+	case DEVICE_OFF:
+	case DEVICE_CLOSE:
+		device->public.on = FALSE;
+		break;
+	}
+	return Success;
+}
+
+/*
+ * xf86Ft5xUninit --
+ *
+ * called when the driver is unloaded.
+ */
+static void
+xf86Ft5xUninit(InputDriverPtr drv, InputInfoPtr pInfo, int flags)
+{
+	struct ft5x_priv *priv = (struct ft5x_priv *)(pInfo->private);
+	ErrorF("%s\n", __FUNCTION__);
+	xf86Ft5xControlProc(pInfo->dev, DEVICE_OFF);
+    close(priv->input_fd);
+	free(pInfo->private);
+	pInfo->private = NULL;
+	xf86DeleteInput(pInfo, 0);
+}
+
+/*
+ * xf86Ft5xInit --
+ *
+ * called when the module subsection is found in XF86Config
+ */
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 12
+static int 
+xf86Ft5xInit(InputDriverPtr drv, InputInfoPtr pInfo, int flags)
+#else
+static InputInfoPtr
+xf86Ft5xInit(InputDriverPtr drv, IDevPtr dev, int flags)
+#endif
+{
+	struct ft5x_priv *priv;
+	char *s;
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 12
+	InputInfoPtr pInfo;
+#endif
+
+	priv = calloc (1, sizeof (struct ft5x_priv));
+        if (!priv)
+                return BadValue;
+
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 12
+	if (!(pInfo = xf86AllocateInput(drv, 0))) {
+		free(priv);
+		return BadValue;
+	}
+
+	/* Initialise the InputInfoRec. */
+	pInfo->name = dev->identifier;
+	pInfo->flags =
+	    XI86_KEYBOARD_CAPABLE | XI86_POINTER_CAPABLE |
+	    XI86_SEND_DRAG_EVENTS;
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) == 0
+	pInfo->motion_history_proc = xf86GetMotionEvents;
+	pInfo->history_size = 0;
+#endif
+	pInfo->conf_idev = dev;
+	pInfo->close_proc = NULL;
+	pInfo->conversion_proc = ConvertProc;
+	pInfo->reverse_conversion_proc = NULL;
+	pInfo->private_flags = 0;
+	pInfo->always_core_feedback = 0;
+#endif
+
+	pInfo->type_name = XI_TOUCHSCREEN;
+	pInfo->control_proc = NULL;
+	pInfo->read_input = ReadInput;
+	pInfo->device_control = xf86Ft5xControlProc;
+	pInfo->switch_mode = NULL;
+	pInfo->private = priv;
+	pInfo->dev = NULL;
+
+	/* Collect the options, and process the common options. */
+	COLLECT_INPUT_OPTIONS(pInfo, NULL);
+	xf86ProcessCommonOptions(pInfo, pInfo->options);
+
+	priv->screen_num = xf86SetIntOption(pInfo->options, "ScreenNumber", 0 );
+
+	priv->width = xf86SetIntOption(pInfo->options, "Width", 0);
+	if (priv->width <= 0)	priv->width = screenInfo.screens[0]->width;
+
+	priv->height = xf86SetIntOption(pInfo->options, "Height", 0);
+	if (priv->height <= 0)	priv->height = screenInfo.screens[0]->height;
+
+	s = xf86SetStrOption(pInfo->options, "Rotate", 0);
+	if (s > 0) {
+		if (strcmp(s, "CW") == 0) {
+			priv->rotate = TSLIB_ROTATE_CW;
+		} else if (strcmp(s, "UD") == 0) {
+			priv->rotate = TSLIB_ROTATE_UD;
+		} else if (strcmp(s, "CCW") == 0) {
+			priv->rotate = TSLIB_ROTATE_CCW;
+		} else {
+			priv->rotate = TSLIB_ROTATE_NONE;
+		}
+	} else {
+		priv->rotate = TSLIB_ROTATE_NONE;
+	}
+
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 12
+ 	s = xf86CheckStrOption(dev->commonOptions, "path", NULL);
+#else
+	s = xf86CheckStrOption(pInfo->options, "path", NULL);
+#endif
+  	if (!s)
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 12
+		s = xf86CheckStrOption(dev->commonOptions, "Device", NULL);
+#else
+		s = xf86CheckStrOption(pInfo->options, "Device", NULL);
+#endif
+ 
+    priv->input_fd = open(s, O_RDONLY | O_NONBLOCK);
+
+	if (priv->input_fd < 0) {
+		ErrorF("ts_open failed (device=%s)\n",s);
+        free(s);
+		xf86DeleteInput(pInfo, 0);
+		return BadValue;
+	}
+	free(s);
+
+	int version;
+	if ( ioctl(priv->input_fd, EVIOCGVERSION, &version) < 0) {
+        ErrorF("ft5x: ioctl(EVIOCGVERSION) fail!");
+    }else if( version != EV_VERSION && version != 0x010000) {
+		ErrorF("ft5x: invalid protocol version !\n");
+		xf86DeleteInput(pInfo, 0);
+		return BadValue;
+	}
+
+	pInfo->fd = priv->input_fd;
+
+/*	priv->state = BUTTON_NOT_PRESSED;
+	if (xf86SetIntOption(pInfo->options, "EmulateRightButton", 0) == 0) {
+		priv->state = BUTTON_EMULATION_OFF;
+	}*/
+
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 12
+	/* Mark the device configured */
+	pInfo->flags |= XI86_CONFIGURED;
+#endif
+
+	/* Return the configured device */
+	return Success;
+}
+
+_X_EXPORT InputDriverRec FT5X = {
+	1,			/* driver version */
+	"ft5x",		/* driver name */
+	NULL,			/* identify */
+	xf86Ft5xInit,		/* pre-init */
+	xf86Ft5xUninit,	/* un-init */
+	NULL,			/* module */
+	0			/* ref count */
+};
+
+/*
+ ***************************************************************************
+ *
+ * Dynamic loading functions
+ *
+ ***************************************************************************
+ */
+#ifdef XFree86LOADER
+
+/*
+ * xf86Ft5xUnplug --
+ *
+ * called when the module subsection is found in XF86Config
+ */
+static void xf86Ft5xUnplug(pointer p)
+{
+}
+
+/*
+ * xf86Ft5xPlug --
+ *
+ * called when the module subsection is found in XF86Config
+ */
+static pointer xf86Ft5xPlug(pointer module, pointer options, int *errmaj, int *errmin)
+{
+	static Bool Initialised = FALSE;
+
+	xf86AddInputDriver(&FT5X, module, 0);
+
+	return module;
+}
+
+static XF86ModuleVersionInfo xf86Ft5xVersionRec = {
+	"ft5x",
+	MODULEVENDORSTRING,
+	MODINFOSTRING1,
+	MODINFOSTRING2,
+	XORG_VERSION_CURRENT,
+	0, 0, 1,
+	ABI_CLASS_XINPUT,
+	ABI_XINPUT_VERSION,
+	MOD_CLASS_XINPUT,
+	{0, 0, 0, 0}		/* signature, to be patched into the file by */
+	/* a tool */
+};
+
+_X_EXPORT XF86ModuleData ft5xModuleData = {
+	&xf86Ft5xVersionRec,
+	xf86Ft5xPlug,
+	xf86Ft5xUnplug
+};
+
+#endif				/* XFree86LOADER */
+
+/*
+ * Local variables:
+ * change-log-default-name: "~/xinput.log"
+ * c-file-style: "bsd"
+ * End:
+ */
+/* end of ft5x.c */

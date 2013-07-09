@@ -7,3 +7,10 @@ patch-upower
 Patch for "upower" package. Causes to display correctly battery
 charge rate on xfce desktop (and possibly on other desktops).
 
+ft5x
+----
+
+Touchscreen support.
+Tap with 2nd finger simulates right-click.
+Drag using two fingers simulates scrolling with wheel mouse button.
+
