@@ -32,7 +32,9 @@ Reconstructed source of "boot.axf" binary for Novo 7 Aurora.
 ## boot-axf
 
 
-Modified boot-axf-org
+Extended boot.axf. Displays a menu with possibility to choose
+system to boot, or to enter recovery, fastboot, or FEL mode.
+
 
 ## debian-patches
 
