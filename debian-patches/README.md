@@ -14,3 +14,14 @@ Touchscreen support.
 Tap with 2nd finger simulates right-click.
 Drag using two fingers simulates scrolling with wheel mouse button.
 
+fbexec
+------
+
+Executes a program, output prints on framebuffer (fb0).
+Useful to display some logs at boot time.
+
+fbecho
+------
+
+Like "echo", output displayed on framebuffer (fb0)
+
