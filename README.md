@@ -34,3 +34,8 @@ Reconstructed source of "boot.axf" binary for Novo 7 Aurora.
 
 Modified boot-axf-org
 
+## debian-patches
+
+
+A collection of Debian patches, for touchscreen, battery etc.
+
