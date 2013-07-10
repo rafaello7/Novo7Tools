@@ -307,8 +307,16 @@ int getParitionParams(const char *partName,
                 break;
         }
         if( i == pdata->partitionCount ) {
-            printf("partition with name %s not found\n", partName);
-            return 0;
+            if( isdigit(partName[0]) ) {
+                i = strtoul(partName, NULL, 0);
+                if( i < 0 || i >= pdata->partitionCount ) {
+                    printf("wrong prtition number %s\n", partName);
+                    return 0;
+                }
+            }else{
+                printf("partition with name %s not found\n", partName);
+                return 0;
+            }
         }
         *pFMArea = FMAREA_LOGDISK;
         *pFirstSector = pdata->partitions[i].firstSector;
