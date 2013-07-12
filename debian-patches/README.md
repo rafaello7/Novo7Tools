@@ -31,3 +31,12 @@ disp
 A tool to manipulate display output: turn on/off hdmi, lcd,
 set resolution.
 
+adbd\_emu
+--------
+
+Provides a very limited functionality of _adbd_ Android daemon.
+Allows to run shell using "adb shell". All other _adb_ commands are refused.
+
+A more versatile solution is to turn on _rndis_ in Linux kernel and set
+network via USB.
+

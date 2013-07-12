@@ -1,0 +1,11 @@
+sudo sh <<End
+    echo >/sys/class/android_usb/android0/enable 0
+    echo >/sys/class/android_usb/android0/idVendor 18D1
+    echo >/sys/class/android_usb/android0/idProduct D001
+    echo >/sys/class/android_usb/android0/functions adb,rndis
+    echo >/sys/class/android_usb/android0/iManufacturer Ainol
+    echo >/sys/class/android_usb/android0/iProduct Novo7Aurora
+    echo >/sys/class/android_usb/android0/iSerial 20120917
+    echo >/sys/class/android_usb/android0/enable 1
+    /sbin/ifconfig rndis0 192.168.3.1
+End
