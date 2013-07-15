@@ -430,14 +430,20 @@ int main(int argc, char *argv[])
             ++argn;
         }
         for(sel = 0; sel < 2 && argn < argc; ++sel, ++argn) {
-            if( !strcmp(argv[argn], "dub") ) {
-                para.fb_mode = FB_MODE_DUAL_DIFF_SCREEN_SAME_CONTENTS;
-                disp_lcd = 1;
-                para.primary_screen_id = sel;
-            }else if( !strcmp(argv[argn], "lcd") ) {
+            if( !strcmp(argv[argn], "dub") || !strcmp(argv[argn], "lcd") ) {
+                if( disp_lcd ) {
+                    fprintf(stderr, "error: lcd display specified twice\n");
+                    return 1;
+                }
+                if( !strcmp(argv[argn], "dub") )
+                    para.fb_mode = FB_MODE_DUAL_DIFF_SCREEN_SAME_CONTENTS;
                 disp_lcd = 1;
                 para.primary_screen_id = sel;
             }else{
+                if( disp_hdmi ) {
+                    fprintf(stderr, "error: hdmi display specified twice\n");
+                    return 1;
+                }
                 if( !strcmp(argv[argn], "hdmi") ) {
                     tvmode = disp_hdmibestmode(disp_fd, sel);
                 }else{
