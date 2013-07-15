@@ -80,7 +80,7 @@ enum btn_down {
     BTN_IS_SCROLL
 };
 
-enum { SCROLL_DIST = 20, PRESS_DIST = 10 };
+enum { SCROLL_DIST = 50, PRESS_DIST = 10 };
 
 struct ft5x_priv {
 	XISBuffer *buffer;
@@ -301,33 +301,33 @@ static void ReadInput (InputInfoPtr local)
                 /* emulate wheels scroll */
                 while( priv->scrolly + SCROLL_DIST < priv->lasty ) {
                     xf86PostButtonEvent(local->dev, FALSE,
-                            5, TRUE, 0, 2, 0, 0);
+                            4, TRUE, 0, 2, 0, 0);
                     xf86PostButtonEvent(local->dev, FALSE,
-                            5, FALSE, 0, 2, 0, 0);
+                            4, FALSE, 0, 2, 0, 0);
                     priv->scrolly += SCROLL_DIST;
                     priv->btn_down = BTN_IS_SCROLL;
                 }
                 while( priv->scrolly - SCROLL_DIST > priv->lasty ) {
                     xf86PostButtonEvent(local->dev, FALSE,
-                            4, TRUE, 0, 2, 0, 0);
+                            5, TRUE, 0, 2, 0, 0);
                     xf86PostButtonEvent(local->dev, FALSE,
-                            4, FALSE, 0, 2, 0, 0);
+                            5, FALSE, 0, 2, 0, 0);
                     priv->scrolly -= SCROLL_DIST;
                     priv->btn_down = BTN_IS_SCROLL;
                 }
                 while( priv->scrollx + SCROLL_DIST < priv->lastx ) {
                     xf86PostButtonEvent(local->dev, FALSE,
-                            7, TRUE, 0, 2, 0, 0);
+                            6, TRUE, 0, 2, 0, 0);
                     xf86PostButtonEvent(local->dev, FALSE,
-                            7, FALSE, 0, 2, 0, 0);
+                            6, FALSE, 0, 2, 0, 0);
                     priv->scrollx += SCROLL_DIST;
                     priv->btn_down = BTN_IS_SCROLL;
                 }
                 while( priv->scrollx - SCROLL_DIST > priv->lastx ) {
                     xf86PostButtonEvent(local->dev, FALSE,
-                            6, TRUE, 0, 2, 0, 0);
+                            7, TRUE, 0, 2, 0, 0);
                     xf86PostButtonEvent(local->dev, FALSE,
-                            6, FALSE, 0, 2, 0, 0);
+                            7, FALSE, 0, 2, 0, 0);
                     priv->scrollx -= SCROLL_DIST;
                     priv->btn_down = BTN_IS_SCROLL;
                 }
