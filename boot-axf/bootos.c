@@ -127,6 +127,8 @@ static int SelectBoot(struct BootIni *bootIni)
                 curItemNo = 0;
             }else{
                 fbclear();
+                bootIni->startOSNum = curItemNo;
+                bootIni->timeout = -1;
                 return isSubMenu ? -curItemNo - 1 : curItemNo;
             }
             break;
@@ -334,36 +336,39 @@ int BootOS_detect_os_type(void **var4, void **bootAddrBuf,
     char osIni[100];
 
     res = -1;
-    memset(&imgScript, 0, sizeof(imgScript));
-    requestedBootMode = SelectBoot(bootIni);
-    switch( requestedBootMode ) {
-    case -1:
-        WriteMiscPart("boot-fastboot");
-        requestedBootMode = 0;
-        break;
-    case -2:
-        WriteMiscPart("boot-recovery");
-        requestedBootMode = 0;
-        break;
-    default:
-        if( requestedBootMode >= 0 ) {
-            WriteMiscPart("");
+    while( res != 0 ) {
+        memset(&imgScript, 0, sizeof(imgScript));
+        requestedBootMode = SelectBoot(bootIni);
+        switch( requestedBootMode ) {
+        case -1:
+            WriteMiscPart("boot-fastboot");
+            requestedBootMode = 0;
+            break;
+        case -2:
+            WriteMiscPart("boot-recovery");
+            requestedBootMode = 0;
+            break;
+        default:
+            if( requestedBootMode >= 0 ) {
+                WriteMiscPart("");
+            }
+            break;
         }
-        break;
-    }
-    if( requestedBootMode >= 0) {
-        wlibc_sprintf(osIni, "c:\\%s\\%s.ini",
-                bootIni->osNames[requestedBootMode],
-                bootIni->osNames[requestedBootMode]);
-        res = script_patch(osIni, &imgScript, 1);
-        if(res < 0) {
-            wlibc_uprintf("NO OS to Boot\n");
-        } else { 
-            wlibc_uprintf("test for multi os boot with display\n");
-            res = PreBootOS(&imgScript, bootAddrBuf, var4, logoOff);
+        if( requestedBootMode >= 0) {
+            wlibc_sprintf(osIni, "c:\\%s\\%s.ini",
+                    bootIni->osNames[requestedBootMode],
+                    bootIni->osNames[requestedBootMode]);
+            res = script_patch(osIni, &imgScript, 1);
+            if(res < 0) {
+                wlibc_uprintf("NO OS to Boot\n");
+            } else { 
+                wlibc_uprintf("test for multi os boot with display\n");
+                res = PreBootOS(&imgScript, bootAddrBuf, var4, logoOff);
+            }
+        }else{
+            res = requestedBootMode + 2;
+            break;
         }
-    }else{
-        res = requestedBootMode + 2;
     }
     svc_free(bootIni);
     return res;
