@@ -17,8 +17,6 @@ struct ImageHeader {
     };
 };
 
-static struct ImageHeader *gImageHeader;
-
 
 /* volume down: 43
  * volume up:   30
@@ -149,53 +147,6 @@ static int ShowLogo(const char *fname, int logoShow, void *imgdatabuf)
     return 0;
 }
 
-static int fnL42801F44(void)
-{
-    gImageHeader->param4 = 0;
-    gImageHeader->param0 = 0;
-    return 0;
-}
-
-static void fnL42801F64(char *var4, int var6)
-{
-    char *var5;
-
-    if(var4 == 0) {
-        return;
-    }
-    var5 = var4;
-
-    while(*var5 == ' ') {
-        ++var5;
-    }
-    if(*var5 == 0)
-        return;
-    var4[var6] = '\0';
-    gImageHeader->param4 = 0x54410009;
-    gImageHeader->param0 = (strlen(var5) + 13) >> 2;
-    strcpy(gImageHeader->param8c, var5);
-    gImageHeader = (void*)((int*)gImageHeader + gImageHeader->param0);
-}
-
-static void fnL42802010(struct ImageHeader *imgHeader)
-{
-    gImageHeader = imgHeader;
-    gImageHeader->param4 = 0x54410001;
-    gImageHeader->param0 = 5;
-    gImageHeader->param8i[0] = 0;
-    gImageHeader->param8i[1] = 0;
-    gImageHeader->param8i[2] = 0;
-    gImageHeader = (void*)(((int*)&gImageHeader) + gImageHeader->param0);
-}
-
-int do_boot_linux(struct ImageHeader *imgHeader, char *loadAddr, int var6)
-{
-    fnL42802010(imgHeader);
-    fnL42801F64(loadAddr, var6);
-    fnL42801F44();
-    return 0;
-}
-
 static int fnL42801894(struct OSImageScript *imgScript,
         void **bootAddrBuf,
         void **var6)
@@ -207,11 +158,7 @@ static int fnL42801894(struct OSImageScript *imgScript,
 
     wlibc_uprintf("load kernel start\n");
     for(imgNo = 0; imgNo < imgScript->segmentSectionCount; ++imgNo) {
-        if(imgNo != 1) {
-            loadAddr = imgScript->images[imgNo].baseAddr;
-        } else { 
-            loadAddr = svc_alloc(65536);
-        }
+        loadAddr = imgScript->images[imgNo].baseAddr;
         if(loadAddr == 0) {
             wlibc_uprintf("img file %s base addres is NULL\n", loadAddr);
             return -1;
@@ -234,13 +181,7 @@ static int fnL42801894(struct OSImageScript *imgScript,
         svc_read(loadAddr, 1, fileSize, fdesc);
         svc_close(fdesc);
         imgScript->images[imgNo].fileLen = fileSize;
-        if(imgNo == 1) {
-            do_boot_linux(imgScript->images[1].baseAddr, loadAddr, fileSize);
-            svc_free(loadAddr);
-        }
-        loadAddr = 0;
         fdesc = 0;
-        fileSize = 0;
     }
     loadAddr = imgScript->baseAddr;
     if(loadAddr == 0) {
