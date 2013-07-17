@@ -40,3 +40,8 @@ Allows to run shell using "adb shell". All other _adb_ commands are refused.
 A more versatile solution is to turn on _rndis_ in Linux kernel and set
 network via USB.
 
+pm
+--
+
+Corrections in "suspend" functionality of pm-utils package.
+
