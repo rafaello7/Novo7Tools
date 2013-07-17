@@ -1,0 +1,5 @@
+SUSPEND_MODULE=sunxi
+do_suspend()
+{
+    /usr/sbin/sunxi_suspend
+}
