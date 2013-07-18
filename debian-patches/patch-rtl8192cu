@@ -1,0 +1,109 @@
+diff -ur rtl8188C_8192C_usb_linux_v3.4.4_4749.20121105/include/autoconf.h rtl8192cu/include/autoconf.h
+--- rtl8188C_8192C_usb_linux_v3.4.4_4749.20121105/include/autoconf.h	2012-07-30 14:51:05.000000000 +0200
++++ rtl8192cu/include/autoconf.h	2013-07-18 08:53:56.417298199 +0200
+@@ -256,7 +256,7 @@
+ //#define CONFIG_DEBUG_RTL871X
+ 
+ #define DBG	0
+-#define CONFIG_DEBUG_RTL819X
++//#define CONFIG_DEBUG_RTL819X
+ 
+ #define CONFIG_PROC_DEBUG	1
+ 
+diff -ur rtl8188C_8192C_usb_linux_v3.4.4_4749.20121105/Kconfig rtl8192cu/Kconfig
+--- rtl8188C_8192C_usb_linux_v3.4.4_4749.20121105/Kconfig	2012-07-30 14:51:05.000000000 +0200
++++ rtl8192cu/Kconfig	2013-07-17 22:30:42.476921740 +0200
+@@ -1,4 +1,4 @@
+-config RTL8192CU
++config RTL8192CU_SW
+ 	tristate "Realtek 8192C USB WiFi"
+ 	depends on USB
+ 	---help---
+diff -ur rtl8188C_8192C_usb_linux_v3.4.4_4749.20121105/Makefile rtl8192cu/Makefile
+--- rtl8188C_8192C_usb_linux_v3.4.4_4749.20121105/Makefile	2012-07-30 14:51:05.000000000 +0200
++++ rtl8192cu/Makefile	2013-07-18 10:43:16.509368923 +0200
+@@ -36,7 +36,7 @@
+ CONFIG_RTL8192CU_REDEFINE_1X1 =n
+ CONFIG_WAKE_ON_WLAN				=	n
+ 
+-CONFIG_PLATFORM_I386_PC = y
++CONFIG_PLATFORM_I386_PC = n
+ CONFIG_PLATFORM_TI_AM3517 = n
+ CONFIG_PLATFORM_ANDROID_X86 = n
+ CONFIG_PLATFORM_ARM_S3C2K4 = n
+@@ -61,6 +61,7 @@
+ CONFIG_PLATFORM_TI_DM365	=	n
+ CONFIG_PLATFORM_MN10300 = n
+ CONFIG_PLATFORM_MSTAR_TITANIA12 = n
++CONFIG_PLATFORM_ARM_SUN4I     =   y
+ 
+ CONFIG_DRVEXT_MODULE = n
+ 
+@@ -456,6 +457,12 @@
+ MODULE_NAME := $(MODULE_NAME)_mp
+ EXTRA_CFLAGS += -DCONFIG_MP_INCLUDED
+ endif
++ifeq ($(CONFIG_PLATFORM_ARM_SUN4I), y)
++EXTRA_CFLAGS += -DCONFIG_LITTLE_ENDIAN
++ARCH ?= arm
++CROSS_COMPILE ?= arm-none-linux-gnueabi-
++KSRC ?= $(src) 
++endif
+ 
+ ifneq ($(KERNELRELEASE),)
+ 
+@@ -492,11 +499,11 @@
+ 					core/rtw_mp_ioctl.o \
+ 					core/rtw_ioctl_rtl.o
+ 
+-obj-$(CONFIG_RTL8192CU) := $(MODULE_NAME).o
++obj-$(CONFIG_RTL8192CU_SW) := $(MODULE_NAME).o
+ 
+ else
+ 
+-export CONFIG_RTL8192CU = m
++export CONFIG_RTL8192CU_SW = m
+ 
+ all: modules
+ 
+diff -ur rtl8188C_8192C_usb_linux_v3.4.4_4749.20121105/os_dep/linux/usb_intf.c rtl8192cu/os_dep/linux/usb_intf.c
+--- rtl8188C_8192C_usb_linux_v3.4.4_4749.20121105/os_dep/linux/usb_intf.c	2012-07-30 14:51:05.000000000 +0200
++++ rtl8192cu/os_dep/linux/usb_intf.c	2013-07-18 10:37:00.791532304 +0200
+@@ -1455,6 +1455,11 @@
+ extern int console_suspend_enabled;
+ #endif
+ 
++#include <plat/sys_config.h>
++extern int sw_usb_disable_hcd(__u32 usbc_no);
++extern int sw_usb_enable_hcd(__u32 usbc_no);
++static int usb_wifi_host = 2;
++
+ static int __init rtw_drv_entry(void)
+ {
+ #ifdef CONFIG_PLATFORM_RTK_DMP
+@@ -1468,6 +1473,16 @@
+ 
+ 	RT_TRACE(_module_hci_intfs_c_,_drv_err_,("+rtw_drv_entry\n"));
+ 
++	/* ----------get usb_wifi_usbc_num------------- */
++	if( script_parser_fetch("usb_wifi_para", "usb_wifi_usbc_num", (int *)&usb_wifi_host, 64) != 0 ) {
++		ERR_8192C("ERR: script_parser_fetch usb_wifi_usbc_num failed\n");
++		return -ENOMEM;
++	}
++
++	MSG_8192C("sw_usb_enable_hcd: usbc_num = %d\n", usb_wifi_host);
++
++	sw_usb_enable_hcd(usb_wifi_host);
++
+ 	DBG_871X("rtw driver version=%s \n", DRIVERVERSION);
+ 	DBG_871X("Build at: %s %s\n", __DATE__, __TIME__);
+ #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,24)) 
+@@ -1490,6 +1505,8 @@
+ 	drvpriv.drv_registered = _FALSE;
+ 	usb_deregister(&drvpriv.rtw_usb_drv);
+ 	DBG_8192C("-rtw_drv_halt\n");
++	MSG_8192C("sw_usb_disable_hcd: usbc_num = %d\n", usb_wifi_host);
++	sw_usb_disable_hcd(usb_wifi_host);
+ }
+ 
+ 

@@ -45,3 +45,8 @@ pm
 
 Corrections in "suspend" functionality of pm-utils package.
 
+patch-rtl8192cu
+---------------
+
+A patch for [rtl8192cu driver from realtek](http://www.realtek.com/downloads/downloadsView.aspx?Langid=1&PNid=48&PFid=48&Level=5&Conn=4&DownTypeID=3&GetDown=false&Downloads=true#2772),
+useful when replacing driver incorporated into kernel on [linux-sunxi](https://github.com/linux-sunxi/linux-sunxi/tree/sunxi-3.0/drivers/net/wireless/rtl8192cu).
