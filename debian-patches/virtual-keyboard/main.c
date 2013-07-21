@@ -179,18 +179,19 @@ int main (int argc, char *argv[])
     GtkWidget *button;
     GdkScreen *screen;
     const struct VirtKey *const*row, *key;
-    int rowNo, colNo;
+    int rowNo, colNo, winHeight;
 
     gtk_init (&argc, &argv);
     window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
     screen = gtk_widget_get_screen(window);
     gtk_window_set_decorated(GTK_WINDOW(window), FALSE);
+    winHeight = gdk_screen_get_height(screen) * 4 / 10;
     gtk_window_set_default_size(GTK_WINDOW(window), 
-            gdk_screen_get_width(screen),
-            gdk_screen_get_height(screen)/2);
+            gdk_screen_get_width(screen), winHeight);
     gtk_window_set_keep_above(GTK_WINDOW(window), TRUE);
     gtk_window_set_accept_focus(GTK_WINDOW(window), FALSE);
-    gtk_window_move(GTK_WINDOW(window), 0, gdk_screen_get_height(screen)/2);
+    gtk_window_move(GTK_WINDOW(window), 0,
+            gdk_screen_get_height(screen) - winHeight);
     g_signal_connect (window, "destroy", G_CALLBACK (gtk_main_quit), NULL);
 
     grid = GTK_GRID(gtk_grid_new());
