@@ -1,12 +1,14 @@
 #include <gtk/gtk.h>
+#include <stdlib.h>
+#include <string.h>
 #include "cmdline.h"
 
 static void Usage(void)
 {
     static const char usageStr[] = "\n"
-    "usage: virtual-keyboard [-h] [-x [-]<num>[%]] [-y [-]<num>[%]]\n"
-    "                        [-xalt [-]<num>[%]] [-yalt [-]<num>[%]]\n"
-    "                        [-width [-]<num>[%]] [-height <num>[%]]\n"
+    "usage: virtual-keyboard [-h] [-x [-]<num>[%%]] [-y [-]<num>[%%]]\n"
+    "                        [-xalt [-]<num>[%%]] [-yalt [-]<num>[%%]]\n"
+    "                        [-width [-]<num>[%%]] [-height <num>[%%]]\n"
     "                        [-decorated] [-resizable] [-taskbar]\n"
     "                        [-notop]\n"
     "\n"
@@ -40,7 +42,7 @@ static void Usage(void)
 static gboolean ParseNum(const char *option, const char *arg,
         gboolean *isNeg, guint *val, gboolean *isPercent)
 {
-    const char *argEnd;
+    char *argEnd;
 
     if( arg == NULL ) {
         g_print("option %s requires an argument\n", option);
@@ -51,12 +53,13 @@ static gboolean ParseNum(const char *option, const char *arg,
     *val = strtoul(arg, &argEnd, 10);
     if( isPercent != NULL )
         *isPercent = *argEnd == '%';
+    return TRUE;
 }
 
 gboolean ParseCmdLine(int argc, char *argv[], struct CmdLineOptions *opts)
 {
     int argNo = 1;
-    gboolean isXAltSet = FALSE, isYAltSet = FALSE;
+    gboolean isXAltSet = FALSE, isYAltSet = FALSE, isWidthSet = FALSE;
 
     /* place on the left bottom */
     opts->x = 0;
@@ -66,13 +69,8 @@ gboolean ParseCmdLine(int argc, char *argv[], struct CmdLineOptions *opts)
     opts->isYNeg = TRUE;
     opts->isYPercent = FALSE;
 
-    /* whole screen width */
-    opts->width = 0;
-    opts->isWidthNeg = TRUE;
-    opts->isWidthPercent = FALSE;
-
-    /* height as 40% of keyboard width */
-    opts->height = 40;
+    /* height as 25% of keyboard width */
+    opts->height = 25;
     opts->isHeightPercent = TRUE;
 
     opts->isDecorated = FALSE;
@@ -110,6 +108,7 @@ gboolean ParseCmdLine(int argc, char *argv[], struct CmdLineOptions *opts)
             if( ! ParseNum(argv[argNo], argv[argNo+1], &opts->isWidthNeg,
                         &opts->width, &opts->isWidthPercent) )
                 return FALSE;
+            isWidthSet = FALSE;
             argNo += 2;
         }else if( !strcmp(argv[argNo], "-height") ) {
             if( ! ParseNum(argv[argNo], argv[argNo+1], NULL,
@@ -143,6 +142,12 @@ gboolean ParseCmdLine(int argc, char *argv[], struct CmdLineOptions *opts)
         opts->yalt = 0;
         opts->isYAltNeg = ! opts->isYNeg;
         opts->isYAltPercent = FALSE;
+    }
+    if( ! isWidthSet ) {
+        /* whole screen width */
+        opts->width = opts->x;
+        opts->isWidthNeg = ! opts->isXNeg;
+        opts->isWidthPercent = opts->isXPercent;
     }
     return TRUE;
 }

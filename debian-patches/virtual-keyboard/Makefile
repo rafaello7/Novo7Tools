@@ -4,7 +4,7 @@ virtual-keyboard: $(OBJS)
 	gcc $$(pkg-config --libs gtk+-3.0) -lXtst -o virtual-keyboard $(OBJS)
 
 .c.o:
-	gcc $$(pkg-config --cflags gtk+-3.0) -c $<
+	gcc -Wall $$(pkg-config --cflags gtk+-3.0) -c $<
 
 clean:
 	rm -f $(OBJS) virtual-keyboard

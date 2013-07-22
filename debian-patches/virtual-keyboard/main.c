@@ -1,5 +1,6 @@
 #include <gtk/gtk.h>
 #include <gdk/gdkx.h>
+#include <X11/extensions/XTest.h>
 #include "cmdline.h"
 
 enum VirtKeyType {
@@ -319,6 +320,15 @@ static void on_clicked_altpos(GtkWidget *button, gpointer data)
     gtk_window_move(GTK_WINDOW(window), x, y);
 }
 
+static void on_clicked_dismiss(GtkWidget *window)
+{
+    if( gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gButtonShift)) ) {
+        gtk_widget_destroy(window);
+    }else{
+        gtk_window_iconify(GTK_WINDOW(window));
+    }
+}
+
 static guint CalcOptionValue(guint val, gboolean isNeg, gboolean isPercentage,
         guint val100Percent, guint valToSubIfNeg)
 {
@@ -331,7 +341,7 @@ static guint CalcOptionValue(guint val, gboolean isNeg, gboolean isPercentage,
     return val;
 }
 
-static void InitMainWindow(struct CmdLineOptions *opts)
+static void InitMainWindow(struct CmdLineOptions *opts, GtkApplication *app)
 {
     GtkWidget *window;
     GtkGrid *grid;
@@ -368,7 +378,6 @@ static void InitMainWindow(struct CmdLineOptions *opts)
             winWidth, winHeight);
 
     gtk_window_move(GTK_WINDOW(window), gWinX, gWinY);
-    g_signal_connect (window, "destroy", G_CALLBACK (gtk_main_quit), NULL);
 
     grid = GTK_GRID(gtk_grid_new());
     for(rowNo = 0; rowNo < 5; ++rowNo)
@@ -406,10 +415,10 @@ static void InitMainWindow(struct CmdLineOptions *opts)
             case VKT_DISMISS:
                 button = gtk_button_new();
                 gtk_button_set_image(GTK_BUTTON(button),
-                        gtk_image_new_from_stock(GTK_STOCK_QUIT,
+                        gtk_image_new_from_stock(GTK_STOCK_CLOSE,
                         GTK_ICON_SIZE_BUTTON));
                 g_signal_connect_swapped(button, "clicked",
-                        G_CALLBACK(gtk_widget_destroy), window);
+                        G_CALLBACK(on_clicked_dismiss), window);
                 break;
             case VKT_ALTPOS:
                 button = gtk_toggle_button_new_with_label(key->disp);
@@ -428,24 +437,37 @@ static void InitMainWindow(struct CmdLineOptions *opts)
         ++rowNo;
     }
     gtk_widget_show(GTK_WIDGET(grid));
+    gtk_window_set_application(GTK_WINDOW (window), app);
     gtk_widget_show(window);
 }
 
-int main (int argc, char *argv[])
-{
-    GtkWidget *window;
-    GtkGrid *grid;
-    GtkWidget *button;
-    GdkScreen *screen;
-    const struct VirtKey *const*row, *key;
-    int rowNo, colNo, winHeight;
-    struct CmdLineOptions opts;
 
-    gtk_init (&argc, &argv);
-    if( ParseCmdLine(argc, argv, &opts) ) {
-        InitMainWindow(&opts);
-        gtk_main ();
+static void activate(GtkApplication *app, gpointer user_data)
+{
+    GList *list;
+    struct CmdLineOptions *opts = user_data;
+
+    list = gtk_application_get_windows(app);
+    if (list) {
+        gtk_window_present(GTK_WINDOW(list->data));
+    }else{
+        InitMainWindow(opts, app);
     }
-    return 0;
+}
+
+int main(int argc, char *argv[])
+{
+    struct CmdLineOptions opts;
+    gint status = 0;
+
+    if( ParseCmdLine(argc, argv, &opts) ) {
+        GtkApplication *app;
+        app = gtk_application_new("org.novo7tools.virtual-keyboard",
+                G_APPLICATION_FLAGS_NONE);
+        g_signal_connect(app, "activate", G_CALLBACK(activate), &opts);
+        status = g_application_run(G_APPLICATION(app), 0, NULL);
+        g_object_unref(app);
+    }
+    return status;
 }
 
