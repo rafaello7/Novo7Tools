@@ -108,7 +108,7 @@ gboolean ParseCmdLine(int argc, char *argv[], struct CmdLineOptions *opts)
             if( ! ParseNum(argv[argNo], argv[argNo+1], &opts->isWidthNeg,
                         &opts->width, &opts->isWidthPercent) )
                 return FALSE;
-            isWidthSet = FALSE;
+            isWidthSet = TRUE;
             argNo += 2;
         }else if( !strcmp(argv[argNo], "-height") ) {
             if( ! ParseNum(argv[argNo], argv[argNo+1], NULL,
