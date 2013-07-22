@@ -144,9 +144,8 @@ gboolean ParseCmdLine(int argc, char *argv[], struct CmdLineOptions *opts)
         opts->isYAltPercent = FALSE;
     }
     if( ! isWidthSet ) {
-        /* whole screen width */
         opts->width = opts->x;
-        opts->isWidthNeg = ! opts->isXNeg;
+        opts->isWidthNeg = TRUE;
         opts->isWidthPercent = opts->isXPercent;
     }
     return TRUE;
