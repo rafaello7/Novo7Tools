@@ -16,7 +16,7 @@ enum VirtKeyType {
 
 struct VirtKey {
     enum VirtKeyType vkt;
-    const char *disp, *dispShift;
+    const char *disp;
     guint kcode;
     guint hsize;
 };
@@ -24,49 +24,49 @@ struct VirtKey {
 static const struct VirtKey *gKeyboard[] = {
     (const struct VirtKey[]){
         {
-            .vkt = VKT_NORMAL, .disp = "`", .dispShift = "~",
+            .vkt = VKT_NORMAL, .disp = "~\n`",
             .kcode =  49, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "1", .dispShift = "!",
+            .vkt = VKT_NORMAL, .disp = "!\n1",
             .kcode =  10, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "2", .dispShift = "@",
+            .vkt = VKT_NORMAL, .disp = "@\n2",
             .kcode =  11, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "3", .dispShift = "#",
+            .vkt = VKT_NORMAL, .disp = "#\n3",
             .kcode =  12, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "4", .dispShift = "$",
+            .vkt = VKT_NORMAL, .disp = "$\n4",
             .kcode =  13, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "5", .dispShift = "%",
+            .vkt = VKT_NORMAL, .disp = "%\n5",
             .kcode =  14, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "6", .dispShift = "^",
+            .vkt = VKT_NORMAL, .disp = "^\n6",
             .kcode =  15, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "7", .dispShift = "&",
+            .vkt = VKT_NORMAL, .disp = "&\n7",
                 .kcode =  16, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "8", .dispShift = "*",
+            .vkt = VKT_NORMAL, .disp = "*\n8",
                 .kcode =  17, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "9", .dispShift = "(",
+            .vkt = VKT_NORMAL, .disp = "(\n9",
                 .kcode =  18, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "0", .dispShift = ")",
+            .vkt = VKT_NORMAL, .disp = ")\n0",
                 .kcode =  19, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "-", .dispShift = "_",
+            .vkt = VKT_NORMAL, .disp = "_\n-",
                 .kcode =  20, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "=", .dispShift = "+",
+            .vkt = VKT_NORMAL, .disp = "+\n=",
                 .kcode =  21, .hsize = 2
         },{
-            .vkt = VKT_DISMISS, .disp = "Di", .dispShift = NULL,
+            .vkt = VKT_DISMISS, .disp = "Di",
                 .kcode =   0, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "<-", .dispShift = NULL,
+            .vkt = VKT_NORMAL, .disp = "<-",
                 .kcode =  22, .hsize = 2
         },{
             .vkt = VKT_END
@@ -74,46 +74,46 @@ static const struct VirtKey *gKeyboard[] = {
     },
     (const struct VirtKey[]){
         {
-            .vkt = VKT_NORMAL, .disp = "Tab", .dispShift = NULL,
+            .vkt = VKT_NORMAL, .disp = "Tab",
             .kcode =  23, .hsize = 3
         },{
-            .vkt = VKT_NORMAL, .disp = "q", .dispShift = "Q",
+            .vkt = VKT_NORMAL, .disp = "q",
             .kcode =  24, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "w", .dispShift = "W",
+            .vkt = VKT_NORMAL, .disp = "w",
             .kcode =  25, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "e", .dispShift = "E",
+            .vkt = VKT_NORMAL, .disp = "e",
             .kcode =  26, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "r", .dispShift = "R",
+            .vkt = VKT_NORMAL, .disp = "r",
             .kcode =  27, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "t", .dispShift = "T",
+            .vkt = VKT_NORMAL, .disp = "t",
             .kcode =  28, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "y", .dispShift = "Y",
+            .vkt = VKT_NORMAL, .disp = "y",
             .kcode =  29, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "u", .dispShift = "U",
+            .vkt = VKT_NORMAL, .disp = "u",
                 .kcode =  30, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "i", .dispShift = "I",
+            .vkt = VKT_NORMAL, .disp = "i",
                 .kcode =  31, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "o", .dispShift = "O",
+            .vkt = VKT_NORMAL, .disp = "o",
                 .kcode =  32, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "p", .dispShift = "P",
+            .vkt = VKT_NORMAL, .disp = "p",
                 .kcode =  33, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "[", .dispShift = "{",
+            .vkt = VKT_NORMAL, .disp = "{\n[",
                 .kcode =  34, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "]", .dispShift = "}",
+            .vkt = VKT_NORMAL, .disp = "}\n]",
                 .kcode =  35, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "\\", .dispShift = "|",
+            .vkt = VKT_NORMAL, .disp = "|\n\\",
                 .kcode =  51, .hsize = 3
         },{
             .vkt = VKT_END
@@ -121,43 +121,43 @@ static const struct VirtKey *gKeyboard[] = {
     },
     (const struct VirtKey[]){
         {
-            .vkt = VKT_NORMAL, .disp = "Esc", .dispShift = NULL,
+            .vkt = VKT_NORMAL, .disp = "Esc",
             .kcode =   9, .hsize = 4
         },{
-            .vkt = VKT_NORMAL, .disp = "a", .dispShift = "A",
+            .vkt = VKT_NORMAL, .disp = "a",
             .kcode =  38, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "s", .dispShift = "S",
+            .vkt = VKT_NORMAL, .disp = "s",
             .kcode =  39, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "d", .dispShift = "D",
+            .vkt = VKT_NORMAL, .disp = "d",
             .kcode =  40, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "f", .dispShift = "F",
+            .vkt = VKT_NORMAL, .disp = "f",
             .kcode =  41, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "g", .dispShift = "G",
+            .vkt = VKT_NORMAL, .disp = "g",
             .kcode =  42, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "h", .dispShift = "H",
+            .vkt = VKT_NORMAL, .disp = "h",
             .kcode =  43, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "j", .dispShift = "J",
+            .vkt = VKT_NORMAL, .disp = "j",
                 .kcode =  44, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "k", .dispShift = "K",
+            .vkt = VKT_NORMAL, .disp = "k",
                 .kcode =  45, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "l", .dispShift = "L",
+            .vkt = VKT_NORMAL, .disp = "l",
                 .kcode =  46, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = ";", .dispShift = ":",
+            .vkt = VKT_NORMAL, .disp = ":\n;",
                 .kcode =  47, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "'", .dispShift = "\"",
+            .vkt = VKT_NORMAL, .disp = "\"\n'",
                 .kcode =  48, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "Enter", .dispShift = NULL,
+            .vkt = VKT_NORMAL, .disp = "Enter",
                 .kcode =  36, .hsize = 4
         },{
             .vkt = VKT_END
@@ -165,46 +165,46 @@ static const struct VirtKey *gKeyboard[] = {
     },
     (const struct VirtKey[]){
         {
-            .vkt = VKT_SHIFT, .disp = "Shift", .dispShift = NULL,
+            .vkt = VKT_SHIFT, .disp = "Shift",
             .kcode =  50, .hsize = 5
         },{
-            .vkt = VKT_NORMAL, .disp = "z", .dispShift = "Z",
+            .vkt = VKT_NORMAL, .disp = "z",
             .kcode =  52, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "x", .dispShift = "X",
+            .vkt = VKT_NORMAL, .disp = "x",
             .kcode =  53, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "c", .dispShift = "C",
+            .vkt = VKT_NORMAL, .disp = "c",
             .kcode =  54, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "v", .dispShift = "V",
+            .vkt = VKT_NORMAL, .disp = "v",
             .kcode =  55, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "b", .dispShift = "B",
+            .vkt = VKT_NORMAL, .disp = "b",
             .kcode =  56, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "n", .dispShift = "N",
+            .vkt = VKT_NORMAL, .disp = "n",
             .kcode =  57, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "m", .dispShift = "M",
+            .vkt = VKT_NORMAL, .disp = "m",
             .kcode =  58, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = ",", .dispShift = "<",
+            .vkt = VKT_NORMAL, .disp = "<\n,",
             .kcode =  59, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = ".", .dispShift = ">",
+            .vkt = VKT_NORMAL, .disp = ">\n.",
             .kcode =  60, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "/", .dispShift = "?",
+            .vkt = VKT_NORMAL, .disp = "?\n/",
             .kcode =  61, .hsize = 2
         },{
-            .vkt = VKT_SPACER, .disp = NULL, .dispShift = NULL,
+            .vkt = VKT_SPACER, .disp = NULL,
             .kcode =   0, .hsize = 1
         },{
-            .vkt = VKT_NORMAL, .disp = "^", .dispShift = NULL,
+            .vkt = VKT_NORMAL, .disp = "^",
             .kcode = 111, .hsize = 2
         },{
-            .vkt = VKT_ALTPOS, .disp = "^v", .dispShift = NULL,
+            .vkt = VKT_SPACER, .disp = NULL,
             .kcode =   0, .hsize = 2
         },{
             .vkt = VKT_END
@@ -212,25 +212,25 @@ static const struct VirtKey *gKeyboard[] = {
     },
     (const struct VirtKey[]){
         {
-            .vkt = VKT_CTRL, .disp = "Ctrl", .dispShift = NULL,
+            .vkt = VKT_CTRL, .disp = "Ctrl",
             .kcode =  37, .hsize = 4
         },{
-            .vkt = VKT_ALT, .disp = "Alt", .dispShift = NULL,
+            .vkt = VKT_ALT, .disp = "Alt",
             .kcode =  64, .hsize = 4
         },{
-            .vkt = VKT_NORMAL, .disp = " ", .dispShift = NULL,
+            .vkt = VKT_NORMAL, .disp = " ",
             .kcode =  65, .hsize = 14
         },{
-            .vkt = VKT_SPACER, .disp = NULL, .dispShift = NULL,
+            .vkt = VKT_ALTPOS, .disp = "^v",
             .kcode =   0, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "<", .dispShift = NULL,
+            .vkt = VKT_NORMAL, .disp = "<",
             .kcode = 113, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = "v", .dispShift = NULL,
+            .vkt = VKT_NORMAL, .disp = "v",
             .kcode = 116, .hsize = 2
         },{
-            .vkt = VKT_NORMAL, .disp = ">", .dispShift = NULL,
+            .vkt = VKT_NORMAL, .disp = ">",
             .kcode = 114, .hsize = 2
         },{
             .vkt = VKT_END
@@ -273,31 +273,6 @@ static void on_click(GtkWidget *widget, gpointer data)
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(gButtonAlt), FALSE);
 }
 
-static void on_toggle_shift(GtkWidget *widget, gpointer data)
-{
-    GtkGrid *grid;
-    GtkWidget *button;
-    const struct VirtKey *const*row, *key;
-    int rowNo, colNo;
-    gboolean isShift;
-
-    grid = GTK_GRID(gtk_bin_get_child(GTK_BIN(widget)));
-    isShift = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gButtonShift));
-    rowNo = 0;
-    for(row = gKeyboard; *row != NULL; ++row) {
-        colNo = 0;
-        for(key = *row; key->vkt != VKT_END; ++key) {
-            if( key->dispShift != NULL ) {
-                button = gtk_grid_get_child_at(grid, colNo, rowNo);
-                gtk_button_set_label(GTK_BUTTON(button),
-                        isShift ? key->dispShift : key->disp);
-            }
-            colNo += key->hsize;
-        }
-        ++rowNo;
-    }
-}
-
 static void on_clicked_altpos(GtkWidget *button, gpointer data)
 {
     GtkWidget *window = data;
@@ -322,7 +297,7 @@ static void on_clicked_altpos(GtkWidget *button, gpointer data)
 
 static void on_clicked_dismiss(GtkWidget *window)
 {
-    if( gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gButtonShift)) ) {
+    if( gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gButtonAlt)) ) {
         gtk_widget_destroy(window);
     }else{
         gtk_window_iconify(GTK_WINDOW(window));
@@ -339,6 +314,17 @@ static guint CalcOptionValue(guint val, gboolean isNeg, gboolean isPercentage,
         val = val > val100Percent ? 0 : val100Percent - val;
     }
     return val;
+}
+
+static GtkWidget *CreateButton(const char *text, gboolean isToggle)
+{
+    GtkWidget *label, *button;
+   
+    label = gtk_label_new(text);
+    gtk_label_set_justify(GTK_LABEL(label), GTK_JUSTIFY_CENTER);
+    button = isToggle ? gtk_toggle_button_new() : gtk_button_new();
+    gtk_button_set_image(GTK_BUTTON(button), label);
+    return button;
 }
 
 static void InitMainWindow(struct CmdLineOptions *opts, GtkApplication *app)
@@ -394,23 +380,18 @@ static void InitMainWindow(struct CmdLineOptions *opts, GtkApplication *app)
         for(key = *row; key->vkt != VKT_END; ++key) {
             switch( key->vkt ) {
             case VKT_NORMAL:
-                button = gtk_button_new_with_label (key->disp);
+                button = CreateButton(key->disp, FALSE);
                 g_signal_connect(button, "clicked", G_CALLBACK (on_click),
                         (void*)key);
                 break;
             case VKT_SHIFT:
-                gButtonShift = button =
-                    gtk_toggle_button_new_with_label(key->disp);
-                g_signal_connect_swapped(button, "toggled",
-                        G_CALLBACK (on_toggle_shift), window);
+                gButtonShift = button = CreateButton(key->disp, TRUE);
                 break;
             case VKT_CTRL:
-                gButtonCtrl = button =
-                    gtk_toggle_button_new_with_label(key->disp);
+                gButtonCtrl = button = CreateButton(key->disp, TRUE);
                 break;
             case VKT_ALT:
-                gButtonAlt = button =
-                    gtk_toggle_button_new_with_label(key->disp);
+                gButtonAlt = button = CreateButton(key->disp, TRUE);
                 break;
             case VKT_DISMISS:
                 button = gtk_button_new();
@@ -421,7 +402,7 @@ static void InitMainWindow(struct CmdLineOptions *opts, GtkApplication *app)
                         G_CALLBACK(on_clicked_dismiss), window);
                 break;
             case VKT_ALTPOS:
-                button = gtk_toggle_button_new_with_label(key->disp);
+                button = CreateButton(key->disp, TRUE);
                 g_signal_connect(button, "clicked",
                         G_CALLBACK(on_clicked_altpos), window);
                 break;
