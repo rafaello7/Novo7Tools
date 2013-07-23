@@ -92,10 +92,12 @@ struct ft5x_priv {
     enum btn_down btn_down;
 
 	int lastx, lasty, lastc, pressx, pressy, scrollx, scrolly;
-    int count;
-    int x1, y1, x2, y2;
-	struct timeval	ev_tv;
+    int count;      /* number of fingers touching screen, in range 0..2 */
+    int x1, y1;     /* position of touch with first finger */
+    int x2, y2;     /* position of touch with second finger */
+	struct timeval ev_tv; /* touch event time */
 
+    /* data collected for touch report */
     int current_id, current_x, current_y;
 };
 
@@ -122,6 +124,8 @@ ConvertProc( InputInfoPtr local,
 	return TRUE;
 }
 
+/* Read input event from touchscreen file on /dev
+ */
 static int novo7_read(struct ft5x_priv *priv)
 {
 	struct input_event ev;
@@ -151,6 +155,7 @@ static int novo7_read(struct ft5x_priv *priv)
         case EV_SYN:
             switch( ev.code ) {
             case SYN_MT_REPORT:
+                /* we are interested with touches of first two fingers only */
                 if( priv->current_id == 0 ) {
                     priv->x1 = priv->current_x;
                     priv->y1 = priv->current_y;
@@ -171,73 +176,78 @@ static int novo7_read(struct ft5x_priv *priv)
     return 0;
 }
 
+static void ApplyRotateOnInput(struct ft5x_priv *priv)
+{
+    int tmp_x;
+    ScrnInfoPtr pScrn = xf86Screens[priv->screen_num];
+    Rotation rotation = rrGetScrPriv (pScrn->pScreen) ?
+        RRGetRotation(pScrn->pScreen) : RR_Rotate_0;
+
+    switch(priv->rotate) {
+    case TSLIB_ROTATE_CW:
+        tmp_x = priv->x1;
+        priv->x1 = priv->y1;
+        priv->y1 = priv->width - tmp_x;
+        tmp_x = priv->x2;
+        priv->x2 = priv->y2;
+        priv->y2 = priv->width - tmp_x;
+        break;
+    case TSLIB_ROTATE_UD:
+        priv->x1 = priv->width - priv->x1;
+        priv->y1 = priv->height - priv->y1;
+        priv->x2 = priv->width - priv->x2;
+        priv->y2 = priv->height - priv->y2;
+        break;
+    case TSLIB_ROTATE_CCW:
+        tmp_x = priv->x1;
+        priv->x1 = priv->height - priv->y1;
+        priv->y1 = tmp_x;
+        tmp_x = priv->x2;
+        priv->x2 = priv->height - priv->y2;
+        priv->y2 = tmp_x;
+        break;
+    default:
+        break;
+    }
+
+
+    switch(rotation) {
+    case RR_Rotate_90:
+        tmp_x = priv->x1;
+        priv->x1 = (priv->height - priv->y1 - 1) *
+            priv->width / priv->height;
+        priv->y1 = tmp_x * priv->height / priv->width;
+        tmp_x = priv->x2;
+        priv->x2 = (priv->height - priv->y2 - 1) *
+            priv->width / priv->height;
+        priv->y2 = tmp_x * priv->height / priv->width;
+        break;
+    case RR_Rotate_180:
+        priv->x1 = priv->width - priv->x1 - 1;
+        priv->y1 = priv->height - priv->y1 - 1;
+        priv->x2 = priv->width - priv->x2 - 1;
+        priv->y2 = priv->height - priv->y2 - 1;
+        break;
+    case RR_Rotate_270:
+        tmp_x = priv->x1;
+        priv->x1 = priv->y1 * priv->width / priv->height;
+        priv->y1 = (priv->width - tmp_x - 1) *
+            priv->height / priv->width;
+        tmp_x = priv->x2;
+        priv->x2 = priv->y2 * priv->width / priv->height;
+        priv->y2 = (priv->width - tmp_x - 1) *
+            priv->height / priv->width;
+        break;
+    }
+}
+
 static void ReadInput (InputInfoPtr local)
 {
     struct ft5x_priv *priv = (struct ft5x_priv *) (local->private);
-    int ret;
-    ScrnInfoPtr pScrn = xf86Screens[priv->screen_num];
-    Rotation rotation = rrGetScrPriv (pScrn->pScreen) ? RRGetRotation(pScrn->pScreen) : RR_Rotate_0;
 
-    while((ret = novo7_read(priv)) == 1) {
+    while( novo7_read(priv) == 1 ) {
         if(priv->count > 0) {
-            int tmp_x;
-
-            switch(priv->rotate) {
-            case TSLIB_ROTATE_CW:
-                tmp_x = priv->x1;
-                priv->x1 = priv->y1;
-                priv->y1 = priv->width - tmp_x;
-                tmp_x = priv->x2;
-                priv->x2 = priv->y2;
-                priv->y2 = priv->width - tmp_x;
-                break;
-            case TSLIB_ROTATE_UD:
-                priv->x1 = priv->width - priv->x1;
-                priv->y1 = priv->height - priv->y1;
-                priv->x2 = priv->width - priv->x2;
-                priv->y2 = priv->height - priv->y2;
-                break;
-            case TSLIB_ROTATE_CCW:
-                tmp_x = priv->x1;
-                priv->x1 = priv->height - priv->y1;
-                priv->y1 = tmp_x;
-                tmp_x = priv->x2;
-                priv->x2 = priv->height - priv->y2;
-                priv->y2 = tmp_x;
-                break;
-            default:
-                break;
-            }
-
-
-            switch(rotation) {
-            case RR_Rotate_90:
-                tmp_x = priv->x1;
-                priv->x1 = (priv->height - priv->y1 - 1) *
-                    priv->width / priv->height;
-                priv->y1 = tmp_x * priv->height / priv->width;
-                tmp_x = priv->x2;
-                priv->x2 = (priv->height - priv->y2 - 1) *
-                    priv->width / priv->height;
-                priv->y2 = tmp_x * priv->height / priv->width;
-                break;
-            case RR_Rotate_180:
-                priv->x1 = priv->width - priv->x1 - 1;
-                priv->y1 = priv->height - priv->y1 - 1;
-                priv->x2 = priv->width - priv->x2 - 1;
-                priv->y2 = priv->height - priv->y2 - 1;
-                break;
-            case RR_Rotate_270:
-                tmp_x = priv->x1;
-                priv->x1 = priv->y1 * priv->width / priv->height;
-                priv->y1 = (priv->width - tmp_x - 1) *
-                    priv->height / priv->width;
-                tmp_x = priv->x2;
-                priv->x2 = priv->y2 * priv->width / priv->height;
-                priv->y2 = (priv->width - tmp_x - 1) *
-                    priv->height / priv->width;
-                break;
-            }
+            ApplyRotateOnInput(priv);
 
             priv->lastx = priv->x1;
             priv->lasty = priv->y1;
