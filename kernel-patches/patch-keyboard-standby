@@ -1,0 +1,25 @@
+diff --git a/arch/arm/plat-sunxi/pm/standby/standby.c b/arch/arm/plat-sunxi/pm/standby/standby.c
+index 145bb7a..47a899e 100755
+--- a/arch/arm/plat-sunxi/pm/standby/standby.c
++++ b/arch/arm/plat-sunxi/pm/standby/standby.c
+@@ -138,16 +138,16 @@ int __attribute__((section(".startup")))main(struct aw_pm_info *arg)
+     restore_sp(sp_backup);
+ 
+     /* exit standby module */
+-    if(pm_info.standby_para.event & SUSPEND_WAKEUP_SRC_USB){
++    if(arg->standby_para.event & SUSPEND_WAKEUP_SRC_USB){
+         standby_usb_exit();
+     }
+-    if(pm_info.standby_para.event & SUSPEND_WAKEUP_SRC_IR){
++    if(arg->standby_para.event & SUSPEND_WAKEUP_SRC_IR){
+         standby_ir_exit();
+     }
+-    if(pm_info.standby_para.event & SUSPEND_WAKEUP_SRC_ALARM){
++    if(arg->standby_para.event & SUSPEND_WAKEUP_SRC_ALARM){
+         //standby_alarm_exit();
+     }
+-    if(pm_info.standby_para.event & SUSPEND_WAKEUP_SRC_KEY){
++    if(arg->standby_para.event & SUSPEND_WAKEUP_SRC_KEY){
+         standby_key_exit();
+     }
+     standby_power_exit();

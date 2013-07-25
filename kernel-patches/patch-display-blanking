@@ -1,0 +1,208 @@
+diff --git a/drivers/video/sunxi/disp/dev_disp.c b/drivers/video/sunxi/disp/dev_disp.c
+index a0b0b2f..3790169 100644
+--- a/drivers/video/sunxi/disp/dev_disp.c
++++ b/drivers/video/sunxi/disp/dev_disp.c
+@@ -545,51 +545,67 @@ static int disp_remove(struct platform_device *pdev)
+ 	return 0;
+ }
+ 
+-int disp_suspend(int clk, int status)
++int disp_suspend(enum SunxiSuspend susp)
+ {
+-	int i = 0;
+-
+-	__inf("disp_suspend clk %d status %d call\n", clk, status);
++	int i;
+ 
+-	if (clk != 1)
+-	for (i = 0; i < 2; i++) {
+-		suspend_output_type[i] = BSP_disp_get_output_type(i);
+-		if (suspend_output_type[i] == DISP_OUTPUT_TYPE_LCD)
+-			DRV_lcd_close(i);
+-		else if (suspend_output_type[i] == DISP_OUTPUT_TYPE_TV)
+-			BSP_disp_tv_close(i);
+-		else if (suspend_output_type[i] == DISP_OUTPUT_TYPE_VGA)
+-			BSP_disp_vga_close(i);
+-		else if (suspend_output_type[i] == DISP_OUTPUT_TYPE_HDMI)
+-			BSP_disp_hdmi_close(i);
+-	}
+-	BSP_disp_clk_off(clk);
+-	suspend_status |= status;
++	__inf("disp_suspend susp=%d\n", susp);
++
++    if( (suspend_status & (SUNXI_SUSP_EARLY|SUNXI_SUSP_FBBLANK)) == 0 &&
++            (susp & (SUNXI_SUSP_EARLY|SUNXI_SUSP_FBBLANK)) )
++    {
++        for (i = 0; i < 2; i++) {
++            suspend_output_type[i] = BSP_disp_get_output_type(i);
++            if (suspend_output_type[i] == DISP_OUTPUT_TYPE_LCD)
++                DRV_lcd_close(i);
++            else if (suspend_output_type[i] == DISP_OUTPUT_TYPE_TV)
++                BSP_disp_tv_close(i);
++            else if (suspend_output_type[i] == DISP_OUTPUT_TYPE_VGA)
++                BSP_disp_vga_close(i);
++            else if (suspend_output_type[i] == DISP_OUTPUT_TYPE_HDMI)
++                BSP_disp_hdmi_close(i);
++        }
++        BSP_disp_clk_off(2);
++    }
++    if( (suspend_status & (SUNXI_SUSP_LATELY|SUNXI_SUSP_FBBLANK)) == 0 &&
++            (susp & (SUNXI_SUSP_LATELY|SUNXI_SUSP_FBBLANK)) )
++    {
++        BSP_disp_clk_off(1);
++    }
++	suspend_status |= susp;
+ 
+ 	return 0;
+ }
+ 
+-int disp_resume(int clk, int status)
++int disp_resume(enum SunxiSuspend susp)
+ {
+ 	int i = 0;
+ 
+-	__inf("disp_resume clk %d status %d call\n", clk, status);
+-
+-	BSP_disp_clk_on(clk);
+-
+-	if (clk != 1)
+-	for (i = 0; i < 2; i++) {
+-		if (suspend_output_type[i] == DISP_OUTPUT_TYPE_LCD)
+-			DRV_lcd_open(i);
+-		else if (suspend_output_type[i] == DISP_OUTPUT_TYPE_TV)
+-			BSP_disp_tv_open(i);
+-		else if (suspend_output_type[i] == DISP_OUTPUT_TYPE_VGA)
+-			BSP_disp_vga_open(i);
+-		else if (suspend_output_type[i] == DISP_OUTPUT_TYPE_HDMI)
+-			BSP_disp_hdmi_open(i, 0);
+-	}
+-
+-	suspend_status &= ~status;
++	__inf("disp_resume susp=%d\n", susp);
++
++    if(suspend_status & (SUNXI_SUSP_LATELY|SUNXI_SUSP_FBBLANK) &&
++        (suspend_status & ~susp & (SUNXI_SUSP_LATELY|SUNXI_SUSP_FBBLANK)) == 0)
++    {
++        BSP_disp_clk_on(1);
++    }
++
++    if(suspend_status & (SUNXI_SUSP_EARLY|SUNXI_SUSP_FBBLANK) &&
++        (suspend_status & ~susp & (SUNXI_SUSP_EARLY|SUNXI_SUSP_FBBLANK)) == 0)
++    {
++        BSP_disp_clk_on(2);
++        for (i = 0; i < 2; i++) {
++            if (suspend_output_type[i] == DISP_OUTPUT_TYPE_LCD)
++                DRV_lcd_open(i);
++            else if (suspend_output_type[i] == DISP_OUTPUT_TYPE_TV)
++                BSP_disp_tv_open(i);
++            else if (suspend_output_type[i] == DISP_OUTPUT_TYPE_VGA)
++                BSP_disp_vga_open(i);
++            else if (suspend_output_type[i] == DISP_OUTPUT_TYPE_HDMI)
++                BSP_disp_hdmi_open(i, 0);
++        }
++    }
++
++	suspend_status &= ~susp;
+ 
+ 	return 0;
+ }
+@@ -597,12 +613,12 @@ int disp_resume(int clk, int status)
+ #ifdef CONFIG_HAS_EARLYSUSPEND
+ static void backlight_early_suspend(struct early_suspend *h)
+ {
+-	disp_suspend(2, 1);
++	disp_suspend(SUNXI_SUSP_EARLY);
+ }
+ 
+ static void backlight_late_resume(struct early_suspend *h)
+ {
+-	disp_resume(2, 1);
++	disp_resume(SUNXI_SUSP_EARLY);
+ }
+ 
+ static struct early_suspend backlight_early_suspend_handler = {
+@@ -621,9 +637,9 @@ disp_normal_suspend(struct platform_device *pdev, pm_message_t state)
+ 		fb_set_suspend(g_fbi.fbinfo[i], 1);
+ 	console_unlock();
+ #ifndef CONFIG_HAS_EARLYSUSPEND
+-	disp_suspend(3, 3);
++	disp_suspend(SUNXI_SUSP_NORMAL);
+ #else
+-	disp_suspend(1, 2);
++	disp_suspend(SUNXI_SUSP_LATELY);
+ #endif
+ 	return 0;
+ }
+@@ -633,9 +649,9 @@ disp_normal_resume(struct platform_device *pdev)
+ {
+ 	int i;
+ #ifndef CONFIG_HAS_EARLYSUSPEND
+-	disp_resume(3, 3);
++	disp_resume(SUNXI_SUSP_NORMAL);
+ #else
+-	disp_resume(1, 2);
++	disp_resume(SUNXI_SUSP_LATELY);
+ #endif
+ 	console_lock();
+ 	for(i = 0; i < SUNXI_MAX_FB; i++)
+@@ -1882,11 +1898,11 @@ static long disp_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+ 		break;
+ 
+ 	case DISP_CMD_SUSPEND:
+-		ret = disp_suspend(3, 3);
++		ret = disp_suspend(SUNXI_SUSP_NORMAL);
+ 		break;
+ 
+ 	case DISP_CMD_RESUME:
+-		ret = disp_resume(3, 3);
++		ret = disp_resume(SUNXI_SUSP_NORMAL);
+ 		break;
+ 
+ 	case DISP_CMD_PRINT_REG:
+diff --git a/drivers/video/sunxi/disp/dev_disp.h b/drivers/video/sunxi/disp/dev_disp.h
+index 34337b5..111d119 100644
+--- a/drivers/video/sunxi/disp/dev_disp.h
++++ b/drivers/video/sunxi/disp/dev_disp.h
+@@ -25,6 +25,14 @@ enum {
+ 	SUNXI_HDMI
+ };
+ 
++enum SunxiSuspend {
++    SUNXI_SUSP_EARLY    = 1,
++    SUNXI_SUSP_LATELY   = 2,
++    SUNXI_SUSP_NORMAL = SUNXI_SUSP_EARLY | SUNXI_SUSP_LATELY,
++    SUNXI_SUSP_FBBLANK  = 4
++};
++       
++
+ __s32 disp_create_heap(__u32 pHeapHead, __u32 nHeapSize);
+ void *disp_malloc(__u32 num_bytes);
+ void disp_free(void *p);
+@@ -34,8 +42,8 @@ __s32 DRV_disp_int_process(__u32 sel);
+ __s32 DRV_DISP_Init(void);
+ __s32 DRV_DISP_Exit(void);
+ 
+-int disp_suspend(int clk, int status);
+-int disp_resume(int clk, int status);
++int disp_suspend(enum SunxiSuspend);
++int disp_resume(enum SunxiSuspend);
+ 
+ void hdmi_edid_received(unsigned char *edid, int block);
+ __s32 Fb_Init(__u32 from);
+diff --git a/drivers/video/sunxi/disp/dev_fb.c b/drivers/video/sunxi/disp/dev_fb.c
+index 04c3a17..aefced8 100644
+--- a/drivers/video/sunxi/disp/dev_fb.c
++++ b/drivers/video/sunxi/disp/dev_fb.c
+@@ -1296,10 +1296,10 @@ Fb_blank(int blank_mode, struct fb_info *info)
+ 
+ 	switch (blank_mode)	{
+ 	case FB_BLANK_POWERDOWN:
+-		disp_suspend(3, 3);
++		disp_suspend(SUNXI_SUSP_FBBLANK);
+ 		break;
+ 	case FB_BLANK_UNBLANK:
+-		disp_resume(3, 3);
++		disp_resume(SUNXI_SUSP_FBBLANK);
+ 		/* fall through */
+ 	case FB_BLANK_NORMAL:
+ 		for (sel = 0; sel < 2; sel++) {
