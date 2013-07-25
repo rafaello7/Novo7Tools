@@ -344,6 +344,8 @@ static void InitMainWindow(struct CmdLineOptions *opts, GtkApplication *app)
     gtk_window_set_skip_taskbar_hint(GTK_WINDOW(window), !opts->isOnTaskBar);
     gtk_window_set_keep_above(GTK_WINDOW(window), opts->isOnTop);
     gtk_window_set_accept_focus(GTK_WINDOW(window), FALSE);
+    if( opts->winStateToSet == CL_WSTATE_ICONIFY )
+        gtk_window_iconify(GTK_WINDOW(window));
 
     screenWidth = gdk_screen_get_width(screen);
     screenHeight = gdk_screen_get_height(screen);
@@ -423,16 +425,34 @@ static void InitMainWindow(struct CmdLineOptions *opts, GtkApplication *app)
 }
 
 
-static void activate(GtkApplication *app, gpointer user_data)
+static void command_line(GApplication *app, GApplicationCommandLine *cmdLine,
+        gpointer user_data)
 {
     GList *list;
     struct CmdLineOptions *opts = user_data;
 
-    list = gtk_application_get_windows(app);
+    list = gtk_application_get_windows(GTK_APPLICATION(app));
     if (list) {
-        gtk_window_present(GTK_WINDOW(list->data));
+        int argc;
+        gchar **argv;
+        enum CmdLine_WinStateSet winState;
+       
+        argv = g_application_command_line_get_arguments(cmdLine, &argc);
+        winState = argc < 2 ? CL_WSTATE_TOGGLE : argv[1][0] - 'A';
+
+        if( winState == CL_WSTATE_TOGGLE ) {
+            GdkWindow *win = gtk_widget_get_window(list->data);
+            winState = (win == NULL ||
+                    gdk_window_get_state(win) & GDK_WINDOW_STATE_ICONIFIED) ?
+                    CL_WSTATE_PRESENT : CL_WSTATE_ICONIFY;
+        }
+        if( winState == CL_WSTATE_PRESENT ) {
+            gtk_window_present(GTK_WINDOW(list->data));
+        }else{
+            on_clicked_dismiss(list->data);
+        }
     }else{
-        InitMainWindow(opts, app);
+        InitMainWindow(opts, GTK_APPLICATION(app));
     }
 }
 
@@ -440,13 +460,17 @@ int main(int argc, char *argv[])
 {
     struct CmdLineOptions opts;
     gint status = 0;
+    char cmdopt[2];
+    char *cmdopts[] = { argv[0], cmdopt, NULL };
 
     if( ParseCmdLine(argc, argv, &opts) ) {
         GtkApplication *app;
         app = gtk_application_new("org.novo7tools.virtual-keyboard",
-                G_APPLICATION_FLAGS_NONE);
-        g_signal_connect(app, "activate", G_CALLBACK(activate), &opts);
-        status = g_application_run(G_APPLICATION(app), 0, NULL);
+                G_APPLICATION_HANDLES_COMMAND_LINE);
+        g_signal_connect(app, "command-line", G_CALLBACK(command_line), &opts);
+        cmdopt[0] = opts.winStateToSet + 'A';
+        cmdopt[1] = '\0';
+        status = g_application_run(G_APPLICATION(app), 2, cmdopts);
         g_object_unref(app);
     }
     return status;

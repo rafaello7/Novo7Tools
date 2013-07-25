@@ -10,7 +10,7 @@ static void Usage(void)
     "                        [-xalt [-]<num>[%%]] [-yalt [-]<num>[%%]]\n"
     "                        [-width [-]<num>[%%]] [-height <num>[%%]]\n"
     "                        [-decorated] [-resizable] [-taskbar]\n"
-    "                        [-notop]\n"
+    "                        [-notop] [-iconify|-present|-toggle]\n"
     "\n"
     "    -h             - print this help\n"
     "\n"
@@ -35,6 +35,12 @@ static void Usage(void)
     "    -resizeGrip    - with resize grip\n"
     "    -taskbar       - appears on taskbar\n"
     "    -notop         - not on top\n"
+    "\n"
+    "    -iconify       - start as iconified (or iconify running instance)\n"
+    "    -present       - start as visible (or make visible running instance)\n"
+    "    -toggle        - when another instance is running, toggle their\n"
+    "                     iconified/present state; otherwise run a new\n"
+    "                     instance and make it visible\n"
     "\n";
     g_print(usageStr);
 }
@@ -77,6 +83,7 @@ gboolean ParseCmdLine(int argc, char *argv[], struct CmdLineOptions *opts)
     opts->hasResizeGrip = FALSE;
     opts->isOnTaskBar = FALSE;
     opts->isOnTop = TRUE;
+    opts->winStateToSet = CL_WSTATE_PRESENT;
 
     while( argNo < argc ) {
         if( !strcmp(argv[argNo], "-h") ) {
@@ -126,6 +133,15 @@ gboolean ParseCmdLine(int argc, char *argv[], struct CmdLineOptions *opts)
             ++argNo;
         }else if( !strcmp(argv[argNo], "-notop") ) {
             opts->isOnTop = FALSE;
+            ++argNo;
+        }else if( !strcmp(argv[argNo], "-iconify") ) {
+            opts->winStateToSet = CL_WSTATE_ICONIFY;
+            ++argNo;
+        }else if( !strcmp(argv[argNo], "-present") ) {
+            opts->winStateToSet = CL_WSTATE_PRESENT;
+            ++argNo;
+        }else if( !strcmp(argv[argNo], "-toggle") ) {
+            opts->winStateToSet = CL_WSTATE_TOGGLE;
             ++argNo;
         }else{
             g_print("unknown option -- %s\n", argv[argNo]);
