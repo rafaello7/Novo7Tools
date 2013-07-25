@@ -182,11 +182,9 @@ static struct ModifierButtons {
 } modifiersMain, modifiersFn, *modifiers = &modifiersMain;
 
 
-/* The main window position on screen
+/* Saved alternate position of main window on screen.
  */
-static guint gWinX, gWinY, gWinXAlt, gWinYAlt;
-
-static gboolean gIsAltPos;
+static guint gWinAltX, gWinAltY;
 
 
 /* "clicked" event handler of VKT_NORMAL button
@@ -230,18 +228,9 @@ static void on_click_altpos(GtkWidget *button, gpointer data)
     gint x, y;
 
     gtk_window_get_position(GTK_WINDOW(window), &x, &y);
-    if( (gIsAltPos = !gIsAltPos) ) {
-        gWinX = x;
-        gWinY = y;
-        x = gWinXAlt;
-        y = gWinYAlt;
-    }else{
-        gWinXAlt = x;
-        gWinYAlt = y;
-        x = gWinX;
-        y = gWinY;
-    }
-    gtk_window_move(GTK_WINDOW(window), x, y);
+    gtk_window_move(GTK_WINDOW(window), gWinAltX, gWinAltY);
+    gWinAltX = x;
+    gWinAltY = y;
 }
 
 
@@ -387,7 +376,7 @@ static void InitMainWindow(struct CmdLineOptions *opts, GtkApplication *app)
     GtkWidget *window, *notebook;
     GdkScreen *screen;
     guint screenWidth, screenHeight;
-    gint winWidth, winHeight;
+    gint winX, winY, winWidth, winHeight;
 
     window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
     screen = gtk_widget_get_screen(window);
@@ -406,17 +395,17 @@ static void InitMainWindow(struct CmdLineOptions *opts, GtkApplication *app)
             opts->isWidthPercent, screenWidth, 0);
     winHeight = CalcOptionValue(opts->height, FALSE, opts->isHeightPercent,
             winWidth, 0);
-    gWinX = CalcOptionValue(opts->x, opts->isXNeg, opts->isXPercent,
+    winX = CalcOptionValue(opts->x, opts->isXNeg, opts->isXPercent,
             screenWidth, winWidth);
-    gWinY = CalcOptionValue(opts->y, opts->isYNeg, opts->isYPercent,
+    winY = CalcOptionValue(opts->y, opts->isYNeg, opts->isYPercent,
             screenHeight, winHeight);
-    gWinXAlt = CalcOptionValue(opts->xalt, opts->isXAltNeg, opts->isXAltPercent,
+    gWinAltX = CalcOptionValue(opts->xalt, opts->isXAltNeg, opts->isXAltPercent,
             screenWidth, winWidth);
-    gWinYAlt = CalcOptionValue(opts->yalt, opts->isYAltNeg, opts->isYAltPercent,
+    gWinAltY = CalcOptionValue(opts->yalt, opts->isYAltNeg, opts->isYAltPercent,
             screenHeight, winHeight);
     gtk_window_set_default_size(GTK_WINDOW(window), 
             winWidth, winHeight);
-    gtk_window_move(GTK_WINDOW(window), gWinX, gWinY);
+    gtk_window_move(GTK_WINDOW(window), winX, winY);
 
     notebook = gtk_notebook_new();
     gtk_notebook_set_show_border(GTK_NOTEBOOK(notebook), FALSE);
