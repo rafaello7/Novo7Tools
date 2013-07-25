@@ -42,3 +42,9 @@ system to boot, or to enter recovery, fastboot, or FEL mode.
 A collection of Debian patches, for touchscreen, battery etc.
 
 
+## virtual-keyboard
+
+
+Simple, lightweight virtual keyboard suitable for tablets. Based on GTK.
+
+
