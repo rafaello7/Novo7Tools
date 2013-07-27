@@ -71,7 +71,12 @@
 #endif
 
 
-enum { TSLIB_ROTATE_NONE=0, TSLIB_ROTATE_CW=270, TSLIB_ROTATE_UD=180, TSLIB_ROTATE_CCW=90 };
+enum {
+    FT5X_ROTATE_NONE=0,
+    FT5X_ROTATE_CW=270,
+    FT5X_ROTATE_UD=180,
+    FT5X_ROTATE_CCW=90
+};
 
 enum btn_down {
     BTN_DOWN_NONE,
@@ -92,7 +97,7 @@ struct ft5x_priv {
     enum btn_down btn_down;
 
 	int lastx1, lasty1, lastx2, lasty2, lastcnt;
-    int pressx, pressy, scrollx, scrolly;
+    int pressx, pressy, scrollx, scrolly, motionx, motiony;
     int count;      /* number of fingers touching screen, in range 0..2 */
     int x1, y1;     /* position of touch with first finger */
     int x2, y2;     /* position of touch with second finger */
@@ -185,7 +190,7 @@ static void ApplyRotateOnInput(struct ft5x_priv *priv)
         RRGetRotation(pScrn->pScreen) : RR_Rotate_0;
 
     switch(priv->rotate) {
-    case TSLIB_ROTATE_CW:
+    case FT5X_ROTATE_CW:
         tmp_x = priv->x1;
         priv->x1 = priv->y1;
         priv->y1 = priv->width - tmp_x;
@@ -193,13 +198,13 @@ static void ApplyRotateOnInput(struct ft5x_priv *priv)
         priv->x2 = priv->y2;
         priv->y2 = priv->width - tmp_x;
         break;
-    case TSLIB_ROTATE_UD:
+    case FT5X_ROTATE_UD:
         priv->x1 = priv->width - priv->x1;
         priv->y1 = priv->height - priv->y1;
         priv->x2 = priv->width - priv->x2;
         priv->y2 = priv->height - priv->y2;
         break;
-    case TSLIB_ROTATE_CCW:
+    case FT5X_ROTATE_CCW:
         tmp_x = priv->x1;
         priv->x1 = priv->height - priv->y1;
         priv->y1 = tmp_x;
@@ -276,26 +281,27 @@ static void ReadInput (InputInfoPtr local)
                     (abs(priv->pressx - priv->lastx1) > PRESS_DIST ||
                     abs(priv->pressy - priv->lasty1) > PRESS_DIST))
             {
-                xf86PostMotionEvent (local->dev, TRUE, 0, 2, priv->pressx,
-                        priv->pressy);
                 xf86PostButtonEvent(local->dev, TRUE, 1, TRUE, 0, 2,
                         priv->pressx, priv->pressy);
                 priv->btn_down = BTN_DOWN_LEFT;
             }
-            if( priv->btn_down != BTN_IS_SCROLL &&
-                    (priv->count < 2 || priv->lastcnt < 2) )
+            if( (priv->lastcnt == 0 ||
+                    (priv->btn_down == BTN_DOWN_LEFT ||
+                     priv->btn_down == BTN_DOWN_RIGHT) && priv->count < 2) &&
+                (priv->lastx1 != priv->motionx ||
+                 priv->lasty1 != priv->motiony))
             {
                 /* motion event */
-                xf86PostMotionEvent (local->dev, TRUE, 0, 2, priv->lastx1,
+                xf86PostMotionEvent(local->dev, TRUE, 0, 2, priv->lastx1,
                         priv->lasty1);
+                priv->motionx = priv->lastx1;
+                priv->motiony = priv->lasty1;
             }
         }else{
             if( priv->lastcnt != 0 && priv->btn_down == BTN_DOWN_NONE ) {
                 /* deferred left button click */
-                xf86PostMotionEvent (local->dev, TRUE, 0, 2, priv->lastx1,
-                        priv->lasty1);
                 xf86PostButtonEvent(local->dev, TRUE, 1, TRUE, 0, 2,
-                        priv->lastx1, priv->lasty1);
+                        priv->pressx, priv->pressy);
                 priv->btn_down = BTN_DOWN_LEFT;
             }
         }
@@ -438,8 +444,8 @@ xf86Ft5xControlProc(DeviceIntPtr device, int what)
 		}
 
 		switch(priv->rotate) {
-		case TSLIB_ROTATE_CW:
-		case TSLIB_ROTATE_CCW:
+		case FT5X_ROTATE_CW:
+		case FT5X_ROTATE_CCW:
 			axiswidth = priv->height;
 			axisheight = priv->width;
 			break;
@@ -591,16 +597,16 @@ xf86Ft5xInit(InputDriverPtr drv, IDevPtr dev, int flags)
 	s = xf86SetStrOption(pInfo->options, "Rotate", 0);
 	if (s > 0) {
 		if (strcmp(s, "CW") == 0) {
-			priv->rotate = TSLIB_ROTATE_CW;
+			priv->rotate = FT5X_ROTATE_CW;
 		} else if (strcmp(s, "UD") == 0) {
-			priv->rotate = TSLIB_ROTATE_UD;
+			priv->rotate = FT5X_ROTATE_UD;
 		} else if (strcmp(s, "CCW") == 0) {
-			priv->rotate = TSLIB_ROTATE_CCW;
+			priv->rotate = FT5X_ROTATE_CCW;
 		} else {
-			priv->rotate = TSLIB_ROTATE_NONE;
+			priv->rotate = FT5X_ROTATE_NONE;
 		}
 	} else {
-		priv->rotate = TSLIB_ROTATE_NONE;
+		priv->rotate = FT5X_ROTATE_NONE;
 	}
 
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 12
@@ -640,6 +646,7 @@ xf86Ft5xInit(InputDriverPtr drv, IDevPtr dev, int flags)
 	if (xf86SetIntOption(pInfo->options, "EmulateRightButton", 0) == 0) {
 		priv->state = BUTTON_EMULATION_OFF;
 	}*/
+    priv->motionx = priv->motiony = -1;
 
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 12
 	/* Mark the device configured */
