@@ -1,4 +1,4 @@
-OBJS = main.o cmdline.o
+OBJS = keyboard_layout.o cmdline.o main.o
 
 virtual-keyboard: $(OBJS)
 	gcc $$(pkg-config --libs gtk+-3.0) -lXtst -o virtual-keyboard $(OBJS)
