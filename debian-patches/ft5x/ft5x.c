@@ -96,7 +96,7 @@ struct ft5x_priv {
 	int width;
     enum btn_down btn_down;
 
-	int lastx1, lasty1, lastx2, lasty2, lastcnt;
+	int lastcnt;
     int pressx, pressy, scrollx, scrolly, motionx, motiony;
     int count;      /* number of fingers touching screen, in range 0..2 */
     int x1, y1;     /* position of touch with first finger */
@@ -255,19 +255,13 @@ static void ReadInput (InputInfoPtr local)
         if(priv->count > 0) {
             ApplyRotateOnInput(priv);
 
-            priv->lastx1 = priv->x1;
-            priv->lasty1 = priv->y1;
             if( priv->lastcnt == 0 ) {
-                priv->pressx = priv->lastx1;
-                priv->pressy = priv->lasty1;
+                priv->pressx = priv->x1;
+                priv->pressy = priv->y1;
             }
-            if( priv->count > 1 ) {
-                priv->lastx2 = priv->x2;
-                priv->lasty2 = priv->y2;
-                if( priv->lastcnt < 2 ) {
-                    priv->scrollx = priv->lastx2;
-                    priv->scrolly = priv->lasty2;
-                }
+            if( priv->count > 1 && priv->lastcnt < 2 ) {
+                priv->scrollx = priv->x2;
+                priv->scrolly = priv->y2;
             }
 
             /*
@@ -278,8 +272,8 @@ static void ReadInput (InputInfoPtr local)
             /* deferred left button down */
             if(priv->btn_down == BTN_DOWN_NONE &&
                     priv->count == 1 && priv->lastcnt == 1 &&
-                    (abs(priv->pressx - priv->lastx1) > PRESS_DIST ||
-                    abs(priv->pressy - priv->lasty1) > PRESS_DIST))
+                    (abs(priv->pressx - priv->x1) > PRESS_DIST ||
+                    abs(priv->pressy - priv->y1) > PRESS_DIST))
             {
                 xf86PostButtonEvent(local->dev, TRUE, 1, TRUE, 0, 2,
                         priv->pressx, priv->pressy);
@@ -288,14 +282,12 @@ static void ReadInput (InputInfoPtr local)
             if( (priv->lastcnt == 0 ||
                     (priv->btn_down == BTN_DOWN_LEFT ||
                      priv->btn_down == BTN_DOWN_RIGHT) && priv->count < 2) &&
-                (priv->lastx1 != priv->motionx ||
-                 priv->lasty1 != priv->motiony))
+                (priv->x1 != priv->motionx || priv->y1 != priv->motiony))
             {
                 /* motion event */
-                xf86PostMotionEvent(local->dev, TRUE, 0, 2, priv->lastx1,
-                        priv->lasty1);
-                priv->motionx = priv->lastx1;
-                priv->motiony = priv->lasty1;
+                xf86PostMotionEvent(local->dev, TRUE, 0, 2, priv->x1, priv->y1);
+                priv->motionx = priv->x1;
+                priv->motiony = priv->y1;
             }
         }else{
             if( priv->lastcnt != 0 && priv->btn_down == BTN_DOWN_NONE ) {
@@ -309,7 +301,7 @@ static void ReadInput (InputInfoPtr local)
             if( priv->btn_down == BTN_DOWN_NONE && priv->lastcnt == 2 ) {
                 /* right button down: press finger 1 and tap by finger 2 */
                 xf86PostButtonEvent(local->dev, TRUE, 3, TRUE, 0, 2,
-                        priv->lastx1, priv->lasty1);
+                        priv->x1, priv->y1);
                 priv->btn_down = BTN_DOWN_RIGHT;
             }
         }else{
@@ -318,13 +310,12 @@ static void ReadInput (InputInfoPtr local)
             {
                 /* all buttons up */
                 xf86PostButtonEvent(local->dev, TRUE, 
-                        priv->btn_down == BTN_DOWN_LEFT ? 1 : 3,
-                        FALSE, 0, 2, priv->lastx1, priv->lasty1);
+                        priv->btn_down == BTN_DOWN_LEFT ? 1 : 3, FALSE, 0, 0);
                 priv->btn_down = BTN_DOWN_NONE;
             }
             if( priv->count == 2 ) {
                 /* emulate wheels scroll */
-                while( priv->scrolly + SCROLL_DIST < priv->lasty2 ) {
+                while( priv->scrolly + SCROLL_DIST < priv->y2 ) {
                     xf86PostButtonEvent(local->dev, FALSE,
                             4, TRUE, 0, 2, 0, 0);
                     xf86PostButtonEvent(local->dev, FALSE,
@@ -332,7 +323,7 @@ static void ReadInput (InputInfoPtr local)
                     priv->scrolly += SCROLL_DIST;
                     priv->btn_down = BTN_IS_SCROLL;
                 }
-                while( priv->scrolly - SCROLL_DIST > priv->lasty2 ) {
+                while( priv->scrolly - SCROLL_DIST > priv->y2 ) {
                     xf86PostButtonEvent(local->dev, FALSE,
                             5, TRUE, 0, 2, 0, 0);
                     xf86PostButtonEvent(local->dev, FALSE,
@@ -340,7 +331,7 @@ static void ReadInput (InputInfoPtr local)
                     priv->scrolly -= SCROLL_DIST;
                     priv->btn_down = BTN_IS_SCROLL;
                 }
-                while( priv->scrollx + SCROLL_DIST < priv->lastx2 ) {
+                while( priv->scrollx + SCROLL_DIST < priv->x2 ) {
                     xf86PostButtonEvent(local->dev, FALSE,
                             6, TRUE, 0, 2, 0, 0);
                     xf86PostButtonEvent(local->dev, FALSE,
@@ -348,7 +339,7 @@ static void ReadInput (InputInfoPtr local)
                     priv->scrollx += SCROLL_DIST;
                     priv->btn_down = BTN_IS_SCROLL;
                 }
-                while( priv->scrollx - SCROLL_DIST > priv->lastx2 ) {
+                while( priv->scrollx - SCROLL_DIST > priv->x2 ) {
                     xf86PostButtonEvent(local->dev, FALSE,
                             7, TRUE, 0, 2, 0, 0);
                     xf86PostButtonEvent(local->dev, FALSE,
