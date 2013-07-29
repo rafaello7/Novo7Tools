@@ -1,5 +1,6 @@
 #include <gtk/gtk.h>
 #include "keyboard_layout.h"
+#include <string.h>
 
 
 enum {
@@ -195,7 +196,6 @@ static GtkWidget *CreateKeyboard(
         struct ModifierButtons *mod)
 {
     GtkGrid *grid;
-    GtkWidget *button;
     const struct VirtKey *const*row, *key;
     gint rowNo, colNo;
 
@@ -214,18 +214,19 @@ static GtkWidget *CreateKeyboard(
         for(key = *row; key->vkt != VKT_END; ++key) {
             if( key->vkt != VKT_SPACER ) {
                 const struct VirtKeyHandler *hdl = handlers + key->vkt;
-                GtkWidget *label = NULL;
+                GtkWidget *button = hdl->isToggleButton ?
+                    gtk_toggle_button_new() : gtk_button_new();
                 if( key->image != NULL ) {
-                    label = gtk_image_new_from_icon_name(key->image,
-                            GTK_ICON_SIZE_BUTTON);
-                }
-                if( label == NULL ) {
-                    label = gtk_label_new(key->disp);
+                    gtk_button_set_image(GTK_BUTTON(button),
+                           gtk_image_new_from_icon_name(key->image,
+                            GTK_ICON_SIZE_BUTTON));
+                }else if( strchr(key->disp, '\n') == NULL ) {
+                    gtk_button_set_label(GTK_BUTTON(button), key->disp);
+                }else{
+                    GtkWidget *label = gtk_label_new(key->disp);
                     gtk_label_set_justify(GTK_LABEL(label), GTK_JUSTIFY_CENTER);
+                    gtk_button_set_image(GTK_BUTTON(button), label);
                 }
-                button = hdl->isToggleButton ? gtk_toggle_button_new() :
-                    gtk_button_new();
-                gtk_button_set_image(GTK_BUTTON(button), label);
                 if( hdl->callbackFunction != NULL ) {
                     g_signal_connect(button,
                             hdl->isToggleButton ? "toggled" : "clicked",

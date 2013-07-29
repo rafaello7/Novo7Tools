@@ -22,6 +22,7 @@ static void on_click(GtkWidget *widget, gpointer user_data)
 {
     Display *dp;
     guint kcode;
+    gboolean deactivateShift = FALSE;
 
     dp = gdk_x11_display_get_xdisplay(gtk_widget_get_display(widget));
     if( gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(modifiers->shift)) ) {
@@ -38,14 +39,19 @@ static void on_click(GtkWidget *widget, gpointer user_data)
     XTestFakeKeyEvent(dp, kcode, FALSE, CurrentTime);
     if( gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(modifiers->alt)) ) {
         XTestFakeKeyEvent(dp, 64, FALSE, CurrentTime);
+        deactivateShift = TRUE;
     }
     if( gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(modifiers->ctrl)) ) {
         XTestFakeKeyEvent(dp, 37, FALSE, CurrentTime);
+        deactivateShift = TRUE;
     }
     if( gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(modifiers->shift)) ) {
         XTestFakeKeyEvent(dp, 50, FALSE, CurrentTime);
     }
-    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(modifiers->shift), FALSE);
+    if( deactivateShift ) {
+        gtk_toggle_button_set_active(
+                GTK_TOGGLE_BUTTON(modifiers->shift), FALSE);
+    }
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(modifiers->ctrl), FALSE);
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(modifiers->alt), FALSE);
 }
