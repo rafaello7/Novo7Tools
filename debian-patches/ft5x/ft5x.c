@@ -255,20 +255,15 @@ static void ReadInput (InputInfoPtr local)
         if(priv->count > 0) {
             ApplyRotateOnInput(priv);
 
-            if( priv->lastcnt == 0 ) {
-                priv->pressx = priv->x1;
-                priv->pressy = priv->y1;
-            }
-            if( priv->count > 1 && priv->lastcnt < 2 ) {
-                priv->scrollx = priv->x2;
-                priv->scrolly = priv->y2;
-            }
-
             /*
                xf86XInputSetScreen(local, priv->screen_num,
                priv->x,
                priv->y);*/
 
+            if( priv->lastcnt == 0 ) {
+                priv->pressx = priv->x1;
+                priv->pressy = priv->y1;
+            }
             /* deferred left button down */
             if(priv->btn_down == BTN_DOWN_NONE &&
                     priv->count == 1 && priv->lastcnt == 1 &&
@@ -314,6 +309,10 @@ static void ReadInput (InputInfoPtr local)
                 priv->btn_down = BTN_DOWN_NONE;
             }
             if( priv->count == 2 ) {
+                if( priv->lastcnt < 2 ) {
+                    priv->scrollx = priv->x2;
+                    priv->scrolly = priv->y2;
+                }
                 /* emulate wheels scroll */
                 while( priv->scrolly + SCROLL_DIST < priv->y2 ) {
                     xf86PostButtonEvent(local->dev, FALSE,
