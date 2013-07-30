@@ -52,3 +52,8 @@ A patch for [rtl8192cu driver from realtek](http://www.realtek.com/downloads/dow
 useful when replacing driver incorporated into kernel on [linux-sunxi](https://github.com/linux-sunxi/linux-sunxi/tree/sunxi-3.0/drivers/net/wireless/rtl8192cu).
 
 
+sunxi-disp-brightness
+---------------------
+
+A tool to set LCD display brightness on sunxi platform.
+
