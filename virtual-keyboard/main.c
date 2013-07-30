@@ -9,7 +9,7 @@
  */
 static struct ModifierButtons modifiersMain, modifiersFn;
 static struct ModifierButtons *modifiers = &modifiersMain;
-
+static gboolean gIsShiftLocked;
 
 /* Saved alternate position of main window on screen.
  */
@@ -22,7 +22,6 @@ static void on_click(GtkWidget *widget, gpointer user_data)
 {
     Display *dp;
     guint kcode;
-    gboolean deactivateShift = FALSE;
 
     dp = gdk_x11_display_get_xdisplay(gtk_widget_get_display(widget));
     if( gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(modifiers->shift)) ) {
@@ -39,16 +38,14 @@ static void on_click(GtkWidget *widget, gpointer user_data)
     XTestFakeKeyEvent(dp, kcode, FALSE, CurrentTime);
     if( gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(modifiers->alt)) ) {
         XTestFakeKeyEvent(dp, 64, FALSE, CurrentTime);
-        deactivateShift = TRUE;
     }
     if( gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(modifiers->ctrl)) ) {
         XTestFakeKeyEvent(dp, 37, FALSE, CurrentTime);
-        deactivateShift = TRUE;
     }
     if( gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(modifiers->shift)) ) {
         XTestFakeKeyEvent(dp, 50, FALSE, CurrentTime);
     }
-    if( deactivateShift ) {
+    if( ! gIsShiftLocked ) {
         gtk_toggle_button_set_active(
                 GTK_TOGGLE_BUTTON(modifiers->shift), FALSE);
     }
@@ -60,11 +57,13 @@ static void ReplicateModifiers(const struct ModifierButtons *to,
         const struct ModifierButtons *from)
 {
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(to->shift),
-        gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(from->shift)));
+            gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(from->shift)));
+    gtk_button_set_label(GTK_BUTTON(to->shift),
+            gtk_button_get_label(GTK_BUTTON(from->shift)));
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(to->ctrl),
-        gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(from->ctrl)));
+            gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(from->ctrl)));
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(to->alt),
-        gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(from->alt)));
+            gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(from->alt)));
 }
 
 static void on_click_fnmain(GtkWidget *button, gpointer data)
@@ -111,6 +110,19 @@ static void on_click_dismiss(GtkWidget *button, gpointer user_data)
     }
 }
 
+static gboolean on_release_shift(GtkWidget *button, GdkEvent *event,
+        gpointer user_data)
+{
+    if( gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(button)) ) {
+        const char *label = "Shift";
+        if( (gIsShiftLocked = !gIsShiftLocked) ) {
+            label = "Shift Lock";
+        }
+        gtk_button_set_label(GTK_BUTTON(button), label);
+    }
+    return gIsShiftLocked;
+}
+
 static void CreateKeyboardOnNotebook(GtkWidget *window, GtkWidget *notebook)
 {
     struct VirtKeyHandler handlers[] = {
@@ -143,8 +155,12 @@ static void CreateKeyboardOnNotebook(GtkWidget *window, GtkWidget *notebook)
 
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook),
             vkl_CreateMainKeyboard(handlers, &modifiersMain), NULL);
+    g_signal_connect(modifiersMain.shift, "button-release-event",
+            G_CALLBACK(on_release_shift), NULL);
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook),
             vkl_CreateFnKeyboard(handlers, &modifiersFn), NULL);
+    g_signal_connect(modifiersFn.shift, "button-release-event",
+            G_CALLBACK(on_release_shift), NULL);
 }
 
 static guint CalcOptionValue(guint val, gboolean isNeg, gboolean isPercentage,
