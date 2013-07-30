@@ -135,10 +135,10 @@ static const struct VirtKeyboardLayout gKeyboardFn = { .rows = {
     },
     (const struct VirtKey[]){
         { .vkt = VKT_SPACER, .disp = NULL,    .kcode =   0, .hsize = 3 },
-        { .vkt = VKT_NORMAL, .disp = "Screen\nBrighter",
-            .kcode =  233, .hsize = 3 },
         { .vkt = VKT_NORMAL, .disp = "Screen\nDimmer",
             .kcode =  232, .hsize = 3 },
+        { .vkt = VKT_NORMAL, .disp = "Screen\nBrighter",
+            .kcode =  233, .hsize = 3 },
         { .vkt = VKT_SPACER, .disp = NULL,    .kcode =   0, .hsize = 3 },
         { .vkt = VKT_NORMAL, .disp = "F5",    .kcode =  71, .hsize = 2 },
         { .vkt = VKT_NORMAL, .disp = "F6",    .kcode =  72, .hsize = 2 },
