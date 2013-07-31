@@ -14,6 +14,12 @@ Touchscreen support.
 Tap with 2nd finger simulates right-click.
 Drag with 2nd finger simulates scrolling with mouse wheel.
 
+ft5x-2
+------
+
+Another way of touchscreen support. See [ft5x-2 README](ft5x-2).
+
+
 fbexec
 ------
 
