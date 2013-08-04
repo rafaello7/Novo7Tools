@@ -31,8 +31,8 @@ fbecho
 
 Like "echo", output displayed on framebuffer (fb0)
 
-disp
-----
+sunxi-disp
+----------
 
 A tool to manipulate display output: turn on/off hdmi, lcd,
 set resolution.
