@@ -70,6 +70,11 @@
 #define COLLECT_INPUT_OPTIONS(pInfo, options) xf86CollectInputOptions((pInfo), (options))
 #endif
 
+#if 0
+#define FT5XDBG ErrorF
+#else
+#define FT5XDBG(...)
+#endif
 
 enum {
     FT5X_ROTATE_NONE=0,
@@ -87,6 +92,10 @@ enum btn_down {
 
 enum { SCROLL_DIST = 50, PRESS_DIST = 20 };
 
+struct ft5x_point {
+    int x, y;
+};
+
 struct ft5x_priv {
 	XISBuffer *buffer;
     int input_fd;
@@ -96,15 +105,16 @@ struct ft5x_priv {
 	int width;
     enum btn_down btn_down;
 
-	int lastcnt, motion;
-    int pressx, pressy, scrollx, scrolly, motionx, motiony;
+	int lastcnt, motion, moveAbsAtScroll;
+    struct ft5x_point pressxy, scrollxy, motionxy;
     int count;      /* number of fingers touching screen, in range 0..2 */
-    int x1, y1;     /* position of touch with first finger */
-    int x2, y2;     /* position of touch with second finger */
+    struct ft5x_point xy1;     /* position of touch with first finger */
+    struct ft5x_point xy2;     /* position of touch with second finger */
 	struct timeval ev_tv; /* touch event time */
 
     /* data collected for touch report */
-    int current_id, current_x, current_y;
+    int current_id;
+    struct ft5x_point currentxy;
 };
 
 static void
@@ -151,10 +161,10 @@ static int novo7_read(struct ft5x_priv *priv)
             case ABS_MT_WIDTH_MAJOR:
                 break;
             case ABS_MT_POSITION_X:
-                priv->current_x = ev.value;
+                priv->currentxy.x = ev.value;
                 break;
             case ABS_MT_POSITION_Y:
-                priv->current_y = ev.value;
+                priv->currentxy.y = ev.value;
                 break;
             }
             break;
@@ -163,12 +173,10 @@ static int novo7_read(struct ft5x_priv *priv)
             case SYN_MT_REPORT:
                 /* we are interested with touches of first two fingers only */
                 if( priv->current_id == 0 ) {
-                    priv->x1 = priv->current_x;
-                    priv->y1 = priv->current_y;
+                    priv->xy1 = priv->currentxy;
                     ++priv->count;
                 }else if( priv->current_id == 1 ) {
-                    priv->x2 = priv->current_x;
-                    priv->y2 = priv->current_y;
+                    priv->xy2 = priv->currentxy;
                     ++priv->count;
                 }
                 break;
@@ -191,26 +199,26 @@ static void ApplyRotateOnInput(struct ft5x_priv *priv)
 
     switch(priv->rotate) {
     case FT5X_ROTATE_CW:
-        tmp_x = priv->x1;
-        priv->x1 = priv->y1;
-        priv->y1 = priv->width - tmp_x;
-        tmp_x = priv->x2;
-        priv->x2 = priv->y2;
-        priv->y2 = priv->width - tmp_x;
+        tmp_x = priv->xy1.x;
+        priv->xy1.x = priv->xy1.y;
+        priv->xy1.y = priv->width - tmp_x;
+        tmp_x = priv->xy2.x;
+        priv->xy2.x = priv->xy2.y;
+        priv->xy2.y = priv->width - tmp_x;
         break;
     case FT5X_ROTATE_UD:
-        priv->x1 = priv->width - priv->x1;
-        priv->y1 = priv->height - priv->y1;
-        priv->x2 = priv->width - priv->x2;
-        priv->y2 = priv->height - priv->y2;
+        priv->xy1.x = priv->width - priv->xy1.x;
+        priv->xy1.y = priv->height - priv->xy1.y;
+        priv->xy2.x = priv->width - priv->xy2.x;
+        priv->xy2.y = priv->height - priv->xy2.y;
         break;
     case FT5X_ROTATE_CCW:
-        tmp_x = priv->x1;
-        priv->x1 = priv->height - priv->y1;
-        priv->y1 = tmp_x;
-        tmp_x = priv->x2;
-        priv->x2 = priv->height - priv->y2;
-        priv->y2 = tmp_x;
+        tmp_x = priv->xy1.x;
+        priv->xy1.x = priv->height - priv->xy1.y;
+        priv->xy1.y = tmp_x;
+        tmp_x = priv->xy2.x;
+        priv->xy2.x = priv->height - priv->xy2.y;
+        priv->xy2.y = tmp_x;
         break;
     default:
         break;
@@ -219,32 +227,148 @@ static void ApplyRotateOnInput(struct ft5x_priv *priv)
 
     switch(rotation) {
     case RR_Rotate_90:
-        tmp_x = priv->x1;
-        priv->x1 = (priv->height - priv->y1 - 1) *
+        tmp_x = priv->xy1.x;
+        priv->xy1.x = (priv->height - priv->xy1.y - 1) *
             priv->width / priv->height;
-        priv->y1 = tmp_x * priv->height / priv->width;
-        tmp_x = priv->x2;
-        priv->x2 = (priv->height - priv->y2 - 1) *
+        priv->xy1.y = tmp_x * priv->height / priv->width;
+        tmp_x = priv->xy2.x;
+        priv->xy2.x = (priv->height - priv->xy2.y - 1) *
             priv->width / priv->height;
-        priv->y2 = tmp_x * priv->height / priv->width;
+        priv->xy2.y = tmp_x * priv->height / priv->width;
         break;
     case RR_Rotate_180:
-        priv->x1 = priv->width - priv->x1 - 1;
-        priv->y1 = priv->height - priv->y1 - 1;
-        priv->x2 = priv->width - priv->x2 - 1;
-        priv->y2 = priv->height - priv->y2 - 1;
+        priv->xy1.x = priv->width - priv->xy1.x - 1;
+        priv->xy1.y = priv->height - priv->xy1.y - 1;
+        priv->xy2.x = priv->width - priv->xy2.x - 1;
+        priv->xy2.y = priv->height - priv->xy2.y - 1;
         break;
     case RR_Rotate_270:
-        tmp_x = priv->x1;
-        priv->x1 = priv->y1 * priv->width / priv->height;
-        priv->y1 = (priv->width - tmp_x - 1) *
+        tmp_x = priv->xy1.x;
+        priv->xy1.x = priv->xy1.y * priv->width / priv->height;
+        priv->xy1.y = (priv->width - tmp_x - 1) *
             priv->height / priv->width;
-        tmp_x = priv->x2;
-        priv->x2 = priv->y2 * priv->width / priv->height;
-        priv->y2 = (priv->width - tmp_x - 1) *
+        tmp_x = priv->xy2.x;
+        priv->xy2.x = priv->xy2.y * priv->width / priv->height;
+        priv->xy2.y = (priv->width - tmp_x - 1) *
             priv->height / priv->width;
         break;
     }
+}
+
+static int xydist(const struct ft5x_point *p1, const struct ft5x_point *p2)
+{
+    return max(abs(p1->x - p2->x), abs(p1->y - p2->y));
+}
+
+static void SetMotion(struct ft5x_priv *priv, int motion)
+{
+    if( priv->motion != motion ) {
+        FT5XDBG(">> ft5x: SetMotion(%s)\n", motion ? "TRUE" : "FALSE");
+        if( ! priv->motion && motion ) {
+            priv->motionxy = priv->xy1;
+            priv->moveAbsAtScroll = FALSE;
+        }else if( priv->count == 0 )
+            priv->moveAbsAtScroll = TRUE;
+        priv->motion = motion;
+    }
+}
+
+static void EmulateClickAbs(InputInfoPtr local, struct ft5x_priv *priv)
+{
+    FT5XDBG(">> ft5x: EmulateClickAbs()\n");
+    /* XXX: is it possible to move back after click ? */
+    xf86PostMotionEvent(local->dev, Absolute, 0, 2, priv->pressxy.x,
+            priv->pressxy.y);
+    /* left button down */
+    xf86PostButtonEvent(local->dev, Relative, 1, TRUE, 0, 0);
+    /* button up */
+    xf86PostButtonEvent(local->dev, Relative, 1, FALSE, 0, 0);
+}
+
+static void StartScroll(InputInfoPtr local, struct ft5x_priv *priv)
+{
+    if( priv->btn_down == BTN_DOWN_NONE ) {
+        if( priv->moveAbsAtScroll ) {
+            FT5XDBG(">> ft5x: StartScroll: move abs(%d, %d)\n",
+                    priv->pressxy.x, priv->pressxy.y);
+            xf86PostMotionEvent(local->dev, Absolute, 0, 2, priv->pressxy.x,
+                    priv->pressxy.y);
+        }
+        priv->btn_down = BTN_IS_SCROLL;
+    }
+}
+
+static int EmulateScroll(InputInfoPtr local, struct ft5x_priv *priv)
+{
+    int isScrolled = FALSE;
+
+    while( priv->scrollxy.y + SCROLL_DIST < priv->xy2.y ) {
+        StartScroll(local, priv);
+        FT5XDBG(">> ft5x: EmulateScroll(DOWN)\n");
+        xf86PostButtonEvent(local->dev, Relative, 4, TRUE, 0, 0);
+        xf86PostButtonEvent(local->dev, Relative, 4, FALSE, 0, 0);
+        priv->scrollxy.y += SCROLL_DIST;
+        isScrolled = TRUE;
+    }
+    while( priv->scrollxy.y - SCROLL_DIST > priv->xy2.y ) {
+        StartScroll(local, priv);
+        FT5XDBG(">> ft5x: EmulateScroll(UP)\n");
+        xf86PostButtonEvent(local->dev, Relative, 5, TRUE, 0, 0);
+        xf86PostButtonEvent(local->dev, Relative, 5, FALSE, 0, 0);
+        priv->scrollxy.y -= SCROLL_DIST;
+        isScrolled = TRUE;
+    }
+    while( priv->scrollxy.x + SCROLL_DIST < priv->xy2.x ) {
+        StartScroll(local, priv);
+        FT5XDBG(">> ft5x: EmulateScroll(RIGHT)\n");
+        xf86PostButtonEvent(local->dev, Relative, 6, TRUE, 0, 0);
+        xf86PostButtonEvent(local->dev, Relative, 6, FALSE, 0, 0);
+        priv->scrollxy.x += SCROLL_DIST;
+        isScrolled = TRUE;
+    }
+    while( priv->scrollxy.x - SCROLL_DIST > priv->xy2.x ) {
+        StartScroll(local, priv);
+        FT5XDBG(">> ft5x: EmulateScroll(LEFT)\n");
+        xf86PostButtonEvent(local->dev, Relative, 7, TRUE, 0, 0);
+        xf86PostButtonEvent(local->dev, Relative, 7, FALSE, 0, 0);
+        priv->scrollxy.x -= SCROLL_DIST;
+        isScrolled = TRUE;
+    }
+    return isScrolled;
+}
+
+static void LeftButtonDown(InputInfoPtr local, struct ft5x_priv *priv)
+{
+    FT5XDBG(">> ft5x: LeftButtonDown()\n");
+    xf86PostButtonEvent(local->dev, Relative, 1, TRUE, 0, 0);
+    priv->btn_down = BTN_DOWN_LEFT;
+}
+
+static void RightButtonDown(InputInfoPtr local, struct ft5x_priv *priv)
+{
+    FT5XDBG(">> ft5x: RightButtonDown()\n");
+    xf86PostButtonEvent(local->dev, Relative, 3, TRUE, 0, 0);
+    priv->btn_down = BTN_DOWN_RIGHT;
+}
+
+static void ButtonUp(InputInfoPtr local, struct ft5x_priv *priv)
+{
+    switch( priv->btn_down ) {
+    case BTN_DOWN_NONE:
+        break;
+    case BTN_DOWN_LEFT:
+        FT5XDBG(">> ft5x: ButtonUp(left)\n");
+        xf86PostButtonEvent(local->dev, Relative, 1, FALSE, 0, 0);
+        break;
+    case BTN_DOWN_RIGHT:
+        FT5XDBG(">> ft5x: ButtonUp(right)\n");
+        xf86PostButtonEvent(local->dev, Relative, 3, FALSE, 0, 0);
+        break;
+    default: /* BTN_IS_SCROLL */
+        FT5XDBG(">> ft5x: ButtonUp(scroll)\n");
+        break;
+    }
+    priv->btn_down = BTN_DOWN_NONE;
 }
 
 static void ReadInput (InputInfoPtr local)
@@ -261,124 +385,155 @@ static void ReadInput (InputInfoPtr local)
                priv->y);*/
 
             if( priv->lastcnt == 0 ) {
-                priv->pressx = priv->x1;
-                priv->pressy = priv->y1;
+                priv->pressxy = priv->xy1;
             }
-            if( priv->count == 2 && priv->lastcnt < 2 ) {
-                priv->scrollx = priv->x2;
-                priv->scrolly = priv->y2;
+            if( priv->count > 1 && priv->lastcnt <= 1 ) {
+                priv->scrollxy = priv->xy2;
             }
         }
-        if( priv->lastcnt == 2 ) {
-            if(priv->count == 2) {
-                /* emulate wheels scroll */
-                while( priv->scrolly + SCROLL_DIST < priv->y2 ) {
-                    xf86PostButtonEvent(local->dev, FALSE,
-                            4, TRUE, 0, 2, 0, 0);
-                    xf86PostButtonEvent(local->dev, FALSE,
-                            4, FALSE, 0, 2, 0, 0);
-                    priv->scrolly += SCROLL_DIST;
-                    priv->btn_down = BTN_IS_SCROLL;
-                }
-                while( priv->scrolly - SCROLL_DIST > priv->y2 ) {
-                    xf86PostButtonEvent(local->dev, FALSE,
-                            5, TRUE, 0, 2, 0, 0);
-                    xf86PostButtonEvent(local->dev, FALSE,
-                            5, FALSE, 0, 2, 0, 0);
-                    priv->scrolly -= SCROLL_DIST;
-                    priv->btn_down = BTN_IS_SCROLL;
-                }
-                while( priv->scrollx + SCROLL_DIST < priv->x2 ) {
-                    xf86PostButtonEvent(local->dev, FALSE,
-                            6, TRUE, 0, 2, 0, 0);
-                    xf86PostButtonEvent(local->dev, FALSE,
-                            6, FALSE, 0, 2, 0, 0);
-                    priv->scrollx += SCROLL_DIST;
-                    priv->btn_down = BTN_IS_SCROLL;
-                }
-                while( priv->scrollx - SCROLL_DIST > priv->x2 ) {
-                    xf86PostButtonEvent(local->dev, FALSE,
-                            7, TRUE, 0, 2, 0, 0);
-                    xf86PostButtonEvent(local->dev, FALSE,
-                            7, FALSE, 0, 2, 0, 0);
-                    priv->scrollx -= SCROLL_DIST;
-                    priv->btn_down = BTN_IS_SCROLL;
-                }
-            }else{
-                if( priv->btn_down != BTN_IS_SCROLL ) {
-                    /* a button click: press finger 1 and tap by finger 2 */
-                    if( priv->scrollx <= priv->pressx ) {
-                        /* left button click */
-                        xf86PostButtonEvent(local->dev, TRUE, 1, TRUE, 0, 0);
-                        xf86PostButtonEvent(local->dev, TRUE, 1, FALSE, 0, 0);
-                    }else{
-                        /* right button click */
-                        xf86PostButtonEvent(local->dev, TRUE, 3, TRUE, 0, 0);
-                        xf86PostButtonEvent(local->dev, TRUE, 3, FALSE, 0, 0);
-                    }
 
+        switch( priv->btn_down ) {
+        case BTN_DOWN_NONE:
+            switch( priv->lastcnt ) {
+            case 0:
+                switch( priv->count ) {
+                case 0:
+                    break;
+                case 1:
+                    break;
+                default: /* 2 */
+                    SetMotion(priv, TRUE);
+                    break;
                 }
-                if( priv->count == 1 ) {
-                    priv->motion = TRUE;
-                    priv->motionx = priv->x1;
-                    priv->motiony = priv->y1;
-                }else{
-                    /* trigger appropriate action for transition 1 -> 0 */
-                    priv->lastcnt = 1;
+                break;
+            case 1:
+                switch( priv->count ) {
+                case 0:
+                    if( ! priv->motion ) {
+                        EmulateClickAbs(local, priv);
+                    }
+                    SetMotion(priv, FALSE);
+                    break;
+                case 1:
+                    if( xydist(&priv->pressxy, &priv->xy1) > PRESS_DIST ) {
+                        SetMotion(priv, TRUE);
+                    }
+                    break;
+                default: /* 2 */
+                    SetMotion(priv, FALSE);
+                    /* adjusting pressxy up to calculate distance
+                     * from current xy1 for motion start */
+                    priv->pressxy = priv->xy1;
+                    break;
                 }
+                break;
+            default: /* 2 */
+                switch( priv->count ) {
+                case 0:
+                    SetMotion(priv, FALSE);
+                    break;
+                case 1:
+                    SetMotion(priv, TRUE);
+                    if( priv->scrollxy.x <= priv->pressxy.x ) {
+                        LeftButtonDown(local, priv);
+                    }else{
+                        RightButtonDown(local, priv);
+                    }
+                    ButtonUp(local, priv);
+                    break;
+                default: /* 2 */
+                    if( EmulateScroll(local, priv) ) {
+                        SetMotion(priv, FALSE);
+                    }else if( xydist(&priv->pressxy, &priv->xy1) > PRESS_DIST )
+                    {
+                        SetMotion(priv, TRUE);
+                        if( priv->scrollxy.x <= priv->pressxy.x ) {
+                            LeftButtonDown(local, priv);
+                        }else{
+                            RightButtonDown(local, priv);
+                        }
+                    }
+                    break;
+                }
+                break;
             }
+            break;
+        case BTN_DOWN_LEFT:
+        case BTN_DOWN_RIGHT:
+            switch( priv->lastcnt ) {
+            case 0:
+                ErrorF("ft5x error: BAD BUTTON STATE=%d, lastcnt=%d\n",
+                        priv->btn_down, priv->lastcnt);
+                break;
+            case 1:
+                switch( priv->count ) {
+                case 0:
+                    /* button up */
+                    ButtonUp(local, priv);
+                    SetMotion(priv, FALSE);
+                    break;
+                case 1:
+                    break;
+                default: /* 2 */
+                    break;
+                }
+                break;
+            default: /* 2 */
+                switch( priv->count ) {
+                case 0:
+                    ButtonUp(local, priv);
+                    SetMotion(priv, FALSE);
+                    break;
+                case 1:
+                    ButtonUp(local, priv);
+                    break;
+                default: /* 2 */
+                    break;
+                }
+                break;
+            }
+            break;
+        default:    /* BTN_IS_SCROLL */
+            switch( priv->lastcnt ) {
+            case 0:
+                ErrorF("ft5x error: BAD BUTTON STATE=%d, lastcnt=%d\n",
+                        priv->btn_down, priv->lastcnt);
+                break;
+            case 1:
+                switch( priv->count ) {
+                case 0:
+                    ButtonUp(local, priv);
+                    SetMotion(priv, FALSE);
+                    break;
+                case 1:
+                    break;
+                default: /* 2 */
+                    break;
+                }
+                break;
+            default:
+                switch( priv->count ) {
+                case 0:
+                    ButtonUp(local, priv);
+                    break;
+                case 1:
+                    break;
+                default: /* 2 */
+                    EmulateScroll(local, priv);
+                    break;
+                }
+                break;
+            }
+            break;
         }
-        if( priv->lastcnt == 1 ) {
-            if( priv->count == 2 ) {
-                if( priv->btn_down == BTN_DOWN_LEFT ||
-                        priv->btn_down == BTN_DOWN_RIGHT)
-                {
-                    /* button up */
-                    xf86PostButtonEvent(local->dev, TRUE,
-                            priv->btn_down == BTN_DOWN_LEFT ? 1 : 3,
-                            FALSE, 0, 0);
-                    priv->btn_down = BTN_DOWN_NONE;
-                }
-                priv->motion = FALSE;
-            }else if( priv->count == 1 ) {
-                if( ! priv->motion && priv->btn_down != BTN_IS_SCROLL &&
-                    (abs(priv->pressx - priv->x1) > PRESS_DIST ||
-                    abs(priv->pressy - priv->y1) > PRESS_DIST))
-                {
-                    priv->motion = TRUE;
-                    priv->motionx = priv->x1;
-                    priv->motiony = priv->y1;
-                }
-                if( priv->motion &&
-                    (priv->x1 != priv->motionx || priv->y1 != priv->motiony))
-                {
-                    /* motion event */
-                    xf86PostMotionEvent(local->dev, FALSE, 0, 2,
-                            priv->x1 - priv->motionx, priv->y1 - priv->motiony);
-                    priv->motionx = priv->x1;
-                    priv->motiony = priv->y1;
-                }
-            }else{  /* priv->count == 0 */
-                if( priv->btn_down == BTN_DOWN_NONE && ! priv->motion ) {
-                    /* motion event */
-                    xf86PostMotionEvent(local->dev, TRUE, 0, 2,
-                            priv->x1, priv->y1);
-                    /* deferred left button down */
-                    xf86PostButtonEvent(local->dev, TRUE, 1, TRUE, 0, 2,
-                            priv->pressx, priv->pressy);
-                    priv->btn_down = BTN_DOWN_LEFT;
-                }
-                if( priv->btn_down == BTN_DOWN_LEFT ||
-                        priv->btn_down == BTN_DOWN_RIGHT)
-                {
-                    /* button up */
-                    xf86PostButtonEvent(local->dev, TRUE,
-                            priv->btn_down == BTN_DOWN_LEFT ? 1 : 3,
-                            FALSE, 0, 0);
-                }
-                priv->btn_down = BTN_DOWN_NONE;
-                priv->motion = FALSE;
-            }
+
+        if( priv->motion && (priv->xy1.x != priv->motionxy.x ||
+                    priv->xy1.y != priv->motionxy.y))
+        {
+            xf86PostMotionEvent(local->dev, FALSE, 0, 2,
+                    priv->xy1.x - priv->motionxy.x,
+                    priv->xy1.y - priv->motionxy.y);
+            priv->motionxy = priv->xy1;
         }
         priv->lastcnt = priv->count;
         priv->count = 0;
@@ -666,7 +821,8 @@ xf86Ft5xInit(InputDriverPtr drv, IDevPtr dev, int flags)
 	if (xf86SetIntOption(pInfo->options, "EmulateRightButton", 0) == 0) {
 		priv->state = BUTTON_EMULATION_OFF;
 	}*/
-    priv->motionx = priv->motiony = -1;
+    priv->motionxy.x = priv->motionxy.y = -1;
+    priv->moveAbsAtScroll = TRUE;
 
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 12
 	/* Mark the device configured */
