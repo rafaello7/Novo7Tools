@@ -105,7 +105,7 @@ struct ft5x_priv {
 	int width;
     enum btn_down btn_down;
 
-	int lastcnt, motion, moveAbsAtScroll;
+	int lastcnt, motion, isScrollMotion;
     struct ft5x_point pressxy, scrollxy, motionxy;
     int count;      /* number of fingers touching screen, in range 0..2 */
     struct ft5x_point xy1;     /* position of touch with first finger */
@@ -260,17 +260,24 @@ static int xydist(const struct ft5x_point *p1, const struct ft5x_point *p2)
     return max(abs(p1->x - p2->x), abs(p1->y - p2->y));
 }
 
-static void SetMotion(struct ft5x_priv *priv, int motion)
+static void StartMotion(struct ft5x_priv *priv)
 {
-    if( priv->motion != motion ) {
-        FT5XDBG(">> ft5x: SetMotion(%s)\n", motion ? "TRUE" : "FALSE");
-        if( ! priv->motion && motion ) {
-            priv->motionxy = priv->xy1;
-            priv->moveAbsAtScroll = FALSE;
-        }else if( priv->count == 0 )
-            priv->moveAbsAtScroll = TRUE;
-        priv->motion = motion;
+    if( ! priv->motion ) {
+        FT5XDBG(">> ft5x: StartMotion()\n");
+        priv->motionxy = priv->xy1;
+        priv->isScrollMotion = TRUE;
+        priv->motion = TRUE;
     }
+}
+
+static void StopMotion(struct ft5x_priv *priv)
+{
+    if( priv->motion ) {
+        FT5XDBG(">> ft5x: StopMotion()\n");
+        priv->motion = FALSE;
+    }
+    if( priv->count == 0 )
+        priv->isScrollMotion = FALSE;
 }
 
 static void EmulateClickAbs(InputInfoPtr local, struct ft5x_priv *priv)
@@ -288,7 +295,7 @@ static void EmulateClickAbs(InputInfoPtr local, struct ft5x_priv *priv)
 static void StartScroll(InputInfoPtr local, struct ft5x_priv *priv)
 {
     if( priv->btn_down == BTN_DOWN_NONE ) {
-        if( priv->moveAbsAtScroll ) {
+        if( ! priv->isScrollMotion ) {
             FT5XDBG(">> ft5x: StartScroll: move abs(%d, %d)\n",
                     priv->pressxy.x, priv->pressxy.y);
             xf86PostMotionEvent(local->dev, Absolute, 0, 2, priv->pressxy.x,
@@ -402,25 +409,25 @@ static void ReadInput (InputInfoPtr local)
                 case 1:
                     break;
                 default: /* 2 */
-                    SetMotion(priv, TRUE);
+                    StartMotion(priv);
                     break;
                 }
                 break;
             case 1:
                 switch( priv->count ) {
                 case 0:
-                    if( ! priv->motion ) {
+                    if( ! priv->motion && ! priv->isScrollMotion ) {
                         EmulateClickAbs(local, priv);
                     }
-                    SetMotion(priv, FALSE);
+                    StopMotion(priv);
                     break;
                 case 1:
                     if( xydist(&priv->pressxy, &priv->xy1) > PRESS_DIST ) {
-                        SetMotion(priv, TRUE);
+                        StartMotion(priv);
                     }
                     break;
                 default: /* 2 */
-                    SetMotion(priv, FALSE);
+                    StopMotion(priv);
                     /* adjusting pressxy up to calculate distance
                      * from current xy1 for motion start */
                     priv->pressxy = priv->xy1;
@@ -430,10 +437,10 @@ static void ReadInput (InputInfoPtr local)
             default: /* 2 */
                 switch( priv->count ) {
                 case 0:
-                    SetMotion(priv, FALSE);
+                    StopMotion(priv);
                     break;
                 case 1:
-                    SetMotion(priv, TRUE);
+                    StartMotion(priv);
                     if( priv->scrollxy.x <= priv->pressxy.x ) {
                         LeftButtonDown(local, priv);
                     }else{
@@ -443,10 +450,10 @@ static void ReadInput (InputInfoPtr local)
                     break;
                 default: /* 2 */
                     if( EmulateScroll(local, priv) ) {
-                        SetMotion(priv, FALSE);
+                        StopMotion(priv);
                     }else if( xydist(&priv->pressxy, &priv->xy1) > PRESS_DIST )
                     {
-                        SetMotion(priv, TRUE);
+                        StartMotion(priv);
                         if( priv->scrollxy.x <= priv->pressxy.x ) {
                             LeftButtonDown(local, priv);
                         }else{
@@ -470,7 +477,7 @@ static void ReadInput (InputInfoPtr local)
                 case 0:
                     /* button up */
                     ButtonUp(local, priv);
-                    SetMotion(priv, FALSE);
+                    StopMotion(priv);
                     break;
                 case 1:
                     break;
@@ -482,7 +489,7 @@ static void ReadInput (InputInfoPtr local)
                 switch( priv->count ) {
                 case 0:
                     ButtonUp(local, priv);
-                    SetMotion(priv, FALSE);
+                    StopMotion(priv);
                     break;
                 case 1:
                     ButtonUp(local, priv);
@@ -503,7 +510,7 @@ static void ReadInput (InputInfoPtr local)
                 switch( priv->count ) {
                 case 0:
                     ButtonUp(local, priv);
-                    SetMotion(priv, FALSE);
+                    StopMotion(priv);
                     break;
                 case 1:
                     break;
@@ -517,6 +524,8 @@ static void ReadInput (InputInfoPtr local)
                     ButtonUp(local, priv);
                     break;
                 case 1:
+                    if( priv->isScrollMotion )
+                        ButtonUp(local, priv);
                     break;
                 default: /* 2 */
                     EmulateScroll(local, priv);
@@ -822,7 +831,6 @@ xf86Ft5xInit(InputDriverPtr drv, IDevPtr dev, int flags)
 		priv->state = BUTTON_EMULATION_OFF;
 	}*/
     priv->motionxy.x = priv->motionxy.y = -1;
-    priv->moveAbsAtScroll = TRUE;
 
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 12
 	/* Mark the device configured */
