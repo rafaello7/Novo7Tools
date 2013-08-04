@@ -16,34 +16,70 @@ static gboolean gIsShiftLocked, gIsCtrlLocked;
 static guint gWinAltX, gWinAltY;
 
 
+static guint gCurKCode;
+static Display *gCurDisplay;
+static guint gCurTimeoutId;
+static gboolean gIsTimeoutForRepeat;
+
+
 /* "clicked" event handler of VKT_NORMAL button
  */
-static void on_click(GtkWidget *widget, gpointer user_data)
+static gboolean on_timeout(gpointer user_data)
 {
-    Display *dp;
-    guint kcode;
+    if( gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(modifiers->shift)) ) {
+        XTestFakeKeyEvent(gCurDisplay, 50, TRUE, CurrentTime);
+    }
+    if( gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(modifiers->ctrl)) ) {
+        XTestFakeKeyEvent(gCurDisplay, 37, TRUE, CurrentTime);
+    }
+    if( gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(modifiers->alt)) ) {
+        XTestFakeKeyEvent(gCurDisplay, 64, TRUE, CurrentTime);
+    }
+    XTestFakeKeyEvent(gCurDisplay, gCurKCode, TRUE, CurrentTime);
+    XTestFakeKeyEvent(gCurDisplay, gCurKCode, FALSE, CurrentTime);
+    if( gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(modifiers->alt)) ) {
+        XTestFakeKeyEvent(gCurDisplay, 64, FALSE, CurrentTime);
+    }
+    if( gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(modifiers->ctrl)) ) {
+        XTestFakeKeyEvent(gCurDisplay, 37, FALSE, CurrentTime);
+    }
+    if( gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(modifiers->shift)) ) {
+        XTestFakeKeyEvent(gCurDisplay, 50, FALSE, CurrentTime);
+    }
+    if( gCurTimeoutId != 0 && ! gIsTimeoutForRepeat ) {
+        gIsTimeoutForRepeat = TRUE;
+        gCurTimeoutId = g_timeout_add(100, on_timeout, NULL);
+        return G_SOURCE_REMOVE;
+    }
+    return G_SOURCE_CONTINUE;
+}
 
-    dp = gdk_x11_display_get_xdisplay(gtk_widget_get_display(widget));
-    if( gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(modifiers->shift)) ) {
-        XTestFakeKeyEvent(dp, 50, TRUE, CurrentTime);
+/* "clicked" event handler of VKT_NORMAL button
+ */
+static gboolean on_press_normal(GtkWidget *widget, GdkEvent *ev,
+        gpointer user_data)
+{
+    if( ev->type == GDK_BUTTON_PRESS ) {
+        if( gCurTimeoutId != 0 ) {
+            g_source_remove(gCurTimeoutId);
+            gCurTimeoutId = 0;
+        }
+        gCurDisplay = gdk_x11_display_get_xdisplay(
+                gtk_widget_get_display(widget));
+        gCurKCode = vkl_GetKeyCodeFromUserData(user_data);
+        on_timeout(NULL);
+        gIsTimeoutForRepeat = FALSE;
+        gCurTimeoutId = g_timeout_add(1000, on_timeout, NULL);
     }
-    if( gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(modifiers->ctrl)) ) {
-        XTestFakeKeyEvent(dp, 37, TRUE, CurrentTime);
-    }
-    if( gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(modifiers->alt)) ) {
-        XTestFakeKeyEvent(dp, 64, TRUE, CurrentTime);
-    }
-    kcode = vkl_GetKeyCodeFromUserData(user_data);
-    XTestFakeKeyEvent(dp, kcode, TRUE, CurrentTime);
-    XTestFakeKeyEvent(dp, kcode, FALSE, CurrentTime);
-    if( gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(modifiers->alt)) ) {
-        XTestFakeKeyEvent(dp, 64, FALSE, CurrentTime);
-    }
-    if( gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(modifiers->ctrl)) ) {
-        XTestFakeKeyEvent(dp, 37, FALSE, CurrentTime);
-    }
-    if( gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(modifiers->shift)) ) {
-        XTestFakeKeyEvent(dp, 50, FALSE, CurrentTime);
+    return FALSE;
+}
+
+static gboolean on_release_normal(GtkWidget *widget, GdkEvent *ev,
+        gpointer user_data)
+{
+    if( gCurTimeoutId != 0 ) {
+        g_source_remove(gCurTimeoutId);
+        gCurTimeoutId = 0;
     }
     if( ! gIsShiftLocked ) {
         gtk_toggle_button_set_active(
@@ -53,6 +89,7 @@ static void on_click(GtkWidget *widget, gpointer user_data)
         gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(modifiers->ctrl), FALSE);
     }
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(modifiers->alt), FALSE);
+    return FALSE;
 }
 
 static void ReplicateModifiers(const struct ModifierButtons *to,
@@ -142,44 +179,39 @@ static void CreateKeyboardOnNotebook(GtkWidget *window, GtkWidget *notebook)
 {
     struct VirtKeyHandler handlers[] = {
         [VKT_NORMAL] =  { .isToggleButton = FALSE,
-                          .callbackFunction = G_CALLBACK(on_click) },
-        [VKT_SHIFT] =   { .isToggleButton = TRUE },
-        [VKT_CTRL] =    { .isToggleButton = TRUE },
+                          .btnPressCallback = G_CALLBACK(on_press_normal),
+                          .btnReleaseCallback = G_CALLBACK(on_release_normal) },
+        [VKT_SHIFT] =   { .isToggleButton = TRUE,
+                          .btnReleaseCallback = G_CALLBACK(on_release_shift) },
+        [VKT_CTRL] =    { .isToggleButton = TRUE,
+                          .btnReleaseCallback = G_CALLBACK(on_release_ctrl) },
         [VKT_ALT] =     { .isToggleButton = TRUE },
         [VKT_FNMAIN] = {
             .isToggleButton = FALSE,
-            .callbackFunction = G_CALLBACK(on_click_fnmain),
+            .clickCallback = G_CALLBACK(on_click_fnmain),
             .userData = notebook
         },
         [VKT_FNFN] = {
             .isToggleButton = FALSE,
-            .callbackFunction = G_CALLBACK(on_click_fnfn),
+            .clickCallback = G_CALLBACK(on_click_fnfn),
             .userData = notebook
         },
         [VKT_ALTPOS] = {
             .isToggleButton = FALSE,
-            .callbackFunction = G_CALLBACK(on_click_altpos),
+            .clickCallback = G_CALLBACK(on_click_altpos),
             .userData = window
         },
         [VKT_DISMISS] = {
             .isToggleButton = FALSE,
-            .callbackFunction = G_CALLBACK(on_click_dismiss),
+            .clickCallback = G_CALLBACK(on_click_dismiss),
             .userData = window
         }
     };
 
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook),
             vkl_CreateMainKeyboard(handlers, &modifiersMain), NULL);
-    g_signal_connect(modifiersMain.shift, "button-release-event",
-            G_CALLBACK(on_release_shift), NULL);
-    g_signal_connect(modifiersMain.ctrl, "button-release-event",
-            G_CALLBACK(on_release_ctrl), NULL);
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook),
             vkl_CreateFnKeyboard(handlers, &modifiersFn), NULL);
-    g_signal_connect(modifiersFn.shift, "button-release-event",
-            G_CALLBACK(on_release_shift), NULL);
-    g_signal_connect(modifiersFn.ctrl, "button-release-event",
-            G_CALLBACK(on_release_ctrl), NULL);
 }
 
 static guint CalcOptionValue(guint val, gboolean isNeg, gboolean isPercentage,

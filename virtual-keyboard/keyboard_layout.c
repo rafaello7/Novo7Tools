@@ -227,10 +227,20 @@ static GtkWidget *CreateKeyboard(
                     gtk_label_set_justify(GTK_LABEL(label), GTK_JUSTIFY_CENTER);
                     gtk_button_set_image(GTK_BUTTON(button), label);
                 }
-                if( hdl->callbackFunction != NULL ) {
+                if( hdl->clickCallback != NULL ) {
                     g_signal_connect(button,
                             hdl->isToggleButton ? "toggled" : "clicked",
-                            hdl->callbackFunction,
+                            hdl->clickCallback,
+                            hdl->userData == NULL ? (void*)key : hdl->userData);
+                }
+                if( hdl->btnPressCallback != NULL ) {
+                    g_signal_connect(button, "button-press-event",
+                            hdl->btnPressCallback,
+                            hdl->userData == NULL ? (void*)key : hdl->userData);
+                }
+                if( hdl->btnReleaseCallback != NULL ) {
+                    g_signal_connect(button, "button-release-event",
+                            hdl->btnReleaseCallback,
                             hdl->userData == NULL ? (void*)key : hdl->userData);
                 }
                 if( button != NULL ) {

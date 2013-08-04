@@ -14,7 +14,9 @@ enum VirtKeyType {
 
 struct VirtKeyHandler {
     gboolean isToggleButton;
-    GCallback callbackFunction;
+    GCallback btnPressCallback;
+    GCallback btnReleaseCallback;
+    GCallback clickCallback;
     gpointer userData;
 };
 
