@@ -9,7 +9,7 @@
  */
 static struct ModifierButtons modifiersMain, modifiersFn;
 static struct ModifierButtons *modifiers = &modifiersMain;
-static gboolean gIsShiftLocked;
+static gboolean gIsShiftLocked, gIsCtrlLocked;
 
 /* Saved alternate position of main window on screen.
  */
@@ -49,7 +49,9 @@ static void on_click(GtkWidget *widget, gpointer user_data)
         gtk_toggle_button_set_active(
                 GTK_TOGGLE_BUTTON(modifiers->shift), FALSE);
     }
-    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(modifiers->ctrl), FALSE);
+    if( ! gIsCtrlLocked ) {
+        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(modifiers->ctrl), FALSE);
+    }
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(modifiers->alt), FALSE);
 }
 
@@ -123,6 +125,19 @@ static gboolean on_release_shift(GtkWidget *button, GdkEvent *event,
     return gIsShiftLocked;
 }
 
+static gboolean on_release_ctrl(GtkWidget *button, GdkEvent *event,
+        gpointer user_data)
+{
+    if( gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(button)) ) {
+        const char *label = "Ctrl";
+        if( (gIsCtrlLocked = !gIsCtrlLocked) ) {
+            label = "Ctrl Lock";
+        }
+        gtk_button_set_label(GTK_BUTTON(button), label);
+    }
+    return gIsCtrlLocked;
+}
+
 static void CreateKeyboardOnNotebook(GtkWidget *window, GtkWidget *notebook)
 {
     struct VirtKeyHandler handlers[] = {
@@ -157,10 +172,14 @@ static void CreateKeyboardOnNotebook(GtkWidget *window, GtkWidget *notebook)
             vkl_CreateMainKeyboard(handlers, &modifiersMain), NULL);
     g_signal_connect(modifiersMain.shift, "button-release-event",
             G_CALLBACK(on_release_shift), NULL);
+    g_signal_connect(modifiersMain.ctrl, "button-release-event",
+            G_CALLBACK(on_release_ctrl), NULL);
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook),
             vkl_CreateFnKeyboard(handlers, &modifiersFn), NULL);
     g_signal_connect(modifiersFn.shift, "button-release-event",
             G_CALLBACK(on_release_shift), NULL);
+    g_signal_connect(modifiersFn.ctrl, "button-release-event",
+            G_CALLBACK(on_release_ctrl), NULL);
 }
 
 static guint CalcOptionValue(guint val, gboolean isNeg, gboolean isPercentage,
