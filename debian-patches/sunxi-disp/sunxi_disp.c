@@ -337,13 +337,13 @@ int main(int argc, char *argv[])
     if(argc < 2) {
         int mode;
         printf("usage:\n");
-        printf("    disp [-s] hdmi|<mode>           - HDMI output only\n");
-        printf("    disp [-s] lcd|dub hdmi|<mode>   - two-display mode, LCD primary\n");
-        printf("    disp [-s] hdmi|<mode> lcd|dub   - two-display mode, HDMI primary\n");
-        printf("    disp lcd                        - LCD output only\n");
-        printf("    disp off                        - no output\n");
-        printf("    disp pan <width> <height>       - set mode\n");
-        printf("    disp info                       - show info\n");
+        printf("    sunxi-disp [-s] hdmi|<mode>           - HDMI output only\n");
+        printf("    sunxi-disp [-s] lcd|dub hdmi|<mode>   - two-display mode, LCD primary\n");
+        printf("    sunxi-disp [-s] hdmi|<mode> lcd|dub   - two-display mode, HDMI primary\n");
+        printf("    sunxi-disp lcd                        - LCD output only\n");
+        printf("    sunxi-disp off                        - no output\n");
+        printf("    sunxi-disp pan <width> <height>       - set mode\n");
+        printf("    sunxi-disp info                       - show info\n");
         printf("\n  <mode>:");
         for(mode = 0; mode < sizeof(modenames) / sizeof(modenames[0]); ++mode) {
             if( mode % 6 == 0 )
