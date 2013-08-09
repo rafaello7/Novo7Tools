@@ -104,6 +104,7 @@ struct ft5x_priv {
 	int height;
 	int width;
     enum btn_down btn_down;
+    int isRockchip;
 
 	int lastcnt, motion, isScrollMotion;
     struct ft5x_point pressxy, scrollxy, motionxy;
@@ -113,7 +114,7 @@ struct ft5x_priv {
 	struct timeval ev_tv; /* touch event time */
 
     /* data collected for touch report */
-    int current_id;
+    int current_id, press1, press2;
     struct ft5x_point currentxy;
 };
 
@@ -184,6 +185,69 @@ static int novo7_read(struct ft5x_priv *priv)
                 priv->ev_tv = ev.time;
                 priv->current_id = 0;
                 return 1;
+            }
+        }
+    }
+    return 0;
+}
+
+/* Read input event from touchscreen file on /dev
+ */
+static int rk_read(struct ft5x_priv *priv)
+{
+	struct input_event ev;
+	int rd;
+
+    while( (rd = read(priv->input_fd, &ev, sizeof(struct input_event))) ==
+         sizeof(struct input_event))
+    {
+        switch (ev.type) {
+        case EV_ABS:
+            switch (ev.code) {
+            case ABS_MT_POSITION_X:
+                FT5XDBG("rk_read: ABS_MT_POSITION_X: value=0x%x\n", ev.value);
+                if( priv->current_id == 0 ) {
+                    priv->xy1.x = ev.value;
+                }else{
+                    priv->xy2.x = ev.value;
+                }
+                break;
+            case ABS_MT_POSITION_Y:
+                FT5XDBG("rk_read: ABS_MT_POSITION_Y: value=0x%x\n", ev.value);
+                if( priv->current_id == 0 ) {
+                    priv->xy1.y = ev.value;
+                }else{
+                    priv->xy2.y = ev.value;
+                }
+                break;
+            case ABS_MT_PRESSURE:
+                FT5XDBG("rk_read: ABS_MT_PRESSURE: value=0x%x\n", ev.value);
+                if( priv->current_id == 0 ) {
+                    priv->press1 = ev.value;
+                }else{
+                    priv->press2 = ev.value;
+                }
+                break;
+            case ABS_MT_SLOT:
+                FT5XDBG("rk_read: ABS_MT_SLOT: value=0x%x\n", ev.value);
+                priv->current_id = ev.value;
+                break;
+            default:
+                FT5XDBG("rk_read: EV_ABS: code=0x%x value=%d\n", ev.code, ev.value);
+                break;
+            }
+            break;
+        case EV_SYN:
+            switch( ev.code ) {
+            case SYN_REPORT:
+                priv->ev_tv = ev.time;
+                priv->count = priv->press1 ? priv->press2 ? 2 : 1 : 0;
+                FT5XDBG("rk_read: SYN_REPORT: press1=%d, press2=%d, count=%d\n",
+                        priv->press1, priv->press2, priv->count);
+                return 1;
+            default:
+                FT5XDBG("rk_read: EV_SYN: value=%d\n", ev.value);
+                break;
             }
         }
     }
@@ -382,7 +446,8 @@ static void ReadInput (InputInfoPtr local)
 {
     struct ft5x_priv *priv = (struct ft5x_priv *) (local->private);
 
-    while( novo7_read(priv) == 1 ) {
+    while( priv->isRockchip ? rk_read(priv) : novo7_read(priv) == 1 )
+    {
         if( priv->count > 0 ) {
             ApplyRotateOnInput(priv);
 
@@ -545,7 +610,8 @@ static void ReadInput (InputInfoPtr local)
             priv->motionxy = priv->xy1;
         }
         priv->lastcnt = priv->count;
-        priv->count = 0;
+        if( ! priv->isRockchip )
+            priv->count = 0;
     }
 }
 
@@ -831,6 +897,12 @@ xf86Ft5xInit(InputDriverPtr drv, IDevPtr dev, int flags)
 		priv->state = BUTTON_EMULATION_OFF;
 	}*/
     priv->motionxy.x = priv->motionxy.y = -1;
+
+    /* Assume "ft5x_ts" driver name is for Allwinner,
+     * ft5x0x_ts for Rockchip (rk3066) */
+    if( ! strcmp(pInfo->name, "ft5x0x_ts") ) {
+        priv->isRockchip = TRUE;
+    }
 
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 12
 	/* Mark the device configured */

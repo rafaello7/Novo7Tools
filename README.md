@@ -40,6 +40,7 @@ system to boot, or to enter recovery, fastboot, or FEL mode.
 
 
 A collection of Debian patches, for touchscreen, battery etc.
+Not only for Allwinner.
 
 
 ## virtual-keyboard
