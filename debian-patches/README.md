@@ -18,6 +18,7 @@ ft5x-2
 ------
 
 Another way of touchscreen support. See [ft5x-2 README](ft5x-2).
+Should work also on Cube U30GT.
 
 
 fbexec
@@ -50,6 +51,7 @@ pm
 --
 
 Corrections in "suspend" functionality of pm-utils package.
+Tested also on Cube U30GT
 
 patch-rtl8192cu
 ---------------
