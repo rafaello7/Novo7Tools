@@ -184,6 +184,10 @@ static int novo7_read(struct ft5x_priv *priv)
             case SYN_REPORT:
                 priv->ev_tv = ev.time;
                 priv->current_id = 0;
+                FT5XDBG("novo7_read: SYN_REPORT: xyp1=(%d,%d,%d) "
+                        "xyp2=(%d,%d,%d) count=%d\n",
+                        priv->xy1.x, priv->xy1.y, priv->press1,
+                        priv->xy2.x, priv->xy2.y, priv->press2, priv->count);
                 return 1;
             }
         }
@@ -205,7 +209,7 @@ static int rk_read(struct ft5x_priv *priv)
         case EV_ABS:
             switch (ev.code) {
             case ABS_MT_POSITION_X:
-                FT5XDBG("rk_read: ABS_MT_POSITION_X: value=0x%x\n", ev.value);
+                FT5XDBG("rk_read: ABS_MT_POSITION_X: value=%d\n", ev.value);
                 if( priv->current_id == 0 ) {
                     priv->xy1.x = ev.value;
                 }else{
@@ -213,7 +217,7 @@ static int rk_read(struct ft5x_priv *priv)
                 }
                 break;
             case ABS_MT_POSITION_Y:
-                FT5XDBG("rk_read: ABS_MT_POSITION_Y: value=0x%x\n", ev.value);
+                FT5XDBG("rk_read: ABS_MT_POSITION_Y: value=%d\n", ev.value);
                 if( priv->current_id == 0 ) {
                     priv->xy1.y = ev.value;
                 }else{
@@ -221,7 +225,7 @@ static int rk_read(struct ft5x_priv *priv)
                 }
                 break;
             case ABS_MT_PRESSURE:
-                FT5XDBG("rk_read: ABS_MT_PRESSURE: value=0x%x\n", ev.value);
+                FT5XDBG("rk_read: ABS_MT_PRESSURE: value=%d\n", ev.value);
                 if( priv->current_id == 0 ) {
                     priv->press1 = ev.value;
                 }else{
@@ -229,11 +233,12 @@ static int rk_read(struct ft5x_priv *priv)
                 }
                 break;
             case ABS_MT_SLOT:
-                FT5XDBG("rk_read: ABS_MT_SLOT: value=0x%x\n", ev.value);
+                FT5XDBG("rk_read: ABS_MT_SLOT: value=%d\n", ev.value);
                 priv->current_id = ev.value;
                 break;
             default:
-                FT5XDBG("rk_read: EV_ABS: code=0x%x value=%d\n", ev.code, ev.value);
+                FT5XDBG("rk_read: EV_ABS: code=0x%x value=%d\n",
+                        ev.code, ev.value);
                 break;
             }
             break;
@@ -242,8 +247,10 @@ static int rk_read(struct ft5x_priv *priv)
             case SYN_REPORT:
                 priv->ev_tv = ev.time;
                 priv->count = priv->press1 ? priv->press2 ? 2 : 1 : 0;
-                FT5XDBG("rk_read: SYN_REPORT: press1=%d, press2=%d, count=%d\n",
-                        priv->press1, priv->press2, priv->count);
+                FT5XDBG("rk_read: SYN_REPORT: xyp1=(%d,%d,%d) xyp2=(%d,%d,%d) "
+                        "count=%d\n",
+                        priv->xy1.x, priv->xy1.y, priv->press1,
+                        priv->xy2.x, priv->xy2.y, priv->press2, priv->count);
                 return 1;
             default:
                 FT5XDBG("rk_read: EV_SYN: value=%d\n", ev.value);
