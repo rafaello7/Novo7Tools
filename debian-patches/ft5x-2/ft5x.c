@@ -236,6 +236,17 @@ static int rk_read(struct ft5x_priv *priv)
                 FT5XDBG("rk_read: ABS_MT_SLOT: value=%d\n", ev.value);
                 priv->current_id = ev.value;
                 break;
+            case ABS_MT_TOUCH_MAJOR:
+                FT5XDBG("rk_read: ABS_MT_TOUCH_MAJOR: value=%d\n", ev.value);
+                break;
+            case ABS_MT_TRACKING_ID:
+                FT5XDBG("rk_read: ABS_MT_TRACKING_ID: value=%d\n", ev.value);
+                if( priv->current_id == 0 ) {
+                    priv->press1 = ev.value >= 0 ? 200 : 0;
+                }else{
+                    priv->press2 = ev.value >= 0 ? 200 : 0;
+                }
+                break;
             default:
                 FT5XDBG("rk_read: EV_ABS: code=0x%x value=%d\n",
                         ev.code, ev.value);
