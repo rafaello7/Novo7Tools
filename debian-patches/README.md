@@ -65,3 +65,9 @@ sunxi-disp-brightness
 
 A tool to set LCD display brightness on sunxi platform.
 
+
+android-reboot
+--------------
+
+A tool which allows to reboot into Android _recovery_, _fastboot_, _bootloader_ mode from Debian.
+
