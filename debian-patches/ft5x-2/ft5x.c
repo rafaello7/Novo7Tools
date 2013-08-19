@@ -241,10 +241,20 @@ static int rk_read(struct ft5x_priv *priv)
                 break;
             case ABS_MT_TRACKING_ID:
                 FT5XDBG("rk_read: ABS_MT_TRACKING_ID: value=%d\n", ev.value);
+                /* there are two different implementations of ft5x driver
+                 * on RockChip kernels. In stock kernel, the
+                 * ABS_MT_TRACKING_ID appears with ev.value >= 0 on
+                 * a finger press and with -1 on finger release. The
+                 * ABS_MT_PRESSURE message does not appear at all.
+                 * In "custom" kernels the ABS_MT_TRACKING_ID appears only
+                 * at very begining, 10 times with ev.value equal to 0..9 */
                 if( priv->current_id == 0 ) {
                     priv->press1 = ev.value >= 0 ? 200 : 0;
-                }else{
+                }else if( priv->current_id == 1 ) {
                     priv->press2 = ev.value >= 0 ? 200 : 0;
+                }else if( priv->current_id >= 9 ) {
+                    /* custom kernel: the message doesn't mean pressure */
+                    priv->press1 = priv->press2 = 0;
                 }
                 break;
             default:
