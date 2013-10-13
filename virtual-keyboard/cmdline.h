@@ -15,6 +15,7 @@ struct CmdLineOptions {
 
     gboolean isDecorated, hasResizeGrip, isOnTaskBar, isOnTop;
     enum CmdLine_WinStateSet winStateToSet;
+    const char *composeKeys;
 };
 
 gboolean ParseCmdLine(int argc, char *argv[], struct CmdLineOptions*);

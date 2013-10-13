@@ -11,6 +11,7 @@ static void Usage(void)
     "                        [-width [-]<num>[%%]] [-height <num>[%%]]\n"
     "                        [-decorated] [-resizable] [-taskbar]\n"
     "                        [-notop] [-iconify|-present|-toggle]\n"
+    "                        [-ralt <compose keys>]\n"
     "\n"
     "    -h             - print this help\n"
     "\n"
@@ -41,6 +42,11 @@ static void Usage(void)
     "    -toggle        - when another instance is running, toggle their\n"
     "                     iconified/present state; otherwise run a new\n"
     "                     instance and make it visible\n"
+    "    -rightalt      - string definig compose keys to generate when\n"
+    "                     right alt + a key is pressed; consists of\n"
+    "                     3-letter sequences: the key to assing the sequence\n"
+    "                     followed by 2 letters of the sequence; example for\n"
+    "                     polish keyboard: \"aa,cc'ee,ll/nn'oo'ss'zz.xz'\"\n"
     "\n";
     g_print(usageStr);
 }
@@ -84,6 +90,7 @@ gboolean ParseCmdLine(int argc, char *argv[], struct CmdLineOptions *opts)
     opts->isOnTaskBar = FALSE;
     opts->isOnTop = TRUE;
     opts->winStateToSet = CL_WSTATE_PRESENT;
+    opts->composeKeys = NULL;
 
     while( argNo < argc ) {
         if( !strcmp(argv[argNo], "-h") ) {
@@ -143,6 +150,9 @@ gboolean ParseCmdLine(int argc, char *argv[], struct CmdLineOptions *opts)
         }else if( !strcmp(argv[argNo], "-toggle") ) {
             opts->winStateToSet = CL_WSTATE_TOGGLE;
             ++argNo;
+        }else if( !strcmp(argv[argNo], "-rightalt") ) {
+            opts->composeKeys = argv[argNo+1];
+            argNo += 2;
         }else{
             g_print("unknown option -- %s\n", argv[argNo]);
             g_print("type -h option for usage\n");

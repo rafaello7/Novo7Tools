@@ -101,8 +101,9 @@ static const struct VirtKeyboardLayout gKeyboardMain = { .rows = {
     },
     (const struct VirtKey[]){
         { .vkt = VKT_CTRL,   .disp = "Ctrl",  .kcode =  37, .hsize = 4 },
-        { .vkt = VKT_ALT,    .disp = "Alt",   .kcode =  64, .hsize = 4 },
+        { .vkt = VKT_ALT,    .disp = "Alt",   .kcode =  64, .hsize = 2 },
         { .vkt = VKT_NORMAL, .disp = " ",     .kcode =  65, .hsize = 14 },
+        { .vkt = VKT_RIGHTALT,.disp = "Alt",  .kcode =   0, .hsize = 2 },
         { .vkt = VKT_FNMAIN, .disp = "Fn",    .kcode =   0, .hsize = 2 },
         { .vkt = VKT_NORMAL, .disp = "\xe2\x86\x90", .kcode = 113, .hsize = 2},
         { .vkt = VKT_NORMAL, .disp = "\xe2\x86\x93", .kcode = 116, .hsize = 2},
@@ -173,8 +174,9 @@ static const struct VirtKeyboardLayout gKeyboardFn = { .rows = {
     },
     (const struct VirtKey[]){
         { .vkt = VKT_CTRL,   .disp = "Ctrl",  .kcode =  37, .hsize = 4 },
-        { .vkt = VKT_ALT,    .disp = "Alt",   .kcode =  64, .hsize = 4 },
+        { .vkt = VKT_ALT,    .disp = "Alt",   .kcode =  64, .hsize = 2 },
         { .vkt = VKT_NORMAL, .disp = " ",     .kcode =  65, .hsize = 14 },
+        { .vkt = VKT_RIGHTALT,.disp = "Alt",  .kcode =   0, .hsize = 2 },
         { .vkt = VKT_FNFN,   .disp = "Fn",    .kcode =   0, .hsize = 2 },
         { .vkt = VKT_NORMAL, .disp = "\xe2\x86\x90", .kcode = 113, .hsize = 2},
         { .vkt = VKT_NORMAL, .disp = "\xe2\x86\x93", .kcode = 116, .hsize = 2},
@@ -188,6 +190,63 @@ guint vkl_GetKeyCodeFromUserData(gpointer user_data)
     struct VirtKey *vk = user_data;
 
     return vk->kcode;
+}
+
+struct KCodeCompose {
+    char disp;
+    guint kcodes[2];
+};
+
+static struct KCodeCompose gComposeKeys[256] = {
+    { '\0'  }, { '\0'  }, { '\0'  }, { '\0'  }, { '\0'  }, { '\0'  },
+    { '\0'  }, { '\0'  }, { '\0'  }, { '\033'}, { '1'   }, { '2'   },
+    { '3'   }, { '4'   }, { '5'   }, { '6'   }, { '7'   }, { '8'   },
+    { '9'   }, { '0'   }, { '-'   }, { '='   }, { '\b'  }, { '\t'  },
+    { 'q'   }, { 'w'   }, { 'e'   }, { 'r'   }, { 't'   }, { 'y'   },
+    { 'u'   }, { 'i'   }, { 'o'   }, { 'p'   }, { '['   }, { ']'   },
+    { '\n'  }, { '\0'  }, { 'a'   }, { 's'   }, { 'd'   }, { 'f'   },
+    { 'g'   }, { 'h'   }, { 'j'   }, { 'k'   }, { 'l'   }, { ';'   },
+    { '\''  }, { '`'   }, { '\0'  }, { '\\'  }, { 'z'   }, { 'x'   },
+    { 'c'   }, { 'v'   }, { 'b'   }, { 'n'   }, { 'm'   }, { ','   },
+    { '.'   }, { '/'   },
+};
+
+static int getKCodeForChar(char c)
+{
+    int i;
+
+    for(i = 0; i < 256 && gComposeKeys[i].disp != c; ++i) {
+    }
+    return i >= 0 ? i : -1;
+}
+
+/* cmdLineParam format:
+ *  "aa,cc'ee,..."
+ * consists of 3-character sequences. First character - the key, which
+ * the compose sequence should be assigned to; two subsequent characters
+ * - the compose sequence
+ */
+void vkl_SetComposeKeys(const char *cmdLineParam)
+{
+    int ckey, comp1, comp2;
+
+    while(cmdLineParam[0] && cmdLineParam[1] && cmdLineParam[2]) {
+        if( (ckey = getKCodeForChar(cmdLineParam[0])) >= 0 &&
+                (comp1 = getKCodeForChar(cmdLineParam[1])) >= 0 &&
+                (comp2 = getKCodeForChar(cmdLineParam[2])) >= 0)
+        {
+            gComposeKeys[ckey].kcodes[0] = comp1;
+            gComposeKeys[ckey].kcodes[1] = comp2;
+        }
+        cmdLineParam += 3;
+    }
+}
+
+guint *vkl_GetComposeFromUserData(gpointer user_data)
+{
+    struct VirtKey *vk = user_data;
+
+    return gComposeKeys[vk->kcode].kcodes;
 }
 
 static GtkWidget *CreateKeyboard(
@@ -256,6 +315,9 @@ static GtkWidget *CreateKeyboard(
                     break;
                 case VKT_ALT:
                     mod->alt = button;
+                    break;
+                case VKT_RIGHTALT:
+                    mod->rightalt = button;
                     break;
                 default:
                     break;

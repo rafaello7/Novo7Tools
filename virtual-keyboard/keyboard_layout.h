@@ -6,6 +6,7 @@ enum VirtKeyType {
     VKT_SHIFT,
     VKT_CTRL,
     VKT_ALT,
+    VKT_RIGHTALT,
     VKT_FNMAIN,     /* "Fn" key on main keyboard */
     VKT_FNFN,       /* "Fn" key on "Fn" keyboard */
     VKT_ALTPOS,     /* "Move to alternate position" key */
@@ -21,7 +22,7 @@ struct VirtKeyHandler {
 };
 
 struct ModifierButtons {
-    GtkWidget *shift, *ctrl, *alt;
+    GtkWidget *shift, *ctrl, *alt, *rightalt;
 };
 
 GtkWidget *vkl_CreateMainKeyboard(
@@ -30,5 +31,7 @@ GtkWidget *vkl_CreateFnKeyboard(
         const struct VirtKeyHandler*handlers, struct ModifierButtons*);
 
 guint vkl_GetKeyCodeFromUserData(gpointer user_data);
+guint *vkl_GetComposeFromUserData(gpointer user_data);
+void vkl_SetComposeKeys(const char *cmdLineParam);
 
 #endif /* KEYBOARD_LAYOUT_H */

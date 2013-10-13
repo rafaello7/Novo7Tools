@@ -17,15 +17,23 @@ static guint gWinAltX, gWinAltY;
 
 
 static guint gCurKCode;
+static guint *gCurCompose;
 static Display *gCurDisplay;
 static guint gCurTimeoutId;
 static gboolean gIsTimeoutForRepeat;
+static guint gMultiKeyCode;
 
 
 /* "clicked" event handler of VKT_NORMAL button
  */
 static gboolean on_timeout(gpointer user_data)
 {
+    gboolean isRightAltOn = gMultiKeyCode != NoSymbol && gCurCompose[0] != 0 &&
+        gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(modifiers->rightalt));
+    if( isRightAltOn ) {
+        XTestFakeKeyEvent(gCurDisplay, gMultiKeyCode, TRUE, CurrentTime);
+        XTestFakeKeyEvent(gCurDisplay, gMultiKeyCode, FALSE, CurrentTime);
+    }
     if( gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(modifiers->shift)) ) {
         XTestFakeKeyEvent(gCurDisplay, 50, TRUE, CurrentTime);
     }
@@ -35,8 +43,13 @@ static gboolean on_timeout(gpointer user_data)
     if( gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(modifiers->alt)) ) {
         XTestFakeKeyEvent(gCurDisplay, 64, TRUE, CurrentTime);
     }
-    XTestFakeKeyEvent(gCurDisplay, gCurKCode, TRUE, CurrentTime);
-    XTestFakeKeyEvent(gCurDisplay, gCurKCode, FALSE, CurrentTime);
+    if( isRightAltOn ) {
+        XTestFakeKeyEvent(gCurDisplay, gCurCompose[0], TRUE, CurrentTime);
+        XTestFakeKeyEvent(gCurDisplay, gCurCompose[0], FALSE, CurrentTime);
+    }else{
+        XTestFakeKeyEvent(gCurDisplay, gCurKCode, TRUE, CurrentTime);
+        XTestFakeKeyEvent(gCurDisplay, gCurKCode, FALSE, CurrentTime);
+    }
     if( gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(modifiers->alt)) ) {
         XTestFakeKeyEvent(gCurDisplay, 64, FALSE, CurrentTime);
     }
@@ -45,6 +58,10 @@ static gboolean on_timeout(gpointer user_data)
     }
     if( gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(modifiers->shift)) ) {
         XTestFakeKeyEvent(gCurDisplay, 50, FALSE, CurrentTime);
+    }
+    if( isRightAltOn ) {
+        XTestFakeKeyEvent(gCurDisplay, gCurCompose[1], TRUE, CurrentTime);
+        XTestFakeKeyEvent(gCurDisplay, gCurCompose[1], FALSE, CurrentTime);
     }
     if( gCurTimeoutId != 0 && ! gIsTimeoutForRepeat ) {
         gIsTimeoutForRepeat = TRUE;
@@ -67,6 +84,7 @@ static gboolean on_press_normal(GtkWidget *widget, GdkEvent *ev,
         gCurDisplay = gdk_x11_display_get_xdisplay(
                 gtk_widget_get_display(widget));
         gCurKCode = vkl_GetKeyCodeFromUserData(user_data);
+        gCurCompose = vkl_GetComposeFromUserData(user_data);
         on_timeout(NULL);
         gIsTimeoutForRepeat = FALSE;
         gCurTimeoutId = g_timeout_add(1000, on_timeout, NULL);
@@ -89,6 +107,7 @@ static gboolean on_release_normal(GtkWidget *widget, GdkEvent *ev,
         gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(modifiers->ctrl), FALSE);
     }
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(modifiers->alt), FALSE);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(modifiers->rightalt), FALSE);
     return FALSE;
 }
 
@@ -103,6 +122,8 @@ static void ReplicateModifiers(const struct ModifierButtons *to,
             gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(from->ctrl)));
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(to->alt),
             gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(from->alt)));
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(to->rightalt),
+            gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(from->rightalt)));
 }
 
 static void on_click_fnmain(GtkWidget *button, gpointer data)
@@ -186,6 +207,7 @@ static void CreateKeyboardOnNotebook(GtkWidget *window, GtkWidget *notebook)
         [VKT_CTRL] =    { .isToggleButton = TRUE,
                           .btnReleaseCallback = G_CALLBACK(on_release_ctrl) },
         [VKT_ALT] =     { .isToggleButton = TRUE },
+        [VKT_RIGHTALT] = { .isToggleButton = TRUE },
         [VKT_FNMAIN] = {
             .isToggleButton = FALSE,
             .clickCallback = G_CALLBACK(on_click_fnmain),
@@ -224,6 +246,35 @@ static guint CalcOptionValue(guint val, gboolean isNeg, gboolean isPercentage,
         val = val > val100Percent ? 0 : val100Percent - val;
     }
     return val;
+}
+
+static void AddMultiKeySym(GtkWidget *widget)
+{
+    int keycode, inx;
+    int min_keycode, max_keycode, keysym_per_keycode;
+    KeySym *keysym_table = NULL;
+    Display *target_dpy;
+
+    target_dpy = gdk_x11_display_get_xdisplay(
+                gtk_widget_get_display(widget));
+    XDisplayKeycodes(target_dpy, &min_keycode, &max_keycode);
+    keysym_table = XGetKeyboardMapping(target_dpy,
+            min_keycode, max_keycode - min_keycode + 1,
+            &keysym_per_keycode);
+    for (keycode = max_keycode; min_keycode <= keycode; keycode--) {
+        inx = (keycode - min_keycode) * keysym_per_keycode;
+        if( keysym_table[inx] == XK_Multi_key ) {
+            break;
+        }
+        if( keysym_table[inx] == NoSymbol ) {
+            keysym_table[inx] = XK_Multi_key;
+            XChangeKeyboardMapping(target_dpy, keycode, keysym_per_keycode, &keysym_table[inx], 1);
+            XFlush(target_dpy);
+            break;
+        }
+    }
+    XFree(keysym_table);
+    gMultiKeyCode = min_keycode <= keycode ? keycode : NoSymbol;
 }
 
 static void InitMainWindow(struct CmdLineOptions *opts, GtkApplication *app)
@@ -270,6 +321,7 @@ static void InitMainWindow(struct CmdLineOptions *opts, GtkApplication *app)
     gtk_widget_show(GTK_WIDGET(notebook));
     gtk_window_set_application(GTK_WINDOW (window), app);
     gtk_widget_show(window);
+    AddMultiKeySym(window);
 }
 
 
@@ -312,6 +364,8 @@ int main(int argc, char *argv[])
     char *cmdopts[] = { argv[0], cmdopt, NULL };
 
     if( ParseCmdLine(argc, argv, &opts) ) {
+        if( opts.composeKeys != NULL )
+            vkl_SetComposeKeys(opts.composeKeys);
         GtkApplication *app;
         app = gtk_application_new("org.novo7tools.virtual-keyboard",
                 G_APPLICATION_HANDLES_COMMAND_LINE);

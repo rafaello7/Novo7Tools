@@ -1,7 +1,7 @@
 OBJS = keyboard_layout.o cmdline.o main.o
 
 virtual-keyboard: $(OBJS)
-	gcc $$(pkg-config --libs gtk+-3.0) -lXtst -o virtual-keyboard $(OBJS)
+	gcc $$(pkg-config --libs gtk+-3.0) -lX11 -lXtst -o virtual-keyboard $(OBJS)
 
 .c.o:
 	gcc -Wall $$(pkg-config --cflags gtk+-3.0) -c $<
