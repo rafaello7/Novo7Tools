@@ -1,0 +1,12 @@
+# suspend fix for systemd
+
+[Unit]
+Description=Suspend
+Documentation=man:systemd-suspend.service(8)
+DefaultDependencies=no
+Requires=sleep.target
+After=sleep.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/sunxi_suspend
