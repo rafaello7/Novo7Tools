@@ -43,9 +43,3 @@ A collection of Debian patches, for touchscreen, battery etc.
 Not only for Allwinner.
 
 
-## virtual-keyboard
-
-
-Simple, lightweight virtual keyboard suitable for tablets. Based on GTK.
-
-
