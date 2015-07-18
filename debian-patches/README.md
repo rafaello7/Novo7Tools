@@ -1,26 +1,6 @@
 A collection of Debian patches, for touchscreen, battery etc.
 =============================================================
 
-patch-upower
-------------
-
-Patch for "upower" package. Causes to display correctly battery
-charge rate on xfce desktop (and possibly on other desktops).
-
-ft5x
-----
-
-Touchscreen support.
-Tap with 2nd finger simulates right-click.
-Drag with 2nd finger simulates scrolling with mouse wheel.
-
-ft5x-2
-------
-
-Another way of touchscreen support. See [ft5x-2 README](ft5x-2).
-Should work also on Cube U30GT.
-
-
 fbexec
 ------
 
