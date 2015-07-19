@@ -50,4 +50,10 @@ android-reboot
 --------------
 
 A tool which allows to reboot into Android _recovery_, _fastboot_, _bootloader_ mode from Debian.
+Note that this tool is needed only in some older Debian distributions, which are using SYSV init.
+In recent distributions (which are using systemd) the system may be rebooted into e.g. recovery
+mode by enter command:
+
+        sudo systemctl reboot recovery
+
 
